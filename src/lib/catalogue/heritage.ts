@@ -1,5 +1,7 @@
 import type { Periodicite, TypeDelai } from '@prisma/client';
 
+import { nombreDeLignes } from '@/lib/calendrier/moteur';
+
 /**
  * Inheritance rule for affiliated indicators (cahier des charges §4.5).
  *
@@ -142,33 +144,14 @@ export function heritageADiverge(
 /**
  * Number of calendar lines an element produces for one year.
  *
- * Shown in the generation screen (§5.4) so the user knows what to expect before
- * confirming. `PONCTUELLE` produces nothing automatically (§5.2).
+ * Delegates to the engine rather than reimplementing the split: two
+ * independent counts would eventually disagree, and the preview shown before
+ * generating (§5.4) would then lie about what is about to be created.
  */
 export function nombreDeLignesParAn(
   periodicite: Periodicite,
   nombreAnnees: number | null,
   annee: number,
 ): number {
-  switch (periodicite) {
-    case 'MENSUELLE':
-      return 12;
-    case 'TRIMESTRIELLE':
-      return 4;
-    case 'SEMESTRIELLE':
-      return 2;
-    case 'ANNUELLE':
-      return 1;
-    case 'PLURIANNUELLE':
-      // DEC-115 — settled: there is no "production year" to compute. The user
-      // picks the year when generating the calendar and ticks the elements to
-      // include; a multi-year publication selected for year Y simply gets its
-      // line in Y. The number of years only drives the coverage period, which
-      // runs from 1 January (Y − n + 1) to 31 December Y (§5.2).
-      return nombreAnnees !== null && nombreAnnees >= 2 ? 1 : 0;
-    case 'PONCTUELLE':
-      return 0;
-    default:
-      return 0;
-  }
+  return nombreDeLignes(periodicite, nombreAnnees, annee);
 }

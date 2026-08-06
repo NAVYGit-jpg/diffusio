@@ -5,7 +5,6 @@ import {
   type ValeursPlanification,
   appliquerHeritage,
   heritageADiverge,
-  nombreDeLignesParAn,
   validerPlanification,
 } from './heritage';
 
@@ -168,33 +167,5 @@ describe('heritageADiverge', () => {
 
   it('detecte un changement de type de delai', () => {
     expect(heritageADiverge(valeurs(), valeurs({ delaiType: 'OUVRES' }))).toBe(true);
-  });
-});
-
-describe('nombreDeLignesParAn', () => {
-  it('applique le decoupage du tableau du paragraphe 5.2', () => {
-    expect(nombreDeLignesParAn('MENSUELLE', null, 2026)).toBe(12);
-    expect(nombreDeLignesParAn('TRIMESTRIELLE', null, 2026)).toBe(4);
-    expect(nombreDeLignesParAn('SEMESTRIELLE', null, 2026)).toBe(2);
-    expect(nombreDeLignesParAn('ANNUELLE', null, 2026)).toBe(1);
-  });
-
-  it('ne genere aucune ligne automatique pour une ponctuelle', () => {
-    // La ligne unique est saisie a la main (paragraphe 5.2).
-    expect(nombreDeLignesParAn('PONCTUELLE', null, 2026)).toBe(0);
-  });
-
-  it('produit une ligne pluriannuelle pour l annee choisie, quelle qu elle soit', () => {
-    // DEC-115 : l'annee retenue est celle selectionnee a la generation, il n'y
-    // a pas d'annee de production a calculer. Le nombre d'annees ne sert qu'a
-    // determiner la periode couverte.
-    expect(nombreDeLignesParAn('PLURIANNUELLE', 5, 2025)).toBe(1);
-    expect(nombreDeLignesParAn('PLURIANNUELLE', 5, 2026)).toBe(1);
-    expect(nombreDeLignesParAn('PLURIANNUELLE', 5, 2030)).toBe(1);
-  });
-
-  it('ne genere rien pour une pluriannuelle mal renseignee', () => {
-    expect(nombreDeLignesParAn('PLURIANNUELLE', null, 2026)).toBe(0);
-    expect(nombreDeLignesParAn('PLURIANNUELLE', 1, 2026)).toBe(0);
   });
 });
