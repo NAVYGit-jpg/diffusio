@@ -110,6 +110,15 @@ export function TableauStructures({ structures }: { structures: Structure[] }) {
   const parents = parentsPossibles(structures, enEdition?.id ?? null);
   const champs = etat.erreursChamps;
 
+  /**
+   * React 19 resets an uncontrolled form once its action resolves. The action
+   * echoes the submitted values so the reset restores them instead of wiping
+   * everything the user typed.
+   */
+  const soumis = etat.valeurs;
+  const valeurTexte = (cle: string, depuisEdition: string | null | undefined) =>
+    soumis?.[cle] ?? depuisEdition ?? '';
+
   return (
     <>
       <div className="mb-4 flex justify-end">
@@ -238,7 +247,7 @@ export function TableauStructures({ structures }: { structures: Structure[] }) {
               <Input
                 id="nom"
                 name="nom"
-                defaultValue={enEdition?.nom ?? ''}
+                defaultValue={valeurTexte('nom', enEdition?.nom)}
                 required
                 aria-invalid={Boolean(champs?.nom)}
               />
@@ -253,7 +262,7 @@ export function TableauStructures({ structures }: { structures: Structure[] }) {
                 <Input
                   id="sigle"
                   name="sigle"
-                  defaultValue={enEdition?.sigle ?? ''}
+                  defaultValue={valeurTexte('sigle', enEdition?.sigle)}
                   required
                   aria-invalid={Boolean(champs?.sigle)}
                 />
@@ -267,7 +276,7 @@ export function TableauStructures({ structures }: { structures: Structure[] }) {
                 <Input
                   id="code"
                   name="code"
-                  defaultValue={enEdition?.code ?? ''}
+                  defaultValue={valeurTexte('code', enEdition?.code)}
                   required
                   className="font-mono"
                   aria-invalid={Boolean(champs?.code)}
@@ -281,7 +290,7 @@ export function TableauStructures({ structures }: { structures: Structure[] }) {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="type">Type</Label>
-                <Select name="type" defaultValue={enEdition?.type ?? 'DIRECTION'}>
+                <Select name="type" defaultValue={valeurTexte('type', enEdition?.type) || 'DIRECTION'}>
                   <SelectTrigger id="type" className="w-full">
                     <SelectValue />
                   </SelectTrigger>
@@ -299,7 +308,7 @@ export function TableauStructures({ structures }: { structures: Structure[] }) {
                 <Label htmlFor="parentId">Structure parente</Label>
                 <Select
                   name="parentId"
-                  defaultValue={enEdition?.parentId ?? 'aucune'}
+                  defaultValue={valeurTexte('parentId', enEdition?.parentId) || 'aucune'}
                 >
                   <SelectTrigger id="parentId" className="w-full">
                     <SelectValue />
@@ -325,7 +334,7 @@ export function TableauStructures({ structures }: { structures: Structure[] }) {
                 id="description"
                 name="description"
                 rows={3}
-                defaultValue={enEdition?.description ?? ''}
+                defaultValue={valeurTexte('description', enEdition?.description)}
               />
             </div>
 

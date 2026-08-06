@@ -8,6 +8,7 @@ import { redirect } from 'next/navigation';
 import { auth, signIn, signOut } from '@/auth';
 import { identifiantsSchema, premiereConnexionSchema } from '@/lib/auth/schemas';
 import { prisma } from '@/lib/prisma';
+import { definirMotDePasseSchema } from '@/lib/utilisateurs/schemas';
 
 export type EtatFormulaire = {
   erreur?: string;
@@ -148,4 +149,65 @@ export async function premiereConnexionAction(
 
 export async function deconnexionAction(): Promise<void> {
   await signOut({ redirectTo: '/connexion' });
+}
+
+/**
+ * Password chosen by an invited user from their e-mail link.
+ *
+ * The token is the only credential here, so it is single-use and time-limited:
+ * it is cleared as soon as the password is set.
+ */
+export async function definirMotDePasseAction(
+  _etatPrecedent: EtatFormulaire,
+  donnees: FormData,
+): Promise<EtatFormulaire> {
+  const analyse = definirMotDePasseSchema.safeParse({
+    jeton: donnees.get('jeton'),
+    motDePasse: donnees.get('motDePasse'),
+    confirmation: donnees.get('confirmation'),
+  });
+
+  if (!analyse.success) {
+    return { erreursChamps: analyse.error.flatten().fieldErrors };
+  }
+
+  const utilisateur = await prisma.utilisateur.findFirst({
+    where: {
+      jetonMotDePasse: analyse.data.jeton,
+      jetonMotDePasseExpire: { gt: new Date() },
+      actif: true,
+      deletedAt: null,
+    },
+  });
+
+  if (!utilisateur) {
+    return {
+      erreur:
+        "Ce lien n'est plus valable. Demandez à votre administrateur de vous renvoyer une invitation.",
+    };
+  }
+
+  await prisma.utilisateur.update({
+    where: { id: utilisateur.id },
+    data: {
+      motDePasseHash: await hash(analyse.data.motDePasse),
+      mustChangePassword: false,
+      jetonMotDePasse: null,
+      jetonMotDePasseExpire: null,
+      tentativesConnexionEchouees: 0,
+      bloqueJusqua: null,
+    },
+  });
+
+  await prisma.journalAudit.create({
+    data: {
+      organisationId: utilisateur.organisationId,
+      utilisateurId: utilisateur.id,
+      action: 'ACTIVATION_COMPTE',
+      entite: 'Utilisateur',
+      entiteId: utilisateur.id,
+    },
+  });
+
+  redirect('/connexion?motDePasseChange=1');
 }

@@ -10,7 +10,14 @@ import type { NextAuthConfig } from 'next-auth';
  */
 
 /** Routes reachable without a session. */
-const ROUTES_PUBLIQUES = ['/connexion', '/mot-de-passe-oublie', '/reinitialiser'];
+const ROUTES_PUBLIQUES = [
+  '/connexion',
+  '/mot-de-passe-oublie',
+  '/reinitialiser',
+  // Invited users reach this one from their e-mail, before any account exists
+  // in their browser. The token itself is the authorisation.
+  '/definir-mot-de-passe',
+];
 
 /** Public calendar space (DEC-113), readable without an account. */
 const PREFIXE_ESPACE_PUBLIC = '/calendrier-public';

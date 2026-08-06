@@ -12,7 +12,26 @@ export type EtatStructure = {
   succes?: boolean;
   erreur?: string;
   erreursChamps?: Record<string, string[]>;
+  /**
+   * Values as submitted, echoed back on failure.
+   *
+   * React 19 resets an uncontrolled form once its action resolves; without
+   * this, a validation error would empty every field the user typed.
+   */
+  valeurs?: Record<string, string>;
 };
+
+/** Snapshot of the form, used to repopulate the fields after an error. */
+function valeursSoumises(donnees: FormData): Record<string, string> {
+  return {
+    nom: String(donnees.get('nom') ?? ''),
+    sigle: String(donnees.get('sigle') ?? ''),
+    code: String(donnees.get('code') ?? ''),
+    type: String(donnees.get('type') ?? 'DIRECTION'),
+    parentId: String(donnees.get('parentId') ?? 'aucune'),
+    description: String(donnees.get('description') ?? ''),
+  };
+}
 
 /**
  * Reads the form and validates it. Shared by creation and update.
@@ -52,7 +71,10 @@ export async function enregistrerStructureAction(
   const analyse = analyser(donnees);
 
   if (!analyse.success) {
-    return { erreursChamps: analyse.error.flatten().fieldErrors };
+    return {
+      erreursChamps: analyse.error.flatten().fieldErrors,
+      valeurs: valeursSoumises(donnees),
+    };
   }
 
   const valeurs = analyse.data;
@@ -71,6 +93,7 @@ export async function enregistrerStructureAction(
   if (codeExistant) {
     return {
       erreursChamps: { code: ['Ce code est déjà utilisé par une autre structure.'] },
+      valeurs: valeursSoumises(donnees),
     };
   }
 
@@ -85,7 +108,10 @@ export async function enregistrerStructureAction(
     });
 
     if (!parent) {
-      return { erreursChamps: { parentId: ["La structure parente n'existe pas."] } };
+      return {
+      erreursChamps: { parentId: ["La structure parente n'existe pas."] },
+      valeurs: valeursSoumises(donnees),
+    };
     }
   }
 
@@ -102,6 +128,7 @@ export async function enregistrerStructureAction(
             'Impossible : cette structure deviendrait sa propre sous-structure.',
           ],
         },
+        valeurs: valeursSoumises(donnees),
       };
     }
   }
