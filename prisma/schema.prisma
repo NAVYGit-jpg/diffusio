@@ -1,25 +1,723 @@
 // =============================================================================
 // DIFFUSIO — Schema Prisma
 // =============================================================================
-// Phase 0 : datasource et generator uniquement.
+// Modele de donnees complet (section 4 du cahier des charges).
 //
-// Les modeles de donnees (section 4 du cahier des charges) seront ajoutes en
-// Phase 1. Ils dependent de reponses encore attendues sur :
-//   - Q12 : plusieurs organisations en production, ou une seule ?
-//   - Q6/Q7 : cardinalite point focal <-> structure
-//   - Q9 : delai de mise a disposition unique par element, ou variable par periode ?
-//   - Q13 : espace public sans compte (impacte les index et les vues)
-//   - Q14 : double authentification super admin (champs TOTP)
-// Ecrire le schema avant ces reponses reviendrait a inventer des regles metier,
-// ce que la regle de conduite n. 2 interdit.
+// Conventions :
+//   - identifiants : cuid()
+//   - toutes les tables portent createdAt / updatedAt
+//   - deletedAt (suppression logique) sur les tables referencees ailleurs
+//   - chaque table metier porte organisationId (schema multi-locataire)
+//
+// Arbitrages appliques (voir DECISIONS.md) :
+//   DEC-101 delai par defaut = CALENDAIRES, sans report week-end/ferie
+//   DEC-107 une structure peut avoir plusieurs points focaux (1 titulaire + n suppleants)
+//   DEC-109 le delai est unique par element (pas de derogation par periode)
+//   DEC-112 une seule organisation en production, mais schema multi-locataire conserve
+//   DEC-113 espace public consultable sans compte -> drapeaux de publication
+//   DEC-114 pas de 2FA active, mais champs prevus pour eviter une migration ulterieure
 // =============================================================================
 
 generator client {
   provider = "prisma-client-js"
 }
 
+// Prisma 7 : les URL de connexion ne vivent plus ici.
+//   - migrations / introspection -> prisma.config.ts (DIRECT_URL, port 5432)
+//   - execution applicative      -> adaptateur pg dans src/lib/prisma.ts (DATABASE_URL, pooler 6543)
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "postgresql"
+}
+
+// =============================================================================
+// ENUMERATIONS
+// =============================================================================
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  POINT_FOCAL
+}
+
+enum TypeStructure {
+  DIRECTION
+  SOUS_DIRECTION
+  MINISTERE
+  SERVICE
+  AUTRE
+}
+
+enum Periodicite {
+  MENSUELLE
+  TRIMESTRIELLE
+  SEMESTRIELLE
+  ANNUELLE
+  PLURIANNUELLE
+  PONCTUELLE
+}
+
+enum TypeDelai {
+  CALENDAIRES
+  OUVRES
+}
+
+enum DensiteInterface {
+  COMPACTE
+  CONFORTABLE
+}
+
+enum StatutCalendrier {
+  BROUILLON
+  SOUMIS
+  VALIDE
+}
+
+enum TypeElement {
+  PUBLICATION
+  INDICATEUR
+}
+
+enum StatutLigne {
+  PLANIFIE
+  A_VENIR
+  TELEVERSE
+  MIS_EN_LIGNE
+  EN_RETARD
+  ANNULE
+}
+
+enum TypeFichier {
+  PDF
+  EXCEL
+  AUTRE
+}
+
+enum StatutAvancement {
+  EN_COURS
+  NON_DEBUTEE
+}
+
+enum TypeEnvoiEmail {
+  RAPPEL_J15
+  RAPPEL_J10
+  RAPPEL_J5
+  RAPPEL_J3
+  RAPPEL_J1
+  RELANCE_RETARD
+  MISE_EN_LIGNE
+  ALERTE_MANUELLE
+  INVITATION
+  REINITIALISATION_MOT_DE_PASSE
+}
+
+enum StatutEnvoiEmail {
+  ENVOYE
+  ECHEC
+}
+
+// =============================================================================
+// 4.1 ORGANISATION (locataire)
+// =============================================================================
+
+model Organisation {
+  id            String  @id @default(cuid())
+  nom           String
+  sigle         String
+  pays          String
+  fuseauHoraire String  @default("Africa/Abidjan")
+
+  // Identite visuelle — injectee en variables CSS au niveau du layout racine (§9.4)
+  logoUrl           String?
+  couleurPrimaire   String           @default("#1e40af")
+  couleurSecondaire String           @default("#475569")
+  couleurAccent     String           @default("#0891b2")
+  police            String           @default("Geist")
+  densiteInterface  DensiteInterface @default(CONFORTABLE)
+  radiusInterface   Float            @default(0.5)
+
+  emailExpediteur String?
+  signatureEmail  String?
+
+  // Defaut herite par chaque publication / indicateur (§5.3)
+  delaiTypeParDefaut          TypeDelai @default(CALENDAIRES)
+  reportSiWeekendOuFerieDefaut Boolean  @default(false)
+
+  // Espace public consultable sans compte (DEC-113)
+  espacePublicActif Boolean @default(false)
+  slugPublic        String? @unique
+
+  // Parametres de relance rendus configurables (§9.3)
+  joursRappel               Int[] @default([15, 10, 5, 3, 1])
+  frequenceRelanceRetardJours Int @default(2)
+
+  actif     Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  structures     Structure[]
+  utilisateurs   Utilisateur[]
+  domaines       Domaine[]
+  joursFeries    JourFerie[]
+  publications   Publication[]
+  indicateurs    Indicateur[]
+  calendriers    Calendrier[]
+  conversations  Conversation[]
+  journauxAudit  JournalAudit[]
+  modelesEmail   ModeleEmail[]
+
+  @@map("organisations")
+}
+
+// =============================================================================
+// 4.2 STRUCTURE (arborescence a N niveaux)
+// =============================================================================
+
+model Structure {
+  id             String        @id @default(cuid())
+  organisationId String
+  nom            String
+  sigle          String
+  code           String
+  type           TypeStructure @default(AUTRE)
+  parentId       String?
+  description    String?
+  actif          Boolean       @default(true)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  parent       Structure?   @relation("ArborescenceStructure", fields: [parentId], references: [id], onDelete: SetNull)
+  enfants      Structure[]  @relation("ArborescenceStructure")
+
+  pointsFocaux    Utilisateur[]
+  adminStructures AdminStructure[]
+  publications    Publication[]
+  indicateurs     Indicateur[]
+  calendriers     Calendrier[]
+  conversations   Conversation[]
+
+  @@unique([organisationId, code])
+  @@index([organisationId, actif])
+  @@index([parentId])
+  @@map("structures")
+}
+
+// =============================================================================
+// 4.3 UTILISATEUR
+// =============================================================================
+
+model Utilisateur {
+  id             String  @id @default(cuid())
+  organisationId String
+  nom            String
+  prenoms        String
+  email          String  @unique
+  telephone      String?
+  motDePasseHash String
+  role           Role
+
+  // Obligatoire si POINT_FOCAL, toujours null pour SUPER_ADMIN / ADMIN.
+  // Contrainte verifiee par le code ET par un CHECK SQL ajoute en migration.
+  structureId String?
+
+  // Obligatoire pour POINT_FOCAL. Si le point focal est son propre superieur,
+  // on y met sa propre adresse (§4.3).
+  emailSuperieur String?
+
+  // DEC-107 : une structure a un point focal titulaire et n suppleants.
+  // Les relances automatiques ne partent qu'au titulaire.
+  estTitulaire Boolean @default(false)
+
+  fonction  String?
+  avatarUrl String?
+
+  mustChangePassword Boolean   @default(true)
+  actif              Boolean   @default(true)
+  derniereConnexion  DateTime?
+
+  // Limitation des tentatives de connexion (§9 Phase 9)
+  tentativesConnexionEchouees Int       @default(0)
+  bloqueJusqua                DateTime?
+
+  // DEC-114 : champs prevus, fonctionnalite non activee
+  totpSecret String?
+  totpActif  Boolean @default(false)
+
+  // Jeton de creation / reinitialisation de mot de passe (e-mail d'invitation)
+  jetonMotDePasse       String?   @unique
+  jetonMotDePasseExpire DateTime?
+
+  // JSON : activation e-mail par type de notification
+  preferencesNotification Json @default("{}")
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  structure    Structure?   @relation(fields: [structureId], references: [id], onDelete: SetNull)
+
+  adminStructures     AdminStructure[]
+  publications        Publication[]      @relation("PointFocalPublication")
+  indicateurs         Indicateur[]       @relation("PointFocalIndicateur")
+  calendriersGeneres  Calendrier[]       @relation("CalendrierGenerePar")
+  calendriersValides  Calendrier[]       @relation("CalendrierValidePar")
+  fichiersTeleverses  Fichier[]
+  valeursSaisies      ValeurIndicateur[]
+  notifications       Notification[]
+  messages            Message[]
+  journauxAudit       JournalAudit[]
+
+  @@index([organisationId, role, actif])
+  @@index([structureId])
+  @@map("utilisateurs")
+}
+
+// Relation N-N : quelles structures un ADMIN supervise
+model AdminStructure {
+  adminId     String
+  structureId String
+  createdAt   DateTime @default(now())
+
+  admin     Utilisateur @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  structure Structure   @relation(fields: [structureId], references: [id], onDelete: Cascade)
+
+  @@id([adminId, structureId])
+  @@index([structureId])
+  @@map("admin_structures")
+}
+
+// =============================================================================
+// 4.4 REFERENTIELS
+// =============================================================================
+
+model Domaine {
+  id             String  @id @default(cuid())
+  organisationId String
+  nom            String
+  code           String
+  description    String?
+  actif          Boolean @default(true)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  organisation Organisation  @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  publications Publication[]
+  indicateurs  Indicateur[]
+
+  @@unique([organisationId, code])
+  @@map("domaines")
+}
+
+model JourFerie {
+  id              String   @id @default(cuid())
+  organisationId  String
+  date            DateTime @db.Date
+  libelle         String
+  recurrentAnnuel Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@unique([organisationId, date])
+  @@index([organisationId])
+  @@map("jours_feries")
+}
+
+// =============================================================================
+// 4.5 CATALOGUE
+// =============================================================================
+
+model Publication {
+  id             String  @id @default(cuid())
+  organisationId String
+  structureId    String
+  nom            String
+  description    String?
+  domaineId      String
+
+  periodicite             Periodicite
+  nombreAnneesPeriodicite Int?        // renseigne si PLURIANNUELLE
+
+  // §5.1 : le delai est saisi a la creation de l'element, pas a la generation
+  delaiJours             Int
+  delaiType              TypeDelai @default(CALENDAIRES)
+  reportSiWeekendOuFerie Boolean   @default(false)
+
+  // Renseigne automatiquement (§4.5) : jamais saisi a la main
+  pointFocalId String?
+
+  actif Boolean @default(true)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  structure    Structure    @relation(fields: [structureId], references: [id], onDelete: Cascade)
+  domaine      Domaine      @relation(fields: [domaineId], references: [id])
+  pointFocal   Utilisateur? @relation("PointFocalPublication", fields: [pointFocalId], references: [id], onDelete: SetNull)
+
+  indicateursAffilies Indicateur[]      @relation("IndicateurAffilie")
+  lignesCalendrier    LigneCalendrier[]
+
+  @@index([organisationId, structureId, actif])
+  @@index([domaineId])
+  @@map("publications")
+}
+
+model Indicateur {
+  id             String  @id @default(cuid())
+  organisationId String
+  structureId    String
+  nom            String
+  description    String?
+
+  // Si renseigne -> indicateur AFFILIE : domaine, periodicite, delai et type de
+  // delai sont recopies de la publication et resynchronises a chaque changement.
+  // Un indicateur affilie n'a JAMAIS de ligne de calendrier propre (§5.1).
+  publicationId String?
+
+  domaineId               String
+  periodicite             Periodicite
+  nombreAnneesPeriodicite Int?
+  delaiJours              Int
+  delaiType               TypeDelai   @default(CALENDAIRES)
+  reportSiWeekendOuFerie  Boolean     @default(false)
+
+  unite         String?
+  sourceDonnees String?
+
+  pointFocalId String?
+  actif        Boolean @default(true)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  structure    Structure    @relation(fields: [structureId], references: [id], onDelete: Cascade)
+  domaine      Domaine      @relation(fields: [domaineId], references: [id])
+  publication  Publication? @relation("IndicateurAffilie", fields: [publicationId], references: [id], onDelete: SetNull)
+  pointFocal   Utilisateur? @relation("PointFocalIndicateur", fields: [pointFocalId], references: [id], onDelete: SetNull)
+
+  lignesCalendrier LigneCalendrier[]
+  valeurs          ValeurIndicateur[]
+
+  @@index([organisationId, structureId, actif])
+  @@index([publicationId])
+  @@map("indicateurs")
+}
+
+// =============================================================================
+// 4.6 CALENDRIER
+// =============================================================================
+
+model Calendrier {
+  id             String           @id @default(cuid())
+  organisationId String
+  structureId    String
+  annee          Int
+  statut         StatutCalendrier @default(BROUILLON)
+
+  generePar   String?
+  generatedAt DateTime?
+  validePar   String?
+  valideAt    DateTime?
+
+  commentaireValidation String?
+
+  // Demande d'autorisation de modification d'un calendrier valide (§5.6)
+  demandeDeblocage       Boolean   @default(false)
+  demandeDeblocageMotif  String?
+  demandeDeblocageAt     DateTime?
+
+  // DEC-113 : seul un calendrier VALIDE et explicitement publie est visible
+  // depuis l'espace public.
+  publieEnLigne   Boolean   @default(false)
+  publieEnLigneAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  structure      Structure    @relation(fields: [structureId], references: [id], onDelete: Cascade)
+  generateur     Utilisateur? @relation("CalendrierGenerePar", fields: [generePar], references: [id], onDelete: SetNull)
+  validateur     Utilisateur? @relation("CalendrierValidePar", fields: [validePar], references: [id], onDelete: SetNull)
+
+  lignes LigneCalendrier[]
+
+  @@unique([structureId, annee])
+  @@index([organisationId, annee, statut])
+  @@map("calendriers")
+}
+
+model LigneCalendrier {
+  id           String      @id @default(cuid())
+  calendrierId String
+  elementType  TypeElement
+
+  // Un seul des deux est renseigne (CHECK SQL ajoute en migration)
+  publicationId String?
+  indicateurId  String?
+
+  libellePeriode      String   // "Janvier 2026", "T1 2026", "2026"...
+  dateDebutCouverture DateTime @db.Date
+  dateFinCouverture   DateTime @db.Date
+
+  dateDiffusionPrevue   DateTime  @db.Date
+  dateDiffusionInitiale DateTime  @db.Date // trace de la 1re valeur generee
+  dateDiffusionReelle   DateTime?
+
+  statut StatutLigne @default(PLANIFIE)
+
+  lienPublication String?
+  qrCodeUrl       String?
+
+  // Protege la ligne lors d'une regeneration (§5.5)
+  modifieManuellement Boolean @default(false)
+  commentaire         String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  calendrier  Calendrier   @relation(fields: [calendrierId], references: [id], onDelete: Cascade)
+  publication Publication? @relation(fields: [publicationId], references: [id], onDelete: Cascade)
+  indicateur  Indicateur?  @relation(fields: [indicateurId], references: [id], onDelete: Cascade)
+
+  fichiers Fichier[]
+  valeurs  ValeurIndicateur[]
+  retard   Retard?
+  emails   JournalEmail[]
+
+  @@index([calendrierId, statut])
+  @@index([dateDiffusionPrevue, statut])
+  @@index([publicationId])
+  @@index([indicateurId])
+  @@map("lignes_calendrier")
+}
+
+// =============================================================================
+// 4.7 LIVRABLES
+// =============================================================================
+
+model Fichier {
+  id                String      @id @default(cuid())
+  ligneCalendrierId String
+  type              TypeFichier
+
+  nomOriginal    String
+  cheminStockage String // cle dans le bucket prive Supabase, jamais une URL publique
+  tailleOctets   Int
+  mimeType       String
+
+  televersePar String
+  televerseAt  DateTime @default(now())
+  version      Int      @default(1)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  ligneCalendrier LigneCalendrier @relation(fields: [ligneCalendrierId], references: [id], onDelete: Cascade)
+  auteur          Utilisateur     @relation(fields: [televersePar], references: [id])
+
+  @@index([ligneCalendrierId, version])
+  @@map("fichiers")
+}
+
+model ValeurIndicateur {
+  id                String @id @default(cuid())
+  ligneCalendrierId String
+  indicateurId      String
+
+  valeur      Decimal? @db.Decimal(20, 6)
+  valeurTexte String?
+  unite       String?
+  commentaire String?
+
+  // Permet de cocher « non disponible » + justification (§4.7)
+  nonDisponible Boolean @default(false)
+
+  saisiPar String
+  saisiAt  DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ligneCalendrier LigneCalendrier @relation(fields: [ligneCalendrierId], references: [id], onDelete: Cascade)
+  indicateur      Indicateur      @relation(fields: [indicateurId], references: [id], onDelete: Cascade)
+  auteur          Utilisateur     @relation(fields: [saisiPar], references: [id])
+
+  @@unique([ligneCalendrierId, indicateurId])
+  @@map("valeurs_indicateur")
+}
+
+// =============================================================================
+// 4.8 SUIVI DES RETARDS
+// =============================================================================
+
+model Retard {
+  id                String   @id @default(cuid())
+  ligneCalendrierId String   @unique
+  detecteAt         DateTime @default(now())
+
+  statutAvancement      StatutAvancement?
+  justification         String?
+  prochaineDateDiffusion DateTime?         @db.Date
+
+  publie          Boolean   @default(false)
+  datePublication DateTime?
+
+  nombreRelancesEnvoyees Int       @default(0)
+  derniereRelanceAt      DateTime?
+  relancesSuspendues     Boolean   @default(false)
+
+  // Chaque report est historise (§8.2)
+  nombreReports Int  @default(0)
+  historiqueReports Json @default("[]")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ligneCalendrier LigneCalendrier @relation(fields: [ligneCalendrierId], references: [id], onDelete: Cascade)
+
+  @@index([publie, relancesSuspendues])
+  @@map("retards")
+}
+
+// =============================================================================
+// 4.9 COMMUNICATION
+// =============================================================================
+
+model Notification {
+  id             String    @id @default(cuid())
+  destinataireId String
+  type           String
+  titre          String
+  message        String
+  lien           String?
+  lu             Boolean   @default(false)
+  luAt           DateTime?
+  createdAt      DateTime  @default(now())
+
+  destinataire Utilisateur @relation(fields: [destinataireId], references: [id], onDelete: Cascade)
+
+  @@index([destinataireId, lu, createdAt])
+  @@map("notifications")
+}
+
+model Conversation {
+  id               String   @id @default(cuid())
+  organisationId   String
+  structureId      String
+  sujet            String
+  dernierMessageAt DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  structure    Structure    @relation(fields: [structureId], references: [id], onDelete: Cascade)
+  messages     Message[]
+
+  @@index([organisationId, structureId, dernierMessageAt])
+  @@map("conversations")
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String
+  auteurId       String
+  contenu        String
+  pieceJointeUrl String?
+  lu             Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  auteur       Utilisateur  @relation(fields: [auteurId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@map("messages")
+}
+
+// Liste memorisee par element : reapparait automatiquement aux periodes suivantes (§7)
+model ListeDiffusionEmail {
+  id          String      @id @default(cuid())
+  elementType TypeElement
+  elementId   String
+  emails      String[]
+  majPar      String
+  majAt       DateTime    @updatedAt
+
+  createdAt DateTime @default(now())
+
+  @@unique([elementType, elementId])
+  @@map("listes_diffusion_email")
+}
+
+// Idempotence des envois automatiques (§8.4) : aucun doublon, jamais
+model JournalEmail {
+  id                String           @id @default(cuid())
+  ligneCalendrierId String?
+  typeEnvoi         TypeEnvoiEmail
+  destinataires     String[]
+  sujet             String
+  statut            StatutEnvoiEmail
+  erreur            String?
+  envoyeAt          DateTime         @default(now())
+
+  // Jour d'envoi (sans heure) : sert a la contrainte d'unicite anti-doublon
+  jourEnvoi DateTime @db.Date
+
+  ligneCalendrier LigneCalendrier? @relation(fields: [ligneCalendrierId], references: [id], onDelete: Cascade)
+
+  @@unique([ligneCalendrierId, typeEnvoi, jourEnvoi])
+  @@index([envoyeAt])
+  @@map("journal_email")
+}
+
+model JournalAudit {
+  id             String   @id @default(cuid())
+  organisationId String
+  utilisateurId  String?
+  action         String
+  entite         String
+  entiteId       String?
+  avant          Json?
+  apres          Json?
+  adresseIp      String?
+  createdAt      DateTime @default(now())
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  utilisateur  Utilisateur? @relation(fields: [utilisateurId], references: [id], onDelete: SetNull)
+
+  @@index([organisationId, createdAt])
+  @@index([entite, entiteId])
+  @@map("journal_audit")
+}
+
+// Modeles d'e-mails modifiables par le super admin (§8.4)
+model ModeleEmail {
+  id             String         @id @default(cuid())
+  organisationId String
+  typeEnvoi      TypeEnvoiEmail
+  sujet          String
+  corpsHtml      String
+  actif          Boolean        @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@unique([organisationId, typeEnvoi])
+  @@map("modeles_email")
 }

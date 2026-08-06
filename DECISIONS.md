@@ -22,23 +22,32 @@ Format : `DEC-nnn` | date | sujet | décision retenue | motif.
 
 ## Décisions métier
 
-> **En attente.** Les 14 questions de la section 12 du cahier des charges ont été
-> posées le 06/08/2026. Aucune ligne de code métier ne sera écrite avant les
-> réponses, conformément à la consigne.
+Les 14 questions de la section 12 ont été posées et tranchées le 06/08/2026.
+Les réponses marquées **(défaut appliqué)** ont été déduites du cahier des
+charges lui-même et non arbitrées explicitement : elles restent à confirmer.
 
-| Réf | Question (§12) | Réponse retenue | Date |
+| Réf | Question (§12) | Réponse retenue | Statut |
 |---|---|---|---|
-| DEC-101 | 1. Jours ouvrés ou calendaires par défaut ? | _en attente_ | — |
-| DEC-102 | 2. Report au jour ouvré suivant ? | _en attente_ | — |
-| DEC-103 | 3. Liste complète des périodicités | _en attente_ | — |
-| DEC-104 | 4. Saisie d'une publication ponctuelle | _en attente_ | — |
-| DEC-105 | 5. « Instance » = structure ? | _en attente_ | — |
-| DEC-106 | 6. Point focal multi-structures ? | _en attente_ | — |
-| DEC-107 | 7. Plusieurs points focaux par structure ? | _en attente_ | — |
-| DEC-108 | 8. Années jusqu'à +500 ? | _en attente_ | — |
-| DEC-109 | 9. Délai variable par période ? | _en attente_ | — |
-| DEC-110 | 10. Points focaux entre eux ? | _en attente_ | — |
-| DEC-111 | 11. Volume prévisionnel | _en attente_ | — |
-| DEC-112 | 12. Multi-organisations en production ? | _en attente_ | — |
-| DEC-113 | 13. Espace public sans compte ? | _en attente_ | — |
-| DEC-114 | 14. Double authentification super admin ? | _en attente_ | — |
+| DEC-101 | 1. Jours ouvrés ou calendaires ? | **CALENDAIRES** par défaut. Conforme aux exemples du §5.3 : 31/01/2026 + 10 j → 10/02/2026. Le champ `delaiType` reste modifiable élément par élément. | Confirmé |
+| DEC-102 | 2. Report au jour ouvré suivant ? | **Non.** `reportSiWeekendOuFerie = false` par défaut, option disponible par élément. | Confirmé |
+| DEC-103 | 3. Liste des périodicités | Les 6 du §5.2 : `MENSUELLE`, `TRIMESTRIELLE`, `SEMESTRIELLE`, `ANNUELLE`, `PLURIANNUELLE`, `PONCTUELLE`. | Défaut appliqué |
+| DEC-104 | 4. Publication ponctuelle | Aucune ligne générée automatiquement ; saisie manuelle d'une ligne unique (dates de couverture + date de diffusion). | Défaut appliqué |
+| DEC-105 | 5. « Instance » | Synonyme de **Structure**. Pas de niveau supplémentaire : l'arborescence `parentId` couvre ministère → direction → service. | Défaut appliqué |
+| DEC-106 | 6. Point focal multi-structures ? | **Non**, une seule structure (`Utilisateur.structureId`). | Défaut appliqué |
+| DEC-107 | 7. Plusieurs points focaux par structure ? | **Oui** : un titulaire (`estTitulaire = true`) et n suppléants. Les relances automatiques ne partent qu'au titulaire ; les suppléants peuvent saisir et téléverser. | Confirmé |
+| DEC-108 | 8. Plage des années | Liste déroulante de **2026 à 2126** (101 années) au lieu des 500 initialement demandées. | Confirmé |
+| DEC-109 | 9. Délai variable par période ? | **Non**, unique par élément. La date d'une ligne reste modifiable à la main après génération (`modifieManuellement`). | Confirmé |
+| DEC-110 | 10. Points focaux entre eux ? | **Non**, messagerie uniquement avec les admins de leur structure, conformément à la matrice du §2.3. | Défaut appliqué |
+| DEC-111 | 11. Volume prévisionnel | Petit : moins de 20 structures, moins de 300 publications. L'offre gratuite Supabase suffit ; pagination serveur néanmoins mise en place dès le départ. | Confirmé |
+| DEC-112 | 12. Multi-organisations ? | **Une seule** organisation en production. Le schéma reste multi-locataire (`organisationId` sur chaque table métier) mais aucun sélecteur d'organisation dans l'interface. | Confirmé |
+| DEC-113 | 13. Espace public ? | **Oui, dès maintenant.** Calendrier consultable sans compte. Implique : `Organisation.espacePublicActif` + `slugPublic`, `Calendrier.publieEnLigne`, routes non authentifiées séparées, revue de sécurité dédiée. Traité comme un lot à part entière. | Confirmé |
+| DEC-114 | 14. Double authentification ? | **Non** pour l'instant. Mot de passe fort + limitation des tentatives. Champs `totpSecret` / `totpActif` créés en base pour permettre l'activation ultérieure sans migration. | Confirmé |
+
+---
+
+## Décisions techniques prises pendant la Phase 1
+
+| Réf | Date | Sujet | Décision | Motif |
+|---|---|---|---|---|
+| DEC-006 | 06/08/2026 | Prisma 7 | Connexion via `prisma.config.ts` (migrations, `DIRECT_URL`) et adaptateur `@prisma/adapter-pg` (exécution, `DATABASE_URL`) | Prisma 7 n'accepte plus `url` ni `directUrl` dans `schema.prisma`. La séparation correspond aux deux points de connexion Supabase : pooler port 6543 pour l'applicatif, connexion directe port 5432 pour les migrations (le pooler ne supporte pas les verrous consultatifs de Prisma Migrate). |
+| DEC-007 | 06/08/2026 | Anti-doublon des e-mails | Contrainte d'unicité `(ligneCalendrierId, typeEnvoi, jourEnvoi)` sur `JournalEmail` | Le §8.4 exige l'idempotence des envois. Une contrainte en base est plus fiable qu'une vérification applicative, qui peut être contournée par deux exécutions concurrentes du cron. |
