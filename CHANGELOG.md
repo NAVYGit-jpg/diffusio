@@ -33,6 +33,23 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 - `.claude/settings.local.json` exclu du suivi Git : le fichier contient une
   clé d'API en clair (voir DEC-003).
 
+### Phase 1 — Base de données
+
+#### Ajouté
+- Schéma Prisma complet : 20 modèles couvrant la section 4 du cahier des charges.
+- Migration initiale `20260806094639_init`, appliquée en local et sur Supabase.
+- `prisma.config.ts` (connexion des migrations) et `src/lib/prisma.ts`
+  (connexion applicative via l'adaptateur `@prisma/adapter-pg`).
+- Script de seed `prisma/seed.ts` : organisation de démonstration, 10 domaines
+  statistiques par défaut, compte super admin à mot de passe aléatoire.
+  Le script est idempotent et ne réinitialise jamais un mot de passe existant.
+- Hachage des mots de passe en **argon2id** (`@node-rs/argon2`, binaire
+  précompilé, aucune compilation requise sous Windows).
+
+#### Base de données
+- Développement : PostgreSQL 18.2 portable, `localhost:5433`.
+- Production : Supabase PostgreSQL 17.6, région `eu-west-3`, session pooler.
+
 ---
 
 ## Reste à faire en Phase 0
