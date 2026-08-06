@@ -115,4 +115,61 @@ if (cible.public) {
 }
 
 console.log(`\n✅ Le bucket « ${bucket} » existe et il est bien privé.`);
-console.log('\nLe stockage est prêt pour la Phase 6.\n');
+
+// --- Aller-retour complet -------------------------------------------------
+// Vérifier que le bucket existe ne dit rien de ce qui compte vraiment : peut-on
+// y déposer un fichier, et le relire par une URL signée sans être authentifié ?
+const cheminTest = `_diagnostic/${Date.now()}-controle.txt`;
+const contenuTest = 'Fichier de diagnostic DIFFUSIO. Supprimé automatiquement.';
+
+const depot = await client.storage
+  .from(bucket)
+  .upload(cheminTest, new Blob([contenuTest]), { contentType: 'text/plain' });
+
+if (depot.error) {
+  echec(`Dépôt impossible dans le bucket : ${depot.error.message}`);
+}
+
+console.log('✅ Dépôt d’un fichier de test réussi.');
+
+const signature = await client.storage.from(bucket).createSignedUrl(cheminTest, 60);
+
+if (signature.error || !signature.data) {
+  await client.storage.from(bucket).remove([cheminTest]);
+  echec(`URL signée impossible à générer : ${signature.error?.message ?? ''}`);
+}
+
+// Fetched without any credential: this is exactly how a browser will read it.
+const relecture = await fetch(signature.data.signedUrl);
+const relu = await relecture.text();
+
+if (!relecture.ok || relu !== contenuTest) {
+  await client.storage.from(bucket).remove([cheminTest]);
+  echec(
+    `Le fichier déposé n'a pas pu être relu par son URL signée (code ${relecture.status}).`,
+  );
+}
+
+console.log('✅ Relecture par URL signée réussie, sans authentification.');
+
+// The same path without a signature must be refused: that is what makes the
+// bucket private in practice (§14).
+const sansSignature = await fetch(
+  `${url.replace(/\/$/, '')}/storage/v1/object/public/${bucket}/${cheminTest}`,
+);
+
+if (sansSignature.ok) {
+  await client.storage.from(bucket).remove([cheminTest]);
+  echec(
+    'ALERTE : le fichier est accessible SANS signature. Le bucket se comporte comme public.',
+  );
+}
+
+console.log(
+  `✅ Accès direct sans signature refusé (code ${sansSignature.status}) : le bucket est réellement privé.`,
+);
+
+await client.storage.from(bucket).remove([cheminTest]);
+console.log('✅ Fichier de test supprimé.');
+
+console.log('\nLe stockage est opérationnel.\n');

@@ -39,6 +39,7 @@ import {
 import { ANNEES_DISPONIBLES } from '@/lib/calendrier/annees';
 import { LIBELLE_PERIODICITE } from '@/lib/catalogue/schemas';
 import { BandeauWorkflow } from './bandeau-workflow';
+import { DialogueLivrable, type DetailLigne } from './dialogue-livrable';
 import type { Role, StatutCalendrier } from '@prisma/client';
 
 type Element = {
@@ -51,16 +52,10 @@ type Element = {
   lignesAttendues: number;
 };
 
-type LigneCalendrier = {
-  id: string;
-  nomElement: string;
-  elementType: string;
-  libellePeriode: string;
+type LigneCalendrier = DetailLigne & {
+  modifieManuellement: boolean;
   dateDebutCouverture: string;
   dateFinCouverture: string;
-  dateDiffusionPrevue: string;
-  statut: string;
-  modifieManuellement: boolean;
 };
 
 const ETAT_INITIAL: EtatCalendrier = {};
@@ -129,6 +124,7 @@ export function VueCalendrier({
   // gating it on `!resultat.applique` would hide it for good once a calendar
   // has been generated, making an update (§5.5) impossible without a reload.
   const [apercuVisible, setApercuVisible] = useState(false);
+  const [ligneOuverte, setLigneOuverte] = useState<LigneCalendrier | null>(null);
 
   useEffect(() => {
     if (apercu.apercu && apercu.apercu.length > 0) {
@@ -525,6 +521,7 @@ export function VueCalendrier({
                   <TableHead>Couverture</TableHead>
                   <TableHead>Diffusion prévue</TableHead>
                   <TableHead>Statut</TableHead>
+                  <TableHead className="w-28 text-right">Livrable</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -565,6 +562,15 @@ export function VueCalendrier({
                         {LIBELLE_STATUT[ligne.statut] ?? ligne.statut}
                       </Badge>
                     </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setLigneOuverte(ligne)}
+                      >
+                        Ouvrir
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -572,6 +578,16 @@ export function VueCalendrier({
           </div>
         )}
       </section>
+
+      {ligneOuverte && (
+        <DialogueLivrable
+          key={ligneOuverte.id}
+          ligne={ligneOuverte}
+          role={role}
+          ouvert
+          onOuvertChange={(ouvert) => !ouvert && setLigneOuverte(null)}
+        />
+      )}
     </>
   );
 }

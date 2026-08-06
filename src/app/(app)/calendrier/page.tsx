@@ -93,8 +93,21 @@ export default async function PageCalendrier({
         lignes: {
           orderBy: { dateDiffusionPrevue: 'asc' },
           include: {
-            publication: { select: { nom: true } },
-            indicateur: { select: { nom: true } },
+            publication: {
+              select: {
+                nom: true,
+                indicateursAffilies: {
+                  where: { deletedAt: null, actif: true },
+                  select: { id: true, nom: true, unite: true },
+                },
+              },
+            },
+            indicateur: { select: { id: true, nom: true, unite: true } },
+            fichiers: {
+              where: { deletedAt: null },
+              orderBy: [{ type: 'asc' }, { version: 'desc' }],
+            },
+            valeurs: true,
           },
         },
       },
@@ -153,6 +166,29 @@ export default async function PageCalendrier({
                   dateDiffusionPrevue: ligne.dateDiffusionPrevue.toISOString(),
                   statut: ligne.statut,
                   modifieManuellement: ligne.modifieManuellement,
+                  lienPublication: ligne.lienPublication,
+                  fichiers: ligne.fichiers.map((fichier) => ({
+                    id: fichier.id,
+                    type: fichier.type,
+                    nomOriginal: fichier.nomOriginal,
+                    version: fichier.version,
+                    tailleOctets: fichier.tailleOctets,
+                    televerseAt: fichier.televerseAt.toISOString(),
+                  })),
+                  valeurs: ligne.valeurs.map((valeur) => ({
+                    indicateurId: valeur.indicateurId,
+                    valeur: valeur.valeur?.toString() ?? null,
+                    valeurTexte: valeur.valeurTexte,
+                    commentaire: valeur.commentaire,
+                    nonDisponible: valeur.nonDisponible,
+                  })),
+                  // Une publication fait saisir ses indicateurs affilies ; un
+                  // indicateur autonome fait saisir sa propre valeur.
+                  indicateursASaisir: ligne.publication
+                    ? ligne.publication.indicateursAffilies
+                    : ligne.indicateur
+                      ? [ligne.indicateur]
+                      : [],
                 })),
               }
             : null

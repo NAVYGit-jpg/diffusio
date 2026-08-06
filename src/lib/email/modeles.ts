@@ -41,6 +41,95 @@ function enveloppe(organisation: Organisation, contenu: string): string {
 </html>`;
 }
 
+/**
+ * Publication-is-online notice (§7).
+ *
+ * The QR code is embedded as a base64 PNG, as the specification asks. Some mail
+ * clients block `data:` images, so the clickable link always appears in full
+ * text next to it — the message must stay usable without the picture.
+ */
+export function modeleMiseEnLigne(params: {
+  organisation: Organisation;
+  nomElement: string;
+  periode: string;
+  dateDebutCouverture: string;
+  dateFinCouverture: string;
+  dateDiffusionPrevue: string;
+  dateDiffusionReelle: string;
+  lien: string;
+  qrCodeDataUri: string;
+  valeur?: string | null;
+  unite?: string | null;
+}): { sujet: string; corpsHtml: string; corpsTexte: string } {
+  const sujet = `Mise en ligne : ${params.nomElement} — ${params.periode}`;
+
+  const ligneValeur =
+    params.valeur != null && params.valeur !== ''
+      ? `Valeur : ${params.valeur}${params.unite ? ` ${params.unite}` : ''}\n`
+      : '';
+
+  const corpsTexte = `${params.organisation.nom} informe de la mise en ligne de :
+
+${params.nomElement}
+Période couverte : du ${params.dateDebutCouverture} au ${params.dateFinCouverture}
+Date de diffusion prévue : ${params.dateDiffusionPrevue}
+Date de diffusion réelle : ${params.dateDiffusionReelle}
+${ligneValeur}
+Consulter la publication :
+${params.lien}`;
+
+  const corpsHtml = enveloppe(
+    params.organisation,
+    `<p>${params.organisation.nom} informe de la mise en ligne de :</p>
+
+     <h2 style="margin:16px 0 8px;font-size:18px">${params.nomElement}</h2>
+
+     <table role="presentation" style="width:100%;border-collapse:collapse;font-size:14px">
+       <tr>
+         <td style="padding:4px 0;color:#71717a">Période couverte</td>
+         <td style="padding:4px 0"><strong>du ${params.dateDebutCouverture} au ${params.dateFinCouverture}</strong></td>
+       </tr>
+       <tr>
+         <td style="padding:4px 0;color:#71717a">Diffusion prévue</td>
+         <td style="padding:4px 0">${params.dateDiffusionPrevue}</td>
+       </tr>
+       <tr>
+         <td style="padding:4px 0;color:#71717a">Diffusion réelle</td>
+         <td style="padding:4px 0"><strong>${params.dateDiffusionReelle}</strong></td>
+       </tr>
+       ${
+         params.valeur != null && params.valeur !== ''
+           ? `<tr>
+                <td style="padding:4px 0;color:#71717a">Valeur</td>
+                <td style="padding:4px 0"><strong>${params.valeur}${params.unite ? ` ${params.unite}` : ''}</strong></td>
+              </tr>`
+           : ''
+       }
+     </table>
+
+     <p style="margin:24px 0">
+       <a href="${params.lien}"
+          style="display:inline-block;padding:12px 20px;background:${params.organisation.couleurPrimaire};color:#ffffff;text-decoration:none;border-radius:6px">
+         Consulter la publication
+       </a>
+     </p>
+
+     <table role="presentation" style="margin-top:8px">
+       <tr>
+         <td style="padding-right:16px">
+           <img src="${params.qrCodeDataUri}" alt="QR code vers la publication" width="128" height="128" style="display:block;border:1px solid #e4e4e7;border-radius:4px">
+         </td>
+         <td style="font-size:13px;color:#71717a;vertical-align:middle">
+           Scannez ce code pour ouvrir la publication<br>depuis un téléphone.<br><br>
+           <span style="word-break:break-all">${params.lien}</span>
+         </td>
+       </tr>
+     </table>`,
+  );
+
+  return { sujet, corpsHtml, corpsTexte };
+}
+
 export function modeleInvitation(params: {
   organisation: Organisation;
   prenoms: string;
