@@ -1,0 +1,25 @@
+// =============================================================================
+// DIFFUSIO — Schema Prisma
+// =============================================================================
+// Phase 0 : datasource et generator uniquement.
+//
+// Les modeles de donnees (section 4 du cahier des charges) seront ajoutes en
+// Phase 1. Ils dependent de reponses encore attendues sur :
+//   - Q12 : plusieurs organisations en production, ou une seule ?
+//   - Q6/Q7 : cardinalite point focal <-> structure
+//   - Q9 : delai de mise a disposition unique par element, ou variable par periode ?
+//   - Q13 : espace public sans compte (impacte les index et les vues)
+//   - Q14 : double authentification super admin (champs TOTP)
+// Ecrire le schema avant ces reponses reviendrait a inventer des regles metier,
+// ce que la regle de conduite n. 2 interdit.
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
