@@ -131,12 +131,17 @@ export default async function PageCalendrier({
         structures={structures}
         structureId={structureId}
         annee={annee}
+        role={acteur.role}
         publications={publications.map(decorer)}
         indicateurs={indicateurs.map(decorer)}
         calendrier={
           calendrier
             ? {
+                id: calendrier.id,
                 statut: calendrier.statut,
+                commentaireValidation: calendrier.commentaireValidation,
+                demandeDeblocage: calendrier.demandeDeblocage,
+                demandeDeblocageMotif: calendrier.demandeDeblocageMotif,
                 lignes: calendrier.lignes.map((ligne) => ({
                   id: ligne.id,
                   nomElement:

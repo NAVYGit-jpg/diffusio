@@ -38,6 +38,8 @@ import {
 } from '@/lib/actions/calendrier';
 import { ANNEES_DISPONIBLES } from '@/lib/calendrier/annees';
 import { LIBELLE_PERIODICITE } from '@/lib/catalogue/schemas';
+import { BandeauWorkflow } from './bandeau-workflow';
+import type { Role, StatutCalendrier } from '@prisma/client';
 
 type Element = {
   id: string;
@@ -94,13 +96,22 @@ export function VueCalendrier({
   publications,
   indicateurs,
   calendrier,
+  role,
 }: {
   structures: { id: string; nom: string; sigle: string }[];
   structureId: string;
   annee: number;
   publications: Element[];
   indicateurs: Element[];
-  calendrier: { statut: string; lignes: LigneCalendrier[] } | null;
+  role: Role;
+  calendrier: {
+    id: string;
+    statut: StatutCalendrier;
+    commentaireValidation: string | null;
+    demandeDeblocage: boolean;
+    demandeDeblocageMotif: string | null;
+    lignes: LigneCalendrier[];
+  } | null;
 }) {
   const router = useRouter();
   const [recherche, setRecherche] = useState('');
@@ -265,16 +276,19 @@ export function VueCalendrier({
           </Select>
         </div>
 
-        {calendrier && (
-          <Badge variant={calendrier.statut === 'VALIDE' ? 'default' : 'secondary'}>
-            {calendrier.statut === 'VALIDE'
-              ? 'Calendrier validé'
-              : calendrier.statut === 'SOUMIS'
-                ? 'Soumis pour validation'
-                : 'Brouillon'}
-          </Badge>
-        )}
       </div>
+
+      {calendrier && (
+        <BandeauWorkflow
+          calendrierId={calendrier.id}
+          statut={calendrier.statut}
+          role={role}
+          nombreLignes={calendrier.lignes.length}
+          commentaireValidation={calendrier.commentaireValidation}
+          demandeDeblocage={calendrier.demandeDeblocage}
+          demandeDeblocageMotif={calendrier.demandeDeblocageMotif}
+        />
+      )}
 
       <section className="mb-8 rounded-lg border p-4">
         <h2 className="font-medium">Générer le calendrier de diffusion</h2>
