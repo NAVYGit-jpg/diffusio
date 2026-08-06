@@ -1,9 +1,6 @@
 import type { Metadata } from 'next';
-import { redirect } from 'next/navigation';
 
-import { auth } from '@/auth';
-import { deconnexionAction } from '@/lib/actions/auth';
-import { Button } from '@/components/ui/button';
+import { exigerActeur } from '@/lib/auth/session';
 import {
   Card,
   CardContent,
@@ -16,51 +13,32 @@ export const metadata: Metadata = {
   title: 'Tableau de bord — DIFFUSIO',
 };
 
-const LIBELLE_ROLE: Record<string, string> = {
-  SUPER_ADMIN: 'Super administrateur',
-  ADMIN: 'Administrateur',
-  POINT_FOCAL: 'Point focal',
-};
-
 export default async function PageTableauDeBord() {
-  const session = await auth();
-
-  if (!session?.user) {
-    redirect('/connexion');
-  }
+  const acteur = await exigerActeur();
 
   return (
-    <main className="mx-auto max-w-4xl p-6">
-      <header className="mb-8 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Tableau de bord</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {session.user.nomComplet} — {LIBELLE_ROLE[session.user.role]}
-          </p>
-        </div>
-
-        <form action={deconnexionAction}>
-          <Button type="submit" variant="outline">
-            Se déconnecter
-          </Button>
-        </form>
+    <div className="mx-auto max-w-5xl">
+      <header className="mb-6">
+        <h1 className="text-2xl font-semibold tracking-tight">Tableau de bord</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Bienvenue {acteur.nomComplet}.
+        </p>
       </header>
 
       <Card>
         <CardHeader>
-          <CardTitle>Phase 1 terminée</CardTitle>
+          <CardTitle>Prochaines étapes</CardTitle>
           <CardDescription>
-            L&apos;authentification et la matrice des droits sont en place.
+            Les indicateurs de pilotage seront ajoutés en Phase 8.
           </CardDescription>
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground">
           <p>
-            Les indicateurs de pilotage décrits à la section 10 du cahier des
-            charges seront ajoutés en Phase 8, une fois le catalogue et le
-            calendrier disponibles.
+            Commencez par déclarer vos structures, puis créez les points focaux
+            qui alimenteront le catalogue des publications et des indicateurs.
           </p>
         </CardContent>
       </Card>
-    </main>
+    </div>
   );
 }
