@@ -50,6 +50,33 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 - Développement : PostgreSQL 18.2 portable, `localhost:5433`.
 - Production : Supabase PostgreSQL 17.6, région `eu-west-3`, session pooler.
 
+### Phase 2 — Structures et utilisateurs
+
+#### Ajouté
+- Coquille applicative : barre latérale filtrée par rôle, en-tête, déconnexion.
+- Écran **Structures** : arborescence à N niveaux, création, modification,
+  activation/désactivation, état vide pédagogique.
+- Écran **Utilisateurs** : points focaux, administrateurs, super administrateurs
+  avec compteur de quota, activation/désactivation, renvoi d'invitation.
+- Invitations par e-mail avec jeton à usage unique valable 72 heures ; écran
+  d'activation de compte. Aucun mot de passe ne circule par e-mail.
+- Module d'envoi d'e-mails à deux modes : `test` (console) et `prod` (Brevo).
+- **Import Excel** des structures et des utilisateurs, en deux temps :
+  rapport de contrôle ligne par ligne, puis confirmation.
+- Modèles Excel téléchargeables, avec exemples, mode d'emploi et — pour les
+  utilisateurs — la liste des codes de structures disponibles.
+
+#### Tests
+148 tests couvrant la matrice des droits, l'arborescence, les règles métier des
+utilisateurs et l'analyse des fichiers importés.
+
+#### Corrigé
+- React 19 réinitialisait les formulaires après chaque action : une erreur de
+  validation vidait tous les champs saisis. Les valeurs soumises sont désormais
+  renvoyées et restaurées.
+- Le paquet `shadcn`, retiré à tort en Phase 0, cassait la compilation.
+- Configuration Vitest ajoutée : l'alias `@/` n'était pas résolu.
+
 ---
 
 ## Reste à faire en Phase 0

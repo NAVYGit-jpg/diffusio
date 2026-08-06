@@ -40,6 +40,7 @@ import {
   type EtatUtilisateur,
 } from '@/lib/actions/utilisateurs';
 import { LIBELLE_ROLE, ROLES } from '@/lib/utilisateurs/schemas';
+import { DialogueImportUtilisateurs } from './dialogue-import';
 
 type Structure = {
   id: string;
@@ -158,10 +159,13 @@ export function TableauUtilisateurs({
         <p className="text-sm text-muted-foreground">
           Super administrateurs : <strong>{quotaSuperAdmin}</strong>
         </p>
-        <Button onClick={ouvrirCreation} disabled={structures.length === 0}>
-          <Plus aria-hidden />
-          Nouvel utilisateur
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <DialogueImportUtilisateurs desactive={structures.length === 0} />
+          <Button onClick={ouvrirCreation} disabled={structures.length === 0}>
+            <Plus aria-hidden />
+            Nouvel utilisateur
+          </Button>
+        </div>
       </div>
 
       {structures.length === 0 && (
