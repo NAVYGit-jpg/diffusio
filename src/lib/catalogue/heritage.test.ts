@@ -184,10 +184,12 @@ describe('nombreDeLignesParAn', () => {
     expect(nombreDeLignesParAn('PONCTUELLE', null, 2026)).toBe(0);
   });
 
-  it('ne produit une ligne pluriannuelle que les annees de production', () => {
-    // Hypothese en vigueur : ancrage sur l'an 0 (voir DEC-115).
+  it('produit une ligne pluriannuelle pour l annee choisie, quelle qu elle soit', () => {
+    // DEC-115 : l'annee retenue est celle selectionnee a la generation, il n'y
+    // a pas d'annee de production a calculer. Le nombre d'annees ne sert qu'a
+    // determiner la periode couverte.
     expect(nombreDeLignesParAn('PLURIANNUELLE', 5, 2025)).toBe(1);
-    expect(nombreDeLignesParAn('PLURIANNUELLE', 5, 2026)).toBe(0);
+    expect(nombreDeLignesParAn('PLURIANNUELLE', 5, 2026)).toBe(1);
     expect(nombreDeLignesParAn('PLURIANNUELLE', 5, 2030)).toBe(1);
   });
 

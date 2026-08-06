@@ -160,18 +160,12 @@ export function nombreDeLignesParAn(
     case 'ANNUELLE':
       return 1;
     case 'PLURIANNUELLE':
-      // ⚠️ HYPOTHÈSE À FAIRE CONFIRMER (voir DECISIONS.md, DEC-115).
-      //
-      // §5.2 says a multi-year publication yields one line "si Y est une année
-      // de production", without saying which years those are. We anchor on
-      // year 0 of the Gregorian calendar: a 5-yearly publication appears in
-      // 2025, 2030, 2035… An alternative would be to anchor on a reference year
-      // carried by the publication itself. The choice changes which years get a
-      // line, so it must not be settled silently.
-      if (nombreAnnees === null || nombreAnnees < 2) {
-        return 0;
-      }
-      return annee % nombreAnnees === 0 ? 1 : 0;
+      // DEC-115 — settled: there is no "production year" to compute. The user
+      // picks the year when generating the calendar and ticks the elements to
+      // include; a multi-year publication selected for year Y simply gets its
+      // line in Y. The number of years only drives the coverage period, which
+      // runs from 1 January (Y − n + 1) to 31 December Y (§5.2).
+      return nombreAnnees !== null && nombreAnnees >= 2 ? 1 : 0;
     case 'PONCTUELLE':
       return 0;
     default:
