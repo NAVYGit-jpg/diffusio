@@ -17,6 +17,7 @@ Format : `DEC-nnn` | date | sujet | décision retenue | motif.
 | DEC-003 | 06/08/2026 | Secrets et Git | `.claude/settings.local.json` exclu du suivi Git | Le fichier contient une clé d'API en clair. Conforme au §14 (« ne pas stocker de secret dans le dépôt »). |
 | DEC-004 | 06/08/2026 | Serveur MCP anime.js | Écarté | Le paquet npm s'attribue un dépôt GitHub inexistant sous le compte de l'auteur d'anime.js, et sa documentation est figée sur anime.js 3.2.1 alors que la version courante est 4.5.0. Audit du code réalisé : non malveillant, mais inexploitable. |
 | DEC-005 | 06/08/2026 | Validation des données | `zod` v4 | Imposé par le §13 (validation client **et** serveur). |
+| ~~DEC-011~~ | 06/08/2026 | ~~Retrait du paquet `shadcn`~~ | **DÉCISION ERRONÉE, ANNULÉE** | J'avais retiré `shadcn` des dépendances en le qualifiant d'outil de ligne de commande sans rôle en production. C'était faux : `shadcn init` écrit `@import "shadcn/tailwind.css"` dans `globals.css`, et le paquet fournit cette feuille de style. Le retrait cassait la compilation. Réinstallé en `devDependencies` (il n'intervient qu'au build, pas à l'exécution). |
 
 ---
 
