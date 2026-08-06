@@ -56,6 +56,8 @@ charges lui-même et non arbitrées explicitement : elles restent à confirmer.
 | DEC-009 | 06/08/2026 | Mode de connexion Supabase | **Session pooler** (`aws-1-eu-west-3.pooler.supabase.com:5432`) pour `DATABASE_URL` **et** `DIRECT_URL` | La connexion directe (`db.<ref>.supabase.co`) ne publie qu'un enregistrement DNS AAAA : elle est inaccessible depuis un réseau IPv4, ce qui est le cas du poste de développement (test TCP en échec). Le transaction pooler (port 6543) est écarté car il ne supporte pas les requêtes préparées, utilisées par l'adaptateur `@prisma/adapter-pg`. Le session pooler est le seul mode compatible à la fois IPv4 et Prisma. |
 | DEC-010 | 06/08/2026 | Mot de passe de base contenant `@` | Encodage systématique en `%40` dans les chaînes de connexion | Un `@` non encodé casse l'analyse de l'URL : tout ce qui suit est interprété comme le nom du serveur. Un contrôle automatique réencode le mot de passe à chaque modification du `.env`. |
 
+| DEC-115 | 06/08/2026 | **Années de production d'une publication pluriannuelle** | ⚠️ **HYPOTHÈSE, À CONFIRMER** : ancrage sur l'an 0 du calendrier grégorien. Une publication quinquennale paraît donc en 2025, 2030, 2035… | Le §5.2 dit qu'une pluriannuelle produit une ligne « si Y est une année de production », sans préciser lesquelles. L'alternative serait une **année de référence** portée par la publication (« première parution en 2023 » → 2023, 2028, 2033…). Le choix change les années qui reçoivent une ligne. À trancher avant la Phase 4. |
+
 > **Écart de version PostgreSQL à surveiller** : développement en 18.2 (local),
 > production Supabase en 17.6. Aucune incompatibilité sur le schéma actuel, mais
 > éviter toute fonctionnalité introduite en 18 sans vérifier sa disponibilité en 17.
