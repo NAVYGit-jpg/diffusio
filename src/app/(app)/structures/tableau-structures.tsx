@@ -39,6 +39,7 @@ import {
   type EtatStructure,
 } from '@/lib/actions/structures';
 import { parentsPossibles } from '@/lib/structures/arborescence';
+import { DialogueImport } from './dialogue-import';
 import {
   LIBELLE_TYPE_STRUCTURE,
   TYPES_STRUCTURE,
@@ -121,7 +122,8 @@ export function TableauStructures({ structures }: { structures: Structure[] }) {
 
   return (
     <>
-      <div className="mb-4 flex justify-end">
+      <div className="mb-4 flex flex-wrap justify-end gap-2">
+        <DialogueImport />
         <Button onClick={ouvrirCreation}>
           <Plus aria-hidden />
           Nouvelle structure
