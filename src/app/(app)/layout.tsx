@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 
 import { BarreLaterale } from '@/components/layout/barre-laterale';
+import { MenuUtilisateur } from '@/components/layout/menu-utilisateur';
 import { Button } from '@/components/ui/button';
 import { deconnexionAction } from '@/lib/actions/auth';
 import { exigerActeur } from '@/lib/auth/session';
@@ -60,18 +61,11 @@ export default async function LayoutApplication({
             )}
           </Link>
 
-          <div className="hidden text-right sm:block">
-            <p className="text-sm leading-tight">{acteur.nomComplet}</p>
-            <p className="text-xs leading-tight text-muted-foreground">
-              {LIBELLE_ROLE[acteur.role]}
-            </p>
-          </div>
-
-          <form action={deconnexionAction}>
-            <Button type="submit" variant="outline" size="sm">
-              Se déconnecter
-            </Button>
-          </form>
+          <MenuUtilisateur
+            nomComplet={acteur.nomComplet}
+            email={acteur.email}
+            role={acteur.role}
+          />
         </div>
       </header>
 
