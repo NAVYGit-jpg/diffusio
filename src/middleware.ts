@@ -12,6 +12,14 @@ import { authConfig } from '@/auth.config';
 export const { auth: middleware } = NextAuth(authConfig);
 
 export const config = {
-  // Everything except Next internals, the Auth.js endpoints and static assets.
-  matcher: ['/((?!api/auth|_next/static|_next/image|favicon.ico|.*\\.svg$).*)'],
+  // Everything except Next internals, static assets, the Auth.js endpoints and
+  // the cron route.
+  //
+  // `api/cron` is deliberately outside: it is called by a scheduled job with no
+  // session at all, and carries its own shared-secret check. Leaving it in
+  // would redirect the scheduler to the sign-in page — the job would appear to
+  // succeed while never doing anything.
+  matcher: [
+    '/((?!api/auth|api/cron|_next/static|_next/image|favicon.ico|.*\\.svg$).*)',
+  ],
 };

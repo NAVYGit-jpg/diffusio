@@ -130,6 +130,106 @@ ${params.lien}`;
   return { sujet, corpsHtml, corpsTexte };
 }
 
+/** Reminder before the deadline (§8.1). */
+export function modeleRappel(params: {
+  organisation: Organisation;
+  nomElement: string;
+  periodicite: string;
+  periode: string;
+  dateDiffusionPrevue: string;
+  joursRestants: string;
+  lien: string;
+}): { sujet: string; corpsHtml: string; corpsTexte: string } {
+  const sujet = `Rappel : ${params.nomElement} à diffuser ${params.joursRestants}`;
+
+  const corpsTexte = `Bonjour,
+
+La diffusion suivante approche :
+
+${params.nomElement}
+Périodicité : ${params.periodicite}
+Période couverte : ${params.periode}
+Date de diffusion attendue : ${params.dateDiffusionPrevue} (${params.joursRestants})
+
+Déposez le livrable depuis votre espace :
+${params.lien}`;
+
+  const corpsHtml = enveloppe(
+    params.organisation,
+    `<p>Bonjour,</p>
+     <p>La diffusion suivante approche :</p>
+     <h2 style="margin:16px 0 8px;font-size:18px">${params.nomElement}</h2>
+     <table role="presentation" style="width:100%;border-collapse:collapse;font-size:14px">
+       <tr><td style="padding:4px 0;color:#71717a">Périodicité</td><td style="padding:4px 0">${params.periodicite}</td></tr>
+       <tr><td style="padding:4px 0;color:#71717a">Période couverte</td><td style="padding:4px 0">${params.periode}</td></tr>
+       <tr><td style="padding:4px 0;color:#71717a">Diffusion attendue</td><td style="padding:4px 0"><strong>${params.dateDiffusionPrevue}</strong> — ${params.joursRestants}</td></tr>
+     </table>
+     <p style="margin:24px 0">
+       <a href="${params.lien}" style="display:inline-block;padding:12px 20px;background:${params.organisation.couleurPrimaire};color:#ffffff;text-decoration:none;border-radius:6px">
+         Déposer le livrable
+       </a>
+     </p>`,
+  );
+
+  return { sujet, corpsHtml, corpsTexte };
+}
+
+/** Chase after a missed deadline (§8.2). */
+export function modeleRelance(params: {
+  organisation: Organisation;
+  nomElement: string;
+  periodicite: string;
+  periode: string;
+  dateNonRespectee: string;
+  retard: string;
+  lien: string;
+}): { sujet: string; corpsHtml: string; corpsTexte: string } {
+  const sujet = `Retard : ${params.nomElement} — ${params.periode}`;
+
+  const corpsTexte = `Bonjour,
+
+La diffusion suivante n'a pas été effectuée à la date prévue :
+
+${params.nomElement}
+Périodicité : ${params.periodicite}
+Période couverte : ${params.periode}
+Date non respectée : ${params.dateNonRespectee}
+Retard : ${params.retard}
+
+Merci de transmettre la publication ou l'information dans les meilleurs délais.
+
+Si un report est nécessaire, indiquez l'état d'avancement, la justification et
+la prochaine date prévisionnelle depuis votre espace — les relances
+automatiques cesseront alors :
+${params.lien}`;
+
+  const corpsHtml = enveloppe(
+    params.organisation,
+    `<p>Bonjour,</p>
+     <p>La diffusion suivante n'a pas été effectuée à la date prévue :</p>
+     <h2 style="margin:16px 0 8px;font-size:18px">${params.nomElement}</h2>
+     <table role="presentation" style="width:100%;border-collapse:collapse;font-size:14px">
+       <tr><td style="padding:4px 0;color:#71717a">Périodicité</td><td style="padding:4px 0">${params.periodicite}</td></tr>
+       <tr><td style="padding:4px 0;color:#71717a">Période couverte</td><td style="padding:4px 0">${params.periode}</td></tr>
+       <tr><td style="padding:4px 0;color:#71717a">Date non respectée</td><td style="padding:4px 0"><strong>${params.dateNonRespectee}</strong></td></tr>
+       <tr><td style="padding:4px 0;color:#71717a">Retard</td><td style="padding:4px 0"><strong>${params.retard}</strong></td></tr>
+     </table>
+     <p>Merci de transmettre la publication ou l'information dans les meilleurs délais.</p>
+     <p style="font-size:13px;color:#71717a">
+       Si un report est nécessaire, indiquez l'état d'avancement, la justification
+       et la prochaine date prévisionnelle depuis votre espace : les relances
+       automatiques cesseront alors.
+     </p>
+     <p style="margin:24px 0">
+       <a href="${params.lien}" style="display:inline-block;padding:12px 20px;background:${params.organisation.couleurPrimaire};color:#ffffff;text-decoration:none;border-radius:6px">
+         Ouvrir la ligne concernée
+       </a>
+     </p>`,
+  );
+
+  return { sujet, corpsHtml, corpsTexte };
+}
+
 export function modeleInvitation(params: {
   organisation: Organisation;
   prenoms: string;

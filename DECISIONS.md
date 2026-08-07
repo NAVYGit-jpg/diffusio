@@ -58,6 +58,8 @@ charges lui-même et non arbitrées explicitement : elles restent à confirmer.
 
 | DEC-115 | 06/08/2026 | **Années de production d'une publication pluriannuelle** | **Aucune année de production n'est calculée.** L'année est celle choisie dans la liste déroulante au moment de générer le calendrier, et elle vaut pour tous les éléments sélectionnés, pluriannuels compris. Le `nombreAnneesPeriodicite` ne sert plus qu'à déterminer la **période couverte** : du 1er janvier (Y − n + 1) au 31 décembre Y. | Arbitrage du porteur du projet. Le §5.2 parlait d'« année de production » sans la définir ; j'avais provisoirement inventé un ancrage sur l'an 0, ce qui imposait un rythme arbitraire. La réponse retenue est plus simple et plus juste : c'est le calendrier de diffusion d'une année donnée, le point focal coche les éléments qui y figurent. |
 
+| DEC-116 | 07/08/2026 | **Noms des types de rappel** | Les valeurs `RAPPEL_J15…RAPPEL_J1` sont lues comme un **rang**, pas comme un nombre de jours : le premier rappel configuré est `RAPPEL_J15`, le deuxième `RAPPEL_J10`, etc. | Le cahier des charges demande deux choses incompatibles : des types nommés d'après des jours précis (§4.9) et des délais de rappel configurables par le super admin (§9.3). Un rappel réglé à 20 jours n'a aucun nom correspondant. Le libellé stocké ne sert qu'à rendre un message unique par ligne et par jour, ce qui est le besoin réel de la contrainte anti-doublon. |
+
 > **Écart de version PostgreSQL à surveiller** : développement en 18.2 (local),
 > production Supabase en 17.6. Aucune incompatibilité sur le schéma actuel, mais
 > éviter toute fonctionnalité introduite en 18 sans vérifier sa disponibilité en 17.

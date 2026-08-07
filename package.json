@@ -12,7 +12,8 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
-    "verifier:stockage": "tsx scripts/verifier-stockage.mts"
+    "verifier:stockage": "tsx scripts/verifier-stockage.mts",
+    "simuler:relances": "tsx scripts/simuler-relances.mts"
   },
   "dependencies": {
     "@node-rs/argon2": "^2.0.2",

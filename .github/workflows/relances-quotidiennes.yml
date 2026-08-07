@@ -1,0 +1,51 @@
+name: Relances quotidiennes
+
+# Rappels avant échéance et relances de retard (cahier des charges §8).
+#
+# Le cron de Vercel Hobby est limité à une exécution par jour sans garantie
+# d'horaire ; GitHub Actions est gratuit, fiable et donne un journal
+# d'exécution consultable (§3).
+#
+# Deux secrets à créer dans le dépôt GitHub
+# (Settings → Secrets and variables → Actions → New repository secret) :
+#   URL_APPLICATION  — par exemple https://diffusio.vercel.app
+#   CRON_SECRET      — exactement la même valeur que dans les variables
+#                      d'environnement de Vercel
+
+on:
+  schedule:
+    # 06:00 UTC, soit 06:00 à Abidjan et 07:00 à Paris en hiver.
+    # GitHub peut décaler l'exécution de quelques minutes en cas de charge :
+    # sans importance ici, le traitement raisonne en journées entières.
+    - cron: '0 6 * * *'
+
+  # Permet de déclencher manuellement depuis l'onglet Actions, utile pour
+  # vérifier la configuration sans attendre le lendemain.
+  workflow_dispatch:
+
+jobs:
+  relances:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Déclencher le traitement quotidien
+        run: |
+          reponse=$(mktemp)
+          code=$(curl --silent --show-error \
+                      --output "$reponse" \
+                      --write-out '%{http_code}' \
+                      --max-time 300 \
+                      --request POST \
+                      --header "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
+                      "${{ secrets.URL_APPLICATION }}/api/cron/notifications")
+
+          echo "Code HTTP : $code"
+          echo "Réponse :"
+          cat "$reponse"
+          echo
+
+          if [ "$code" != "200" ]; then
+            echo "::error::Le traitement quotidien a échoué (code $code)."
+            exit 1
+          fi

@@ -32,6 +32,8 @@ export type MessageEmail = {
 export type ResultatEnvoi = {
   envoye: boolean;
   erreur?: string;
+  /** A message of the same type already went out for this line today. */
+  doublon?: boolean;
 };
 
 const MODE = process.env.EMAIL_MODE ?? 'test';
@@ -109,7 +111,42 @@ ${message.corpsTexte
  */
 export async function envoyerEmail(
   message: MessageEmail,
+  maintenant: Date = new Date(),
 ): Promise<ResultatEnvoi> {
+  const jourEnvoi = new Date(
+    Date.UTC(
+      maintenant.getUTCFullYear(),
+      maintenant.getUTCMonth(),
+      maintenant.getUTCDate(),
+    ),
+  );
+
+  // The journal entry is written **before** sending, on purpose. Its unique
+  // constraint (line, type, day) is what makes a duplicate impossible: if the
+  // insert fails, a message of this type already went out today and nothing
+  // more must happen. Sending first would let a second cron run deliver a
+  // duplicate before the constraint could object (§8.4).
+  let journalId: string;
+
+  try {
+    const entree = await prisma.journalEmail.create({
+      data: {
+        ligneCalendrierId: message.ligneCalendrierId ?? null,
+        typeEnvoi: message.typeEnvoi,
+        destinataires: message.destinataires,
+        sujet: message.sujet,
+        statut: 'ENVOYE',
+        jourEnvoi,
+        envoyeAt: maintenant,
+      },
+      select: { id: true },
+    });
+
+    journalId = entree.id;
+  } catch {
+    return { envoye: false, doublon: true };
+  }
+
   let resultat: ResultatEnvoi;
 
   try {
@@ -124,29 +161,15 @@ export async function envoyerEmail(
     };
   }
 
-  const maintenant = new Date();
-
-  try {
-    await prisma.journalEmail.create({
-      data: {
-        ligneCalendrierId: message.ligneCalendrierId ?? null,
-        typeEnvoi: message.typeEnvoi,
-        destinataires: message.destinataires,
-        sujet: message.sujet,
-        statut: resultat.envoye ? 'ENVOYE' : 'ECHEC',
-        erreur: resultat.erreur ?? null,
-        jourEnvoi: new Date(
-          Date.UTC(
-            maintenant.getUTCFullYear(),
-            maintenant.getUTCMonth(),
-            maintenant.getUTCDate(),
-          ),
-        ),
-      },
-    });
-  } catch {
-    // A unique-constraint hit means the same message already went out today.
-    // That is the anti-duplicate guard doing its job, not an error.
+  if (!resultat.envoye) {
+    // The row stays: a failed attempt is worth keeping, and it also prevents
+    // hammering a broken provider every few minutes for the same message.
+    await prisma.journalEmail
+      .update({
+        where: { id: journalId },
+        data: { statut: 'ECHEC', erreur: resultat.erreur ?? null },
+      })
+      .catch(() => undefined);
   }
 
   return resultat;
