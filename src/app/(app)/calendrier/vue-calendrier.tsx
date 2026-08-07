@@ -38,8 +38,10 @@ import {
 } from '@/lib/actions/calendrier';
 import { ANNEES_DISPONIBLES } from '@/lib/calendrier/annees';
 import { LIBELLE_PERIODICITE } from '@/lib/catalogue/schemas';
+import { peutModifierLignes } from '@/lib/calendrier/workflow';
 import { BandeauWorkflow } from './bandeau-workflow';
 import { DialogueLivrable, type DetailLigne } from './dialogue-livrable';
+import { ActionsLigne } from './actions-ligne';
 import type { Role, StatutCalendrier } from '@prisma/client';
 
 type Element = {
@@ -54,6 +56,7 @@ type Element = {
 
 type LigneCalendrier = DetailLigne & {
   modifieManuellement: boolean;
+  commentaire: string | null;
   dateDebutCouverture: string;
   dateFinCouverture: string;
 };
@@ -125,6 +128,12 @@ export function VueCalendrier({
   // has been generated, making an update (§5.5) impossible without a reload.
   const [apercuVisible, setApercuVisible] = useState(false);
   const [ligneOuverte, setLigneOuverte] = useState<LigneCalendrier | null>(null);
+  // §5.2 — a one-off element has no periodicity to slice a year with: its
+  // coverage period is typed by hand, and the release date is still computed
+  // from the lead time.
+  const [datesPonctuelles, setDatesPonctuelles] = useState<
+    Record<string, { debut: string; fin: string }>
+  >({});
 
   useEffect(() => {
     if (apercu.apercu && apercu.apercu.length > 0) {
@@ -190,10 +199,22 @@ export function VueCalendrier({
   const selectionnes = tousLesElements.filter((element) =>
     selection.has(`${element.type}::${element.id}`),
   );
+  const ponctuellesSelectionnees = selectionnes.filter(
+    (element) => element.periodicite === 'PONCTUELLE',
+  );
+
   const lignesAttendues = selectionnes.reduce(
-    (total, element) => total + element.lignesAttendues,
+    (total, element) =>
+      total +
+      (element.periodicite === 'PONCTUELLE' ? 1 : element.lignesAttendues),
     0,
   );
+
+  // §5.5 — a generated calendar stays editable while it is not locked by the
+  // validation workflow.
+  const lignesModifiables = calendrier
+    ? peutModifierLignes(calendrier.statut, role)
+    : false;
 
   const naviguer = (nouvelleStructure: string, nouvelleAnnee: number) => {
     router.push(
@@ -226,6 +247,25 @@ export function VueCalendrier({
             value={element.id}
           />
         ))}
+      {ponctuellesSelectionnees.map((element) => {
+        const identifiant = `${element.type}::${element.id}`;
+        const saisie = datesPonctuelles[identifiant] ?? { debut: '', fin: '' };
+
+        return (
+          <span key={identifiant}>
+            <input
+              type="hidden"
+              name={`ponctuelle_debut_${identifiant}`}
+              value={saisie.debut}
+            />
+            <input
+              type="hidden"
+              name={`ponctuelle_fin_${identifiant}`}
+              value={saisie.fin}
+            />
+          </span>
+        );
+      })}
     </>
   );
 
@@ -380,7 +420,13 @@ export function VueCalendrier({
                           {element.delaiType === 'OUVRES' ? 'ouvrés' : 'calendaires'}
                         </TableCell>
                         <TableCell className="text-right tabular-nums">
-                          {element.lignesAttendues}
+                          {element.periodicite === 'PONCTUELLE' ? (
+                            <span className="text-xs text-muted-foreground">
+                              1 (dates à saisir)
+                            </span>
+                          ) : (
+                            element.lignesAttendues
+                          )}
                         </TableCell>
                       </TableRow>
                     );
@@ -388,6 +434,80 @@ export function VueCalendrier({
                 </TableBody>
               </Table>
             </div>
+
+            {ponctuellesSelectionnees.length > 0 && (
+              <div className="mt-4 space-y-3 rounded-md border border-primary/40 bg-primary/5 p-3">
+                <p className="text-sm font-medium">
+                  Période couverte des éléments ponctuels
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Ces éléments n’ont pas de périodicité : indiquez la période
+                  qu’ils couvrent. La date de diffusion sera calculée
+                  automatiquement à partir de leur délai.
+                </p>
+
+                {ponctuellesSelectionnees.map((element) => {
+                  const identifiant = `${element.type}::${element.id}`;
+                  const saisie = datesPonctuelles[identifiant] ?? {
+                    debut: '',
+                    fin: '',
+                  };
+
+                  return (
+                    <div
+                      key={identifiant}
+                      className="grid gap-2 sm:grid-cols-[1fr_auto_auto]"
+                    >
+                      <span className="self-center text-sm">{element.nom}</span>
+
+                      <div className="space-y-1">
+                        <Label
+                          htmlFor={`debut-${identifiant}`}
+                          className="text-xs"
+                        >
+                          Début de couverture
+                        </Label>
+                        <Input
+                          id={`debut-${identifiant}`}
+                          type="date"
+                          value={saisie.debut}
+                          onChange={(evenement) =>
+                            setDatesPonctuelles((precedent) => ({
+                              ...precedent,
+                              [identifiant]: {
+                                ...saisie,
+                                debut: evenement.target.value,
+                              },
+                            }))
+                          }
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <Label htmlFor={`fin-${identifiant}`} className="text-xs">
+                          Fin de couverture
+                        </Label>
+                        <Input
+                          id={`fin-${identifiant}`}
+                          type="date"
+                          value={saisie.fin}
+                          min={saisie.debut || undefined}
+                          onChange={(evenement) =>
+                            setDatesPonctuelles((precedent) => ({
+                              ...precedent,
+                              [identifiant]: {
+                                ...saisie,
+                                fin: evenement.target.value,
+                              },
+                            }))
+                          }
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
 
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
               <p className="text-sm text-muted-foreground">
@@ -521,7 +641,7 @@ export function VueCalendrier({
                   <TableHead>Couverture</TableHead>
                   <TableHead>Diffusion prévue</TableHead>
                   <TableHead>Statut</TableHead>
-                  <TableHead className="w-28 text-right">Livrable</TableHead>
+                  <TableHead className="w-56 text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -562,7 +682,7 @@ export function VueCalendrier({
                         {LIBELLE_STATUT[ligne.statut] ?? ligne.statut}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right whitespace-nowrap">
                       <Button
                         variant="ghost"
                         size="sm"
@@ -570,6 +690,19 @@ export function VueCalendrier({
                       >
                         Ouvrir
                       </Button>
+                      <ActionsLigne
+                        ligneId={ligne.id}
+                        nomElement={ligne.nomElement}
+                        libellePeriode={ligne.libellePeriode}
+                        dateDiffusionPrevue={ligne.dateDiffusionPrevue}
+                        dateFinCouverture={ligne.dateFinCouverture}
+                        commentaire={ligne.commentaire ?? null}
+                        modifiable={
+                          lignesModifiables &&
+                          ligne.statut !== 'TELEVERSE' &&
+                          ligne.statut !== 'MIS_EN_LIGNE'
+                        }
+                      />
                     </TableCell>
                   </TableRow>
                 ))}

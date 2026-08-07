@@ -23,6 +23,14 @@ export type EtatUtilisateur = {
   erreur?: string;
   erreursChamps?: Record<string, string[]>;
   /**
+   * Invitation link, returned so an administrator can pass it on by hand.
+   *
+   * Indispensable as long as no mail provider is configured: without it a
+   * created account would be unreachable, the message existing only in the
+   * server console.
+   */
+  lienInvitation?: string;
+  /**
    * Values as submitted, echoed back on failure.
    *
    * React 19 resets an uncontrolled form once its action resolves. Without
@@ -219,18 +227,28 @@ export async function enregistrerUtilisateurAction(
       });
     }
 
-    const organisation = await prisma.organisation.findUniqueOrThrow({
-      where: { id: acteur.organisationId },
-      select: { nom: true, sigle: true, couleurPrimaire: true, logoUrl: true },
-    });
+    const [organisation, structure] = await Promise.all([
+      prisma.organisation.findUniqueOrThrow({
+        where: { id: acteur.organisationId },
+        select: { nom: true, sigle: true, couleurPrimaire: true, logoUrl: true },
+      }),
+      valeurs.structureId
+        ? prisma.structure.findUnique({
+            where: { id: valeurs.structureId },
+            select: { nom: true, sigle: true },
+          })
+        : null,
+    ]);
 
     const base = process.env.AUTH_URL ?? 'http://localhost:3000';
+    const lien = `${base}/definir-mot-de-passe?jeton=${jeton}`;
     const modele = modeleInvitation({
       organisation,
       prenoms: valeurs.prenoms,
       nom: valeurs.nom,
       role: LIBELLE_ROLE[valeurs.role],
-      lien: `${base}/definir-mot-de-passe?jeton=${jeton}`,
+      structure: structure ? `${structure.nom} (${structure.sigle})` : null,
+      lien,
       validiteHeures: VALIDITE_INVITATION_HEURES,
     });
 
@@ -255,7 +273,8 @@ export async function enregistrerUtilisateurAction(
 
     return {
       succes: true,
-      message: `Compte créé. Une invitation a été envoyée à ${valeurs.email}.`,
+      message: `Compte créé pour ${valeurs.email}.`,
+      lienInvitation: lien,
     };
   }
 
@@ -432,12 +451,13 @@ export async function renvoyerInvitationAction(
   });
 
   const base = process.env.AUTH_URL ?? 'http://localhost:3000';
+  const lien = `${base}/definir-mot-de-passe?jeton=${jeton}`;
   const modele = modeleInvitation({
     organisation,
     prenoms: cible.prenoms,
     nom: cible.nom,
     role: LIBELLE_ROLE[cible.role],
-    lien: `${base}/definir-mot-de-passe?jeton=${jeton}`,
+    lien,
     validiteHeures: VALIDITE_INVITATION_HEURES,
   });
 
@@ -447,5 +467,9 @@ export async function renvoyerInvitationAction(
     ...modele,
   });
 
-  return { succes: true, message: `Invitation renvoyée à ${cible.email}.` };
+  return {
+    succes: true,
+    message: `Invitation régénérée pour ${cible.email}.`,
+    lienInvitation: lien,
+  };
 }

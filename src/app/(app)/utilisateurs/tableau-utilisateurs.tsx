@@ -40,6 +40,7 @@ import {
   type EtatUtilisateur,
 } from '@/lib/actions/utilisateurs';
 import { LIBELLE_ROLE, ROLES } from '@/lib/utilisateurs/schemas';
+import { LienInvitation } from '@/components/lien-invitation';
 import { DialogueImportUtilisateurs } from './dialogue-import';
 
 type Structure = {
@@ -86,12 +87,17 @@ export function TableauUtilisateurs({
     ETAT_INITIAL,
   );
   const [enCoursAction, demarrer] = useTransition();
+  const [lienInvitation, setLienInvitation] = useState<string | null>(null);
 
   useEffect(() => {
     if (etat.succes) {
       setOuvert(false);
       setEnEdition(null);
       toast.success(etat.message ?? 'Enregistré.');
+
+      if (etat.lienInvitation) {
+        setLienInvitation(etat.lienInvitation);
+      }
     }
   }, [etat]);
 
@@ -120,8 +126,13 @@ export function TableauUtilisateurs({
 
       if (resultat.erreur) {
         toast.error(resultat.erreur);
-      } else {
-        toast.success(resultat.message ?? 'Terminé.');
+        return;
+      }
+
+      toast.success(resultat.message ?? 'Terminé.');
+
+      if (resultat.lienInvitation) {
+        setLienInvitation(resultat.lienInvitation);
       }
     });
   };
@@ -167,6 +178,12 @@ export function TableauUtilisateurs({
           </Button>
         </div>
       </div>
+
+      {lienInvitation && (
+        <div className="mb-4">
+          <LienInvitation lien={lienInvitation} />
+        </div>
+      )}
 
       {structures.length === 0 && (
         <Alert className="mb-4">

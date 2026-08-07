@@ -194,6 +194,7 @@ export default async function PageCalendrier({
                   dateDiffusionPrevue: ligne.dateDiffusionPrevue.toISOString(),
                   statut: ligne.statut,
                   modifieManuellement: ligne.modifieManuellement,
+                  commentaire: ligne.commentaire,
                   lienPublication: ligne.lienPublication,
                   fichiers: ligne.fichiers.map((fichier) => ({
                     id: fichier.id,

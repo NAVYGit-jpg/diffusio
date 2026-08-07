@@ -235,17 +235,27 @@ export function modeleInvitation(params: {
   prenoms: string;
   nom: string;
   role: string;
+  /** Structure the person belongs to, or supervises. Absent for a super admin. */
+  structure?: string | null;
   lien: string;
   validiteHeures: number;
 }): { sujet: string; corpsHtml: string; corpsTexte: string } {
   const sujet = `Votre accès à DIFFUSIO — ${params.organisation.sigle}`;
+
+  const ligneStructure = params.structure
+    ? `Structure : ${params.structure}\n`
+    : '';
 
   const corpsTexte = `Bonjour ${params.prenoms} ${params.nom},
 
 Un compte vient de vous être créé sur DIFFUSIO, l'application de suivi du
 calendrier de diffusion de ${params.organisation.nom}.
 
-Votre profil : ${params.role}
+Profil : ${params.role}
+${ligneStructure}
+DIFFUSIO vous permettra de déclarer vos publications et vos indicateurs,
+de générer votre calendrier annuel de diffusion, d'y déposer vos livrables
+et de suivre le respect de vos échéances.
 
 Pour choisir votre mot de passe et activer votre compte, ouvrez le lien
 ci-dessous. Il est valable ${params.validiteHeures} heures.
@@ -258,15 +268,43 @@ votre part, le compte restera inactif.`;
   const corpsHtml = enveloppe(
     params.organisation,
     `<p>Bonjour <strong>${params.prenoms} ${params.nom}</strong>,</p>
-     <p>Un compte vient de vous être créé sur DIFFUSIO, l'application de suivi du
-        calendrier de diffusion de ${params.organisation.nom}.</p>
-     <p>Votre profil : <strong>${params.role}</strong></p>
+
+     <p>Un compte vient de vous être créé sur <strong>DIFFUSIO</strong>,
+        l'application de suivi du calendrier de diffusion de
+        ${params.organisation.nom}.</p>
+
+     <table role="presentation" style="width:100%;border-collapse:collapse;font-size:14px;margin:16px 0">
+       <tr>
+         <td style="padding:4px 0;color:#71717a;width:120px">Profil</td>
+         <td style="padding:4px 0"><strong>${params.role}</strong></td>
+       </tr>
+       ${
+         params.structure
+           ? `<tr>
+                <td style="padding:4px 0;color:#71717a">Structure</td>
+                <td style="padding:4px 0"><strong>${params.structure}</strong></td>
+              </tr>`
+           : ''
+       }
+     </table>
+
+     <p>DIFFUSIO vous permettra de déclarer vos publications et vos indicateurs,
+        de générer votre calendrier annuel de diffusion, d'y déposer vos
+        livrables et de suivre le respect de vos échéances.</p>
+
      <p style="margin:24px 0">
        <a href="${params.lien}"
           style="display:inline-block;padding:12px 20px;background:${params.organisation.couleurPrimaire};color:#ffffff;text-decoration:none;border-radius:6px">
          Choisir mon mot de passe
        </a>
      </p>
+
+     <p style="font-size:13px;color:#71717a">
+       Si le bouton ne fonctionne pas, copiez cette adresse dans votre
+       navigateur :<br>
+       <span style="word-break:break-all">${params.lien}</span>
+     </p>
+
      <p style="font-size:13px;color:#71717a">
        Ce lien est valable ${params.validiteHeures} heures. Si vous n'êtes pas
        concerné par ce message, ignorez-le : sans action de votre part, le compte

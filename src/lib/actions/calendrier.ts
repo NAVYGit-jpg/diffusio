@@ -12,7 +12,8 @@ import {
 } from '@/lib/calendrier/comparaison';
 import type { JourFerie } from '@/lib/calendrier/dates';
 import { ANNEE_MAX, ANNEE_MIN } from '@/lib/calendrier/annees';
-import { genererLignes } from '@/lib/calendrier/moteur';
+import { ajouterDelai, genererLignes } from '@/lib/calendrier/moteur';
+import { formaterJJMMAAAA, normaliserJour } from '@/lib/calendrier/dates';
 import { prisma } from '@/lib/prisma';
 
 /**
@@ -115,16 +116,40 @@ function calculerLignes(
   elements: { publications: ElementCatalogue[]; indicateurs: ElementCatalogue[] },
   annee: number,
   joursFeries: JourFerie[],
-): { calculees: LigneCalculee[]; nomsParId: Map<string, string> } {
+  ponctuelles: DatesPonctuelles = {},
+): {
+  calculees: LigneCalculee[];
+  nomsParId: Map<string, string>;
+  erreurs: string[];
+} {
   const calculees: LigneCalculee[] = [];
   const nomsParId = new Map<string, string>();
+  const erreurs: string[] = [];
 
   const traiter = (
     liste: ElementCatalogue[],
     elementType: 'PUBLICATION' | 'INDICATEUR',
   ) => {
     for (const element of liste) {
-      nomsParId.set(`${elementType}::${element.id}`, element.nom);
+      const identifiant = `${elementType}::${element.id}`;
+      nomsParId.set(identifiant, element.nom);
+
+      if (element.periodicite === 'PONCTUELLE') {
+        const resultat = ligneUniquePonctuelle(
+          element,
+          elementType,
+          ponctuelles[identifiant],
+          joursFeries,
+        );
+
+        if (resultat.erreur) {
+          erreurs.push(resultat.erreur);
+        } else if (resultat.ligne) {
+          calculees.push(resultat.ligne);
+        }
+
+        continue;
+      }
 
       for (const ligne of genererLignes(element, annee, joursFeries)) {
         calculees.push({
@@ -142,15 +167,84 @@ function calculerLignes(
   traiter(elements.publications, 'PUBLICATION');
   traiter(elements.indicateurs, 'INDICATEUR');
 
-  return { calculees, nomsParId };
+  return { calculees, nomsParId, erreurs };
 }
 
+/**
+ * Coverage dates typed by hand for a one-off element (§5.2).
+ *
+ * A `PONCTUELLE` publication produces nothing automatically: there is no
+ * periodicity to slice a year with. The person states the period covered, and
+ * the release date is still computed from the lead time — so a one-off entry
+ * follows the same rule as the others.
+ */
+export type DatesPonctuelles = Record<string, { debut: string; fin: string }>;
+
 function lireSelection(donnees: FormData) {
+  const ponctuelles: DatesPonctuelles = {};
+
+  for (const [cle, valeur] of donnees.entries()) {
+    const correspondance = /^ponctuelle_(debut|fin)_(.+)$/.exec(cle);
+
+    if (!correspondance || typeof valeur !== 'string') {
+      continue;
+    }
+
+    const [, borne, identifiant] = correspondance;
+    const existant = ponctuelles[identifiant] ?? { debut: '', fin: '' };
+
+    ponctuelles[identifiant] = { ...existant, [borne]: valeur };
+  }
+
   return {
     annee: Number(donnees.get('annee')),
     structureId: String(donnees.get('structureId') ?? ''),
     publications: donnees.getAll('publications').map(String),
     indicateurs: donnees.getAll('indicateurs').map(String),
+    ponctuelles,
+  };
+}
+
+/** Builds the single line of a one-off element, or explains what is missing. */
+function ligneUniquePonctuelle(
+  element: ElementCatalogue,
+  elementType: 'PUBLICATION' | 'INDICATEUR',
+  dates: { debut: string; fin: string } | undefined,
+  joursFeries: JourFerie[],
+): { ligne?: LigneCalculee; erreur?: string } {
+  if (!dates?.debut || !dates?.fin) {
+    return {
+      erreur: `« ${element.nom} » est ponctuelle : indiquez sa période de couverture.`,
+    };
+  }
+
+  const debut = new Date(`${dates.debut}T00:00:00Z`);
+  const fin = new Date(`${dates.fin}T00:00:00Z`);
+
+  if (Number.isNaN(debut.getTime()) || Number.isNaN(fin.getTime())) {
+    return { erreur: `Les dates de « ${element.nom} » ne sont pas valides.` };
+  }
+
+  if (normaliserJour(fin) < normaliserJour(debut)) {
+    return {
+      erreur: `Pour « ${element.nom} », la fin de couverture précède le début.`,
+    };
+  }
+
+  const dateDiffusionPrevue = ajouterDelai(fin, element.delaiJours, element.delaiType, {
+    joursFeries,
+    reportSiWeekendOuFerie: element.reportSiWeekendOuFerie,
+  });
+
+  return {
+    ligne: {
+      elementType,
+      elementId: element.id,
+      libellePeriode: `Du ${formaterJJMMAAAA(debut)} au ${formaterJJMMAAAA(fin)}`,
+      dateDebutCouverture: debut,
+      dateFinCouverture: fin,
+      dateDiffusionPrevue,
+    },
   };
 }
 
@@ -203,12 +297,21 @@ export async function previsualiserCalendrierAction(
     }),
   ]);
 
-  const { calculees, nomsParId } = calculerLignes(elements, selection.annee, feries);
+  const { calculees, nomsParId, erreurs } = calculerLignes(
+    elements,
+    selection.annee,
+    feries,
+    selection.ponctuelles,
+  );
+
+  if (erreurs.length > 0) {
+    return { erreur: erreurs.join(' '), annee: selection.annee };
+  }
 
   if (calculees.length === 0) {
     return {
       erreur:
-        'Aucune ligne à générer. Les publications ponctuelles se saisissent à la main, et un indicateur rattaché à une publication n’a pas de ligne propre.',
+        'Aucune ligne à générer. Un indicateur rattaché à une publication n’a pas de ligne propre.',
       annee: selection.annee,
     };
   }
@@ -280,7 +383,16 @@ export async function genererCalendrierAction(
     }),
   ]);
 
-  const { calculees } = calculerLignes(elements, selection.annee, feries);
+  const { calculees, erreurs } = calculerLignes(
+    elements,
+    selection.annee,
+    feries,
+    selection.ponctuelles,
+  );
+
+  if (erreurs.length > 0) {
+    return { erreur: erreurs.join(' ') };
+  }
 
   if (calculees.length === 0) {
     return { erreur: 'Aucune ligne à générer.' };
