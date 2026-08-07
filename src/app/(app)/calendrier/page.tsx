@@ -1,5 +1,8 @@
+import { CalendarDays } from 'lucide-react';
 import type { Metadata } from 'next';
+import Link from 'next/link';
 
+import { Button } from '@/components/ui/button';
 import { perimetreStructures } from '@/lib/auth/permissions';
 import { exigerActeur } from '@/lib/auth/session';
 import { nombreDeLignes } from '@/lib/calendrier/moteur';
@@ -36,14 +39,39 @@ export default async function PageCalendrier({
   const annee = Number(parametres.annee) || ANNEE_PAR_DEFAUT;
 
   if (structures.length === 0) {
+    // The message has to match who is reading it: telling a super admin to
+    // "contact their administrator" sends them looking for somebody who does
+    // not exist, and reads like a failure rather than a next step.
+    const peutCreerDesStructures = acteur.role === 'SUPER_ADMIN';
+
     return (
       <div className="mx-auto max-w-4xl">
         <h1 className="text-2xl font-semibold tracking-tight">
           Calendrier de diffusion
         </h1>
-        <p className="mt-4 text-sm text-muted-foreground">
-          Aucune structure ne vous est rattachée. Contactez votre administrateur.
-        </p>
+
+        <div className="mt-6 rounded-lg border border-dashed p-10 text-center">
+          <CalendarDays
+            className="mx-auto size-8 text-muted-foreground"
+            aria-hidden
+          />
+          <h2 className="mt-4 font-medium">
+            {peutCreerDesStructures
+              ? 'Commencez par déclarer une structure'
+              : 'Aucune structure ne vous est rattachée'}
+          </h2>
+          <p className="mx-auto mt-2 max-w-lg text-sm text-muted-foreground">
+            {peutCreerDesStructures
+              ? 'Un calendrier de diffusion appartient à une structure. Créez la première, puis renseignez ses publications avant de générer son calendrier.'
+              : 'Votre compte n’est rattaché à aucune structure active. Demandez à votre administrateur de vous en affecter une.'}
+          </p>
+
+          {peutCreerDesStructures && (
+            <Button asChild className="mt-6">
+              <Link href="/structures">Créer une structure</Link>
+            </Button>
+          )}
+        </div>
       </div>
     );
   }
