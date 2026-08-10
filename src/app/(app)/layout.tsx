@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 
 import { BarreLaterale } from '@/components/layout/barre-laterale';
+import { LogoDiffusio } from '@/components/layout/logo-diffusio';
 import { MenuUtilisateur } from '@/components/layout/menu-utilisateur';
 import { Button } from '@/components/ui/button';
 import { deconnexionAction } from '@/lib/actions/auth';
@@ -33,9 +34,9 @@ export default async function LayoutApplication({
   return (
     <div className="flex min-h-svh flex-col">
       <header className="sticky top-0 z-10 flex h-14 items-center justify-between gap-4 border-b bg-background px-4">
-        <div className="flex items-baseline gap-3">
-          <span className="text-lg font-semibold tracking-tight">DIFFUSIO</span>
-          <span className="hidden text-sm text-muted-foreground sm:inline">
+        <div className="flex items-center gap-3">
+          <LogoDiffusio hauteur={26} priorite />
+          <span className="hidden border-l pl-3 text-sm text-muted-foreground lg:inline">
             Calendrier de diffusion statistique
           </span>
         </div>

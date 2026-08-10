@@ -7,6 +7,7 @@ import { PermissionRefusee, assertPermission } from '@/lib/auth/permissions';
 import { exigerActeur } from '@/lib/auth/session';
 import { normaliserJour } from '@/lib/calendrier/dates';
 import { envoyerEmail } from '@/lib/email/envoyer';
+import { modeleAlerte } from '@/lib/email/modeles';
 import { notifier, pointsFocauxDe } from '@/lib/notifications/destinataires';
 import { prisma } from '@/lib/prisma';
 
@@ -225,13 +226,15 @@ export async function envoyerAlerteAction(
     select: { nom: true, sigle: true, couleurPrimaire: true, logoUrl: true },
   });
 
-  const sujet = `Alerte : ${nomElement} — ${ligne.libellePeriode}`;
-  const corpsTexte = `${contenu}
-
-—
-Élément : ${nomElement}
-Période : ${ligne.libellePeriode}
-Message envoyé par ${acteur.nomComplet} pour ${organisation.nom}.`;
+  const base = process.env.AUTH_URL ?? 'http://localhost:3000';
+  const modele = modeleAlerte({
+    organisation,
+    nomElement,
+    periode: ligne.libellePeriode,
+    contenu,
+    auteur: acteur.nomComplet,
+    lien: `${base}/retards`,
+  });
 
   // §8.3 — the supervisor is in copy, which is the point of a manual alert:
   // it escalates where an automatic chase did not work.
@@ -240,15 +243,7 @@ Message envoyé par ${acteur.nomComplet} pour ${organisation.nom}.`;
     copie: pointFocal.emailSuperieur ? [pointFocal.emailSuperieur] : undefined,
     typeEnvoi: 'ALERTE_MANUELLE',
     ligneCalendrierId: ligne.id,
-    sujet,
-    corpsTexte,
-    corpsHtml: `<p>${contenu.replace(/\n/g, '<br>')}</p>
-      <hr style="border:none;border-top:1px solid #e4e4e7;margin:16px 0">
-      <p style="font-size:13px;color:#71717a">
-        Élément : ${nomElement}<br>
-        Période : ${ligne.libellePeriode}<br>
-        Message envoyé par ${acteur.nomComplet} pour ${organisation.nom}.
-      </p>`,
+    ...modele,
   });
 
   await notifier(

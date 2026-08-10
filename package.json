@@ -14,7 +14,8 @@
     "db:studio": "prisma studio",
     "verifier:stockage": "tsx scripts/verifier-stockage.mts",
     "simuler:relances": "tsx scripts/simuler-relances.mts",
-    "verifier:email": "tsx scripts/verifier-email.mts"
+    "verifier:email": "tsx scripts/verifier-email.mts",
+    "preparer:logos": "tsx scripts/preparer-logos.mts"
   },
   "dependencies": {
     "@node-rs/argon2": "^2.0.2",
@@ -51,6 +52,7 @@
     "eslint-config-next": "15.5.22",
     "prisma": "^7.9.1",
     "shadcn": "^4.16.2",
+    "sharp": "^0.35.3",
     "tailwindcss": "^4",
     "tsx": "^4.23.9",
     "typescript": "^5",

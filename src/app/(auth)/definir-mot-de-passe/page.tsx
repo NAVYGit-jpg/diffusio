@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 
+import { LogoDiffusio } from '@/components/layout/logo-diffusio';
+
 import { prisma } from '@/lib/prisma';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { FormulaireDefinirMotDePasse } from './formulaire-definir-mot-de-passe';
@@ -30,9 +32,9 @@ export default async function PageDefinirMotDePasse({
   return (
     <main className="flex min-h-svh items-center justify-center bg-muted/40 p-4">
       <div className="w-full max-w-sm">
-        <div className="mb-8 text-center">
-          <h1 className="text-2xl font-semibold tracking-tight">DIFFUSIO</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+        <div className="mb-8 flex flex-col items-center text-center">
+          <LogoDiffusio hauteur={40} priorite />
+          <p className="mt-3 text-sm text-muted-foreground">
             Activation de votre compte
           </p>
         </div>

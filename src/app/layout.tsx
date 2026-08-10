@@ -22,6 +22,7 @@ export const metadata: Metadata = {
   },
   description:
     'Application collaborative de suivi du calendrier de diffusion statistique : catalogue des publications, génération du calendrier, relances et livrables.',
+  icons: { icon: '/icone-diffusio.png', apple: '/icone-diffusio.png' },
 };
 
 /**

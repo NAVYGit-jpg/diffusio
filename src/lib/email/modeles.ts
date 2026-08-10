@@ -15,25 +15,67 @@ type Organisation = {
   logoUrl: string | null;
 };
 
+/**
+ * Absolute address of the DIFFUSIO wordmark.
+ *
+ * A mail client fetches images from the internet, not from the machine running
+ * the application: a relative path would never resolve. On a development
+ * machine `AUTH_URL` points at localhost and the image simply will not load —
+ * which is why every message also carries the wordmark as text.
+ */
+function adresseLogo(): string {
+  const base = (process.env.AUTH_URL ?? 'http://localhost:3000').replace(/\/$/, '');
+
+  return `${base}/logo-diffusio.png`;
+}
+
+/**
+ * Shared frame of every message.
+ *
+ * The card is white, so the dark-ink version of the logo is the right one — a
+ * mail client has no dark-mode variable to read, unlike the application.
+ *
+ * When the organisation has its own logo it takes the header, and DIFFUSIO
+ * signs the footer: the recipient must recognise their institution first, the
+ * tool second.
+ */
 function enveloppe(organisation: Organisation, contenu: string): string {
+  const logoDiffusio = adresseLogo();
+
+  const enTete = organisation.logoUrl
+    ? `<img src="${organisation.logoUrl}" alt="${organisation.nom}" style="max-height:44px;display:block">`
+    : `<img src="${logoDiffusio}" alt="DIFFUSIO" width="180" style="max-height:34px;width:auto;display:block">`;
+
   return `<!doctype html>
 <html lang="fr">
-<body style="margin:0;padding:24px;background:#f5f5f5;font-family:system-ui,-apple-system,'Segoe UI',sans-serif;color:#18181b">
-  <table role="presentation" style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:8px;border:1px solid #e4e4e7">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light">
+</head>
+<body style="margin:0;padding:24px;background:#f4f4f5;font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;color:#18181b">
+  <table role="presentation" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:10px;border:1px solid #e4e4e7">
     <tr>
       <td style="padding:20px 24px;border-bottom:3px solid ${organisation.couleurPrimaire}">
-        ${
-          organisation.logoUrl
-            ? `<img src="${organisation.logoUrl}" alt="${organisation.nom}" style="max-height:40px">`
-            : `<strong style="font-size:18px">${organisation.sigle}</strong>`
-        }
+        ${enTete}
       </td>
     </tr>
-    <tr><td style="padding:24px;line-height:1.6">${contenu}</td></tr>
+
+    <tr><td style="padding:24px;line-height:1.6;font-size:15px">${contenu}</td></tr>
+
     <tr>
-      <td style="padding:16px 24px;border-top:1px solid #e4e4e7;font-size:12px;color:#71717a">
-        Message automatique envoyé par DIFFUSIO pour ${organisation.nom}.
-        Merci de ne pas répondre à cet e-mail.
+      <td style="padding:16px 24px;border-top:1px solid #e4e4e7">
+        <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%">
+          <tr>
+            <td style="vertical-align:middle">
+              <img src="${logoDiffusio}" alt="DIFFUSIO" width="104" style="max-height:20px;width:auto;display:block;opacity:0.55">
+            </td>
+            <td style="text-align:right;font-size:12px;color:#71717a;line-height:1.5">
+              Message automatique envoyé pour ${organisation.nom}.<br>
+              Merci de ne pas répondre à cet e-mail.
+            </td>
+          </tr>
+        </table>
       </td>
     </tr>
   </table>
@@ -125,6 +167,56 @@ ${params.lien}`;
          </td>
        </tr>
      </table>`,
+  );
+
+  return { sujet, corpsHtml, corpsTexte };
+}
+
+/** Free-text alert sent by an administrator (§8.3). */
+export function modeleAlerte(params: {
+  organisation: Organisation;
+  nomElement: string;
+  periode: string;
+  contenu: string;
+  auteur: string;
+  lien: string;
+}): { sujet: string; corpsHtml: string; corpsTexte: string } {
+  const sujet = `Alerte : ${params.nomElement} — ${params.periode}`;
+
+  const corpsTexte = `${params.contenu}
+
+—
+Élément : ${params.nomElement}
+Période : ${params.periode}
+Message envoyé par ${params.auteur} pour ${params.organisation.nom}.
+
+Ouvrir la ligne concernée :
+${params.lien}`;
+
+  const corpsHtml = enveloppe(
+    params.organisation,
+    `<p>${params.contenu.replace(/\n/g, '<br>')}</p>
+
+     <table role="presentation" style="width:100%;border-collapse:collapse;font-size:14px;margin:16px 0">
+       <tr>
+         <td style="padding:4px 0;color:#71717a;width:110px">Élément</td>
+         <td style="padding:4px 0"><strong>${params.nomElement}</strong></td>
+       </tr>
+       <tr>
+         <td style="padding:4px 0;color:#71717a">Période</td>
+         <td style="padding:4px 0">${params.periode}</td>
+       </tr>
+     </table>
+
+     <p style="margin:24px 0">
+       <a href="${params.lien}" style="display:inline-block;padding:12px 20px;background:${params.organisation.couleurPrimaire};color:#ffffff;text-decoration:none;border-radius:6px">
+         Ouvrir la ligne concernée
+       </a>
+     </p>
+
+     <p style="font-size:13px;color:#71717a">
+       Message envoyé par ${params.auteur}.
+     </p>`,
   );
 
   return { sujet, corpsHtml, corpsTexte };
