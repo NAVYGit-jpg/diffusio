@@ -42,6 +42,7 @@ import { peutModifierLignes } from '@/lib/calendrier/workflow';
 import { BandeauWorkflow } from './bandeau-workflow';
 import { DialogueLivrable, type DetailLigne } from './dialogue-livrable';
 import { ActionsLigne } from './actions-ligne';
+import { BoutonsExport } from './boutons-export';
 import type { Role, StatutCalendrier } from '@prisma/client';
 
 type Element = {
@@ -312,6 +313,14 @@ export function VueCalendrier({
           </Select>
         </div>
 
+        <div className="ml-auto self-end pb-0.5">
+          <BoutonsExport
+            annee={annee}
+            structureId={structureId}
+            role={role}
+            nombreStructures={structures.length}
+          />
+        </div>
       </div>
 
       {calendrier && (
