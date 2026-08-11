@@ -1,0 +1,244 @@
+import 'server-only';
+
+import type { ActeurSession } from '@/lib/auth/permissions';
+import { perimetreStructures } from '@/lib/auth/permissions';
+import { prisma } from '@/lib/prisma';
+import type { LigneIndicateur } from './indicateurs';
+
+/**
+ * Data behind the dashboard (cahier des charges §10).
+ *
+ * The perimeter is applied here, once, in the WHERE clause — never in the page
+ * and never on the client. A point focal reading `/tableau-de-bord?structure=…`
+ * with somebody else's identifier gets their own figures back, not an error and
+ * not the other structure's data.
+ */
+
+export type FiltresTableauDeBord = {
+  annee: number;
+  structureId?: string | null;
+  domaineId?: string | null;
+  periodicite?: string | null;
+};
+
+export type ContexteTableauDeBord = {
+  lignes: LigneIndicateur[];
+  structures: { id: string; nom: string; sigle: string }[];
+  domaines: { id: string; nom: string }[];
+  /** Catalogue size over the same perimeter. */
+  catalogue: { publications: number; indicateurs: number };
+  anneesDisponibles: number[];
+  /** True when the ranking may be shown (§10: admin and super admin only). */
+  classementVisible: boolean;
+};
+
+/**
+ * Resolves the structures the dashboard may read.
+ *
+ * Returns `null` for "no restriction". An explicitly requested structure is
+ * intersected with the perimeter rather than replacing it — that intersection
+ * is the whole point.
+ */
+function structuresLisibles(
+  acteur: ActeurSession,
+  structureDemandee?: string | null,
+): string[] | null {
+  const perimetre = perimetreStructures(acteur);
+
+  if (!structureDemandee) {
+    return perimetre;
+  }
+
+  if (perimetre === null) {
+    return [structureDemandee];
+  }
+
+  return perimetre.filter((id) => id === structureDemandee);
+}
+
+export async function chargerTableauDeBord(
+  acteur: ActeurSession & { organisationId: string },
+  filtres: FiltresTableauDeBord,
+): Promise<ContexteTableauDeBord> {
+  const lisibles = structuresLisibles(acteur, filtres.structureId);
+
+  // An ADMIN with no structure assigned, or a POINT_FOCAL without a structure:
+  // an empty list means "nothing", and must not be turned into "everything".
+  if (lisibles !== null && lisibles.length === 0) {
+    return {
+      lignes: [],
+      structures: [],
+      domaines: [],
+      catalogue: { publications: 0, indicateurs: 0 },
+      anneesDisponibles: [filtres.annee],
+      classementVisible: acteur.role !== 'POINT_FOCAL',
+    };
+  }
+
+  const filtreStructure = lisibles === null ? {} : { structureId: { in: lisibles } };
+
+  const [lignes, structures, domaines, annees] = await Promise.all([
+    prisma.ligneCalendrier.findMany({
+      where: {
+        calendrier: {
+          organisationId: acteur.organisationId,
+          annee: filtres.annee,
+          ...filtreStructure,
+        },
+      },
+      select: {
+        id: true,
+        statut: true,
+        elementType: true,
+        dateDiffusionPrevue: true,
+        dateDiffusionReelle: true,
+        calendrier: {
+          select: { structureId: true, structure: { select: { nom: true } } },
+        },
+        publication: {
+          select: {
+            periodicite: true,
+            domaineId: true,
+            domaine: { select: { nom: true } },
+          },
+        },
+        indicateur: {
+          select: {
+            periodicite: true,
+            domaineId: true,
+            domaine: { select: { nom: true } },
+          },
+        },
+        retard: { select: { publie: true } },
+      },
+    }),
+
+    prisma.structure.findMany({
+      where: {
+        organisationId: acteur.organisationId,
+        deletedAt: null,
+        ...(lisibles === null ? {} : { id: { in: lisibles } }),
+      },
+      select: { id: true, nom: true, sigle: true },
+      orderBy: { nom: 'asc' },
+    }),
+
+    prisma.domaine.findMany({
+      where: { organisationId: acteur.organisationId },
+      select: { id: true, nom: true },
+      orderBy: { nom: 'asc' },
+    }),
+
+    prisma.calendrier.findMany({
+      where: { organisationId: acteur.organisationId, ...filtreStructure },
+      select: { annee: true },
+      distinct: ['annee'],
+      orderBy: { annee: 'desc' },
+    }),
+  ]);
+
+  // Catalogue counts are read over the perimeter, not over the calendar: an
+  // element declared but never scheduled still belongs to the catalogue.
+  const [publications, indicateurs] = await Promise.all([
+    prisma.publication.count({
+      where: {
+        organisationId: acteur.organisationId,
+        deletedAt: null,
+        ...filtreStructure,
+      },
+    }),
+    prisma.indicateur.count({
+      where: {
+        organisationId: acteur.organisationId,
+        deletedAt: null,
+        ...filtreStructure,
+      },
+    }),
+  ]);
+
+  // Domain and periodicity live on the catalogue element, not on the calendar
+  // line, so those two filters are applied after the join rather than in SQL.
+  const converties: LigneIndicateur[] = [];
+
+  for (const ligne of lignes) {
+    const element = ligne.publication ?? ligne.indicateur;
+    const domaineId = element?.domaineId ?? null;
+    const periodicite = (element?.periodicite as string | undefined) ?? '';
+
+    if (filtres.domaineId && domaineId !== filtres.domaineId) {
+      continue;
+    }
+    if (filtres.periodicite && periodicite !== filtres.periodicite) {
+      continue;
+    }
+
+    converties.push({
+      id: ligne.id,
+      structureId: ligne.calendrier.structureId,
+      structureNom: ligne.calendrier.structure.nom,
+      domaine: element?.domaine?.nom ?? null,
+      periodicite,
+      elementType: ligne.elementType as 'PUBLICATION' | 'INDICATEUR',
+      dateDiffusionPrevue: ligne.dateDiffusionPrevue,
+      dateDiffusionReelle: ligne.dateDiffusionReelle,
+      statut: ligne.statut as string,
+      retardPublie: ligne.retard ? ligne.retard.publie : null,
+    });
+  }
+
+  const anneesDisponibles = annees.map((entree) => entree.annee);
+
+  return {
+    lignes: converties,
+    structures,
+    domaines,
+    catalogue: { publications, indicateurs },
+    anneesDisponibles: anneesDisponibles.includes(filtres.annee)
+      ? anneesDisponibles
+      : [filtres.annee, ...anneesDisponibles].sort((a, b) => b - a),
+    classementVisible: acteur.role !== 'POINT_FOCAL',
+  };
+}
+
+export type ActionRecente = {
+  id: string;
+  action: string;
+  entite: string;
+  auteur: string | null;
+  quand: Date;
+};
+
+/**
+ * Recent activity feed (§10).
+ *
+ * Read from the audit journal, restricted to the organisation. Entries are not
+ * filtered by structure: the journal records actions, not calendar lines, and
+ * inventing a link would be guesswork.
+ */
+export async function chargerActiviteRecente(
+  organisationId: string,
+  limite = 8,
+): Promise<ActionRecente[]> {
+  const entrees = await prisma.journalAudit.findMany({
+    where: { organisationId },
+    select: {
+      id: true,
+      action: true,
+      entite: true,
+      createdAt: true,
+      utilisateur: { select: { nom: true, prenoms: true } },
+    },
+    orderBy: { createdAt: 'desc' },
+    take: limite,
+  });
+
+  return entrees.map((entree) => ({
+    id: entree.id,
+    action: entree.action,
+    entite: entree.entite,
+    auteur: entree.utilisateur
+      ? `${entree.utilisateur.prenoms} ${entree.utilisateur.nom}`
+      : null,
+    quand: entree.createdAt,
+  }));
+}

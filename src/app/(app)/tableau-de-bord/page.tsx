@@ -1,6 +1,18 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
+import {
+  AlertTriangle,
+  BookOpen,
+  CalendarClock,
+  CheckCircle2,
+  Clock,
+  FileUp,
+  Globe2,
+  TrendingUp,
+} from 'lucide-react';
 
-import { exigerActeur } from '@/lib/auth/session';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
@@ -8,37 +20,487 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { formaterJJMMAAAA } from '@/lib/calendrier/dates';
+import { exigerActeur } from '@/lib/auth/session';
+import {
+  chargerActiviteRecente,
+  chargerTableauDeBord,
+} from '@/lib/tableau-bord/donnees';
+import {
+  avancementAnnee,
+  classementStructures,
+  compteurs,
+  etatRetards,
+  evolutionMensuelle,
+  lignesComparables,
+  prochainesEcheances,
+  repartition,
+  statistiquesRetard,
+  tauxRespect,
+} from '@/lib/tableau-bord/indicateurs';
+import { BarreAvancement, CarteIndicateur } from './cartes';
+import { FiltresTableauDeBord, PERIODICITES_FILTRE } from './filtres';
+import { BarresRepartition, BarresStatut, CourbeRespect } from './graphiques';
 
 export const metadata: Metadata = {
   title: 'Tableau de bord — DIFFUSIO',
 };
 
-export default async function PageTableauDeBord() {
+/** Colours matching the badges used on the calendar screen. */
+const COULEURS_STATUT: Record<string, string> = {
+  Planifiées: 'var(--chart-2)',
+  Téléversées: 'var(--chart-3)',
+  'Mises en ligne': 'oklch(0.62 0.15 155)',
+  'En retard': 'var(--destructive)',
+  Annulées: 'var(--chart-1)',
+};
+
+function tonDuTaux(taux: number | null): 'neutre' | 'positif' | 'alerte' {
+  if (taux === null) {
+    return 'neutre';
+  }
+
+  return taux >= 80 ? 'positif' : taux < 50 ? 'alerte' : 'neutre';
+}
+
+export default async function PageTableauDeBord({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const acteur = await exigerActeur();
+  const parametres = await searchParams;
+
+  const lire = (cle: string): string | null => {
+    const valeur = parametres[cle];
+    const brut = Array.isArray(valeur) ? valeur[0] : valeur;
+
+    return brut && brut.trim() !== '' ? brut : null;
+  };
+
+  const anneeDemandee = Number(lire('annee'));
+  const annee = Number.isInteger(anneeDemandee)
+    ? anneeDemandee
+    : new Date().getUTCFullYear();
+
+  const filtres = {
+    annee,
+    structureId: lire('structure'),
+    domaineId: lire('domaine'),
+    periodicite: lire('periodicite'),
+  };
+
+  const contexte = await chargerTableauDeBord(acteur, filtres);
+  const activite = await chargerActiviteRecente(acteur.organisationId);
+
+  const aujourdhui = new Date();
+  const lignes = lignesComparables(contexte.lignes);
+
+  const respect = tauxRespect(lignes, aujourdhui);
+  const retards = statistiquesRetard(lignes, aujourdhui);
+  const echeances = prochainesEcheances(lignes, aujourdhui);
+  const etat = etatRetards(lignes, aujourdhui);
+  const nombres = compteurs(contexte.lignes);
+  const avancement = avancementAnnee(contexte.lignes);
+  const courbe = evolutionMensuelle(lignes, annee, aujourdhui);
+  const classement = classementStructures(lignes, aujourdhui);
+
+  const parDomaine = repartition(lignes, (ligne) => ligne.domaine ?? 'Sans domaine');
+  const parPeriodicite = repartition(
+    lignes,
+    (ligne) =>
+      PERIODICITES_FILTRE.find((p) => p.valeur === ligne.periodicite)?.libelle ??
+      'Non renseignée',
+  );
+  const parStructure = repartition(lignes, (ligne) => ligne.structureNom);
+
+  const partsStatut = [
+    { libelle: 'Planifiées', nombre: nombres.planifiees },
+    { libelle: 'Téléversées', nombre: nombres.televersees },
+    { libelle: 'Mises en ligne', nombre: nombres.misesEnLigne },
+    { libelle: 'En retard', nombre: nombres.enRetard },
+    { libelle: 'Annulées', nombre: nombres.annulees },
+  ].map((part) => ({ ...part, couleur: COULEURS_STATUT[part.libelle] }));
+
+  const echeancesProches = [...lignes]
+    .filter(
+      (ligne) =>
+        ligne.dateDiffusionReelle === null &&
+        ligne.dateDiffusionPrevue.getTime() >= aujourdhui.getTime() - 86_400_000,
+    )
+    .sort(
+      (a, b) => a.dateDiffusionPrevue.getTime() - b.dateDiffusionPrevue.getTime(),
+    )
+    .slice(0, 6);
+
+  const vide = contexte.lignes.length === 0;
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="mx-auto max-w-6xl">
       <header className="mb-6">
         <h1 className="text-2xl font-semibold tracking-tight">Tableau de bord</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Bienvenue {acteur.nomComplet}.
+          Bonjour {acteur.nomComplet}. Les chiffres ci-dessous portent
+          uniquement sur les structures qui vous sont rattachées.
         </p>
       </header>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Prochaines étapes</CardTitle>
-          <CardDescription>
-            Les indicateurs de pilotage seront ajoutés en Phase 8.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="text-sm text-muted-foreground">
-          <p>
-            Commencez par déclarer vos structures, puis créez les points focaux
-            qui alimenteront le catalogue des publications et des indicateurs.
-          </p>
-        </CardContent>
-      </Card>
+      <FiltresTableauDeBord
+        etat={filtres}
+        annees={contexte.anneesDisponibles}
+        structures={contexte.structures}
+        domaines={contexte.domaines}
+      />
+
+      {vide ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Aucune donnée pour {annee}</CardTitle>
+            <CardDescription>
+              Le tableau de bord se remplit dès qu&apos;un calendrier de
+              diffusion existe pour cette année.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm text-muted-foreground">
+            <p>
+              Commencez par déclarer vos publications et vos indicateurs dans le
+              catalogue, puis générez le calendrier de l&apos;année.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button asChild size="sm" variant="outline">
+                <Link href="/catalogue">Aller au catalogue</Link>
+              </Button>
+              <Button asChild size="sm" variant="outline">
+                <Link href={`/calendrier?annee=${annee}`}>
+                  Générer le calendrier {annee}
+                </Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-6">
+          {/* --------------------------------------------------- indicateurs */}
+          <section
+            aria-label="Indicateurs clés"
+            className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
+          >
+            <CarteIndicateur
+              libelle="Taux de respect des délais"
+              valeur={respect.taux}
+              unite="%"
+              precision={
+                respect.base === 0
+                  ? 'Aucune échéance passée'
+                  : `${respect.respectees} sur ${respect.base} ligne(s) jugeable(s)`
+              }
+              icone={CheckCircle2}
+              ton={tonDuTaux(respect.taux)}
+            />
+            <CarteIndicateur
+              libelle="Lignes en retard"
+              valeur={etat.total}
+              precision={`${etat.nonPubliees} non publiée(s), ${etat.publieesApresEcheance} publiée(s) hors délai`}
+              icone={AlertTriangle}
+              ton={etat.total > 0 ? 'alerte' : 'neutre'}
+            />
+            <CarteIndicateur
+              libelle="Retard moyen"
+              valeur={retards.moyen}
+              unite="j"
+              precision={
+                retards.maximum === null
+                  ? 'Aucun retard constaté'
+                  : `Retard maximum : ${retards.maximum} jour(s)`
+              }
+              icone={Clock}
+            />
+            <CarteIndicateur
+              libelle="Échéances à 30 jours"
+              valeur={echeances.j30}
+              precision={`${echeances.j7} sous 7 jours, ${echeances.j15} sous 15 jours`}
+              icone={CalendarClock}
+            />
+          </section>
+
+          <section
+            aria-label="Volumes"
+            className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
+          >
+            <CarteIndicateur
+              libelle="Au catalogue"
+              valeur={contexte.catalogue.publications + contexte.catalogue.indicateurs}
+              precision={`${contexte.catalogue.publications} publication(s), ${contexte.catalogue.indicateurs} indicateur(s)`}
+              icone={BookOpen}
+            />
+            <CarteIndicateur
+              libelle="Lignes prévues"
+              valeur={nombres.total}
+              precision={`Calendrier ${annee}`}
+              icone={CalendarClock}
+            />
+            <CarteIndicateur
+              libelle="Téléversées"
+              valeur={nombres.televersees}
+              precision="En attente de confirmation de mise en ligne"
+              icone={FileUp}
+            />
+            <CarteIndicateur
+              libelle="Mises en ligne"
+              valeur={nombres.misesEnLigne}
+              precision={`${avancement} % du calendrier`}
+              icone={Globe2}
+              ton={nombres.misesEnLigne > 0 ? 'positif' : 'neutre'}
+            />
+          </section>
+
+          {/* -------------------------------------------------- avancement */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">
+                Avancement de l&apos;année {annee}
+              </CardTitle>
+              <CardDescription>
+                {nombres.misesEnLigne} ligne(s) mise(s) en ligne sur{' '}
+                {nombres.total} inscrite(s) au calendrier.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <BarreAvancement
+                pourcentage={avancement}
+                libelle={`Avancement de l'année ${annee} : ${avancement} %`}
+              />
+              <p className="mt-2 text-right text-sm font-medium tabular-nums">
+                {avancement} %
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* ---------------------------------------------------- graphiques */}
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <TrendingUp className="size-4 text-muted-foreground" aria-hidden />
+                  Évolution mensuelle du taux de respect
+                </CardTitle>
+                <CardDescription>
+                  Chaque ligne est comptée dans le mois où elle était attendue.
+                  Les mois sans publication prévue sont laissés vides.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <CourbeRespect points={courbe} />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Répartition par statut</CardTitle>
+                <CardDescription>
+                  État actuel des {nombres.total} ligne(s) du calendrier.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <BarresStatut parts={partsStatut} />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Répartition par domaine</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <BarresRepartition parts={parDomaine} />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">
+                  Répartition par périodicité
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <BarresRepartition parts={parPeriodicite} />
+              </CardContent>
+            </Card>
+
+            {contexte.structures.length > 1 && (
+              <Card className="lg:col-span-2">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">
+                    Répartition par structure
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <BarresRepartition parts={parStructure} />
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          {/* ---------------------------------------------------- classement */}
+          {contexte.classementVisible && classement.length > 1 && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">
+                  Classement des structures
+                </CardTitle>
+                <CardDescription>
+                  Par taux de respect des délais. Une structure sans échéance
+                  passée n&apos;est pas encore mesurable.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="px-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-12 pl-6">#</TableHead>
+                      <TableHead>Structure</TableHead>
+                      <TableHead className="text-right">Jugeables</TableHead>
+                      <TableHead className="text-right">Respectées</TableHead>
+                      <TableHead className="text-right">En retard</TableHead>
+                      <TableHead className="pr-6 text-right">Taux</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {classement.map((rang, index) => (
+                      <TableRow key={rang.structureId}>
+                        <TableCell className="pl-6 text-muted-foreground tabular-nums">
+                          {rang.taux === null ? '—' : index + 1}
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          {rang.structureNom}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {rang.base}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {rang.respectees}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {rang.retards}
+                        </TableCell>
+                        <TableCell className="pr-6 text-right">
+                          {rang.taux === null ? (
+                            <span className="text-muted-foreground">
+                              Non mesurable
+                            </span>
+                          ) : (
+                            <Badge
+                              variant={
+                                rang.taux >= 80
+                                  ? 'default'
+                                  : rang.taux < 50
+                                    ? 'destructive'
+                                    : 'secondary'
+                              }
+                            >
+                              {rang.taux} %
+                            </Badge>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* ----------------------------------------- échéances et activité */}
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Prochaines échéances</CardTitle>
+                <CardDescription>
+                  Les six diffusions attendues les plus proches, non encore
+                  mises en ligne.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {echeancesProches.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    Aucune échéance à venir sur ce périmètre.
+                  </p>
+                ) : (
+                  echeancesProches.map((ligne) => (
+                    <div
+                      key={ligne.id}
+                      className="flex items-center justify-between gap-3 border-b pb-2 last:border-0 last:pb-0"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">
+                          {ligne.structureNom}
+                        </p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {ligne.domaine ?? 'Sans domaine'}
+                        </p>
+                      </div>
+                      <span className="shrink-0 text-sm tabular-nums text-muted-foreground">
+                        {formaterJJMMAAAA(ligne.dateDiffusionPrevue)}
+                      </span>
+                    </div>
+                  ))
+                )}
+
+                <Button asChild size="sm" variant="outline" className="mt-1">
+                  <Link href={`/calendrier?annee=${annee}`}>
+                    Ouvrir le calendrier
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Activité récente</CardTitle>
+                <CardDescription>
+                  Les dernières actions enregistrées dans l&apos;organisation.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {activite.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    Rien à afficher pour l&apos;instant.
+                  </p>
+                ) : (
+                  activite.map((entree) => (
+                    <div
+                      key={entree.id}
+                      className="flex items-start justify-between gap-3 border-b pb-2 last:border-0 last:pb-0"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-sm">
+                          {entree.action}{' '}
+                          <span className="text-muted-foreground">
+                            ({entree.entite})
+                          </span>
+                        </p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {entree.auteur ?? 'Compte supprimé'}
+                        </p>
+                      </div>
+                      <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                        {formaterJJMMAAAA(entree.quand)}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
