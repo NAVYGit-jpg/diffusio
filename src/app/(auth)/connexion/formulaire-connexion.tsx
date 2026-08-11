@@ -20,8 +20,11 @@ const ETAT_INITIAL: EtatFormulaire = {};
 
 export function FormulaireConnexion({
   motDePasseChange,
+  emailIndicatif,
 }: {
   motDePasseChange: boolean;
+  /** Greyed-out example address. Empty string hides the hint entirely. */
+  emailIndicatif?: string;
 }) {
   const [etat, action, enCours] = useActionState(connexionAction, ETAT_INITIAL);
 
@@ -60,6 +63,10 @@ export function FormulaireConnexion({
               name="email"
               type="email"
               autoComplete="username"
+              // A placeholder, not a default value: the field stays empty, so
+              // submitting without typing anything still raises the usual error
+              // instead of silently trying the administrator's account.
+              placeholder={emailIndicatif || undefined}
               required
               aria-describedby={etat.erreursChamps?.email ? 'erreur-email' : undefined}
               aria-invalid={Boolean(etat.erreursChamps?.email)}

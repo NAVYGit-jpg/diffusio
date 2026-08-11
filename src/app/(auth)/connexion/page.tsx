@@ -23,6 +23,12 @@ export default async function PageConnexion({
 
   const { motDePasseChange } = await searchParams;
 
+  // Hint shown in the e-mail field. Read from the environment so it can be
+  // emptied in production without touching the code: once deployed, this line
+  // tells every visitor which account administers the site.
+  const emailIndicatif =
+    process.env.EMAIL_ADMIN_PAR_DEFAUT ?? 'super.admin@diffusio.local';
+
   return (
     <main className="flex min-h-svh items-center justify-center bg-muted/40 p-4">
       <div className="w-full max-w-sm">
@@ -33,7 +39,10 @@ export default async function PageConnexion({
           </p>
         </div>
 
-        <FormulaireConnexion motDePasseChange={motDePasseChange === '1'} />
+        <FormulaireConnexion
+          motDePasseChange={motDePasseChange === '1'}
+          emailIndicatif={emailIndicatif}
+        />
       </div>
     </main>
   );
