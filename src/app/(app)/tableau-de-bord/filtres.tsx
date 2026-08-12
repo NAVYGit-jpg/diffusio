@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { LIBELLE_PERIODICITE, PERIODICITES } from '@/lib/catalogue/schemas';
 
 /**
  * Common dashboard filters (cahier des charges §10).
@@ -25,15 +26,6 @@ import {
  */
 
 const TOUTES = 'TOUTES';
-
-export const PERIODICITES_FILTRE = [
-  { valeur: 'MENSUELLE', libelle: 'Mensuelle' },
-  { valeur: 'TRIMESTRIELLE', libelle: 'Trimestrielle' },
-  { valeur: 'SEMESTRIELLE', libelle: 'Semestrielle' },
-  { valeur: 'ANNUELLE', libelle: 'Annuelle' },
-  { valeur: 'PLURIANNUELLE', libelle: 'Pluriannuelle' },
-  { valeur: 'PONCTUELLE', libelle: 'Ponctuelle' },
-];
 
 export type EtatFiltres = {
   annee: number;
@@ -161,9 +153,9 @@ export function FiltresTableauDeBord({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={TOUTES}>Toutes</SelectItem>
-            {PERIODICITES_FILTRE.map((periodicite) => (
-              <SelectItem key={periodicite.valeur} value={periodicite.valeur}>
-                {periodicite.libelle}
+            {PERIODICITES.map((periodicite) => (
+              <SelectItem key={periodicite} value={periodicite}>
+                {LIBELLE_PERIODICITE[periodicite]}
               </SelectItem>
             ))}
           </SelectContent>

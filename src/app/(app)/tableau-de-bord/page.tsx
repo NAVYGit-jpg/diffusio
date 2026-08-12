@@ -30,10 +30,12 @@ import {
 } from '@/components/ui/table';
 import { formaterJJMMAAAA } from '@/lib/calendrier/dates';
 import { exigerActeur } from '@/lib/auth/session';
+import { LIBELLE_PERIODICITE } from '@/lib/catalogue/schemas';
 import {
   chargerActiviteRecente,
   chargerTableauDeBord,
 } from '@/lib/tableau-bord/donnees';
+import { anneesProposees, lireFiltres } from '@/lib/tableau-bord/filtres-url';
 import {
   avancementAnnee,
   classementStructures,
@@ -47,7 +49,7 @@ import {
   tauxRespect,
 } from '@/lib/tableau-bord/indicateurs';
 import { BarreAvancement, CarteIndicateur } from './cartes';
-import { FiltresTableauDeBord, PERIODICITES_FILTRE } from './filtres';
+import { FiltresTableauDeBord } from './filtres';
 import { BarresRepartition, BarresStatut, CourbeRespect } from './graphiques';
 
 export const metadata: Metadata = {
@@ -79,24 +81,8 @@ export default async function PageTableauDeBord({
   const acteur = await exigerActeur();
   const parametres = await searchParams;
 
-  const lire = (cle: string): string | null => {
-    const valeur = parametres[cle];
-    const brut = Array.isArray(valeur) ? valeur[0] : valeur;
-
-    return brut && brut.trim() !== '' ? brut : null;
-  };
-
-  const anneeDemandee = Number(lire('annee'));
-  const annee = Number.isInteger(anneeDemandee)
-    ? anneeDemandee
-    : new Date().getUTCFullYear();
-
-  const filtres = {
-    annee,
-    structureId: lire('structure'),
-    domaineId: lire('domaine'),
-    periodicite: lire('periodicite'),
-  };
+  const filtres = lireFiltres(parametres);
+  const annee = filtres.annee;
 
   const contexte = await chargerTableauDeBord(acteur, filtres);
   const activite = await chargerActiviteRecente(acteur.organisationId);
@@ -117,8 +103,9 @@ export default async function PageTableauDeBord({
   const parPeriodicite = repartition(
     lignes,
     (ligne) =>
-      PERIODICITES_FILTRE.find((p) => p.valeur === ligne.periodicite)?.libelle ??
-      'Non renseignée',
+      LIBELLE_PERIODICITE[
+        ligne.periodicite as keyof typeof LIBELLE_PERIODICITE
+      ] ?? 'Non renseignée',
   );
   const parStructure = repartition(lignes, (ligne) => ligne.structureNom);
 
@@ -155,7 +142,7 @@ export default async function PageTableauDeBord({
 
       <FiltresTableauDeBord
         etat={filtres}
-        annees={contexte.anneesDisponibles}
+        annees={anneesProposees(contexte.anneesDisponibles, annee)}
         structures={contexte.structures}
         domaines={contexte.domaines}
       />

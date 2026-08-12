@@ -70,7 +70,7 @@ export async function chargerTableauDeBord(
       structures: [],
       domaines: [],
       catalogue: { publications: 0, indicateurs: 0 },
-      anneesDisponibles: [filtres.annee],
+      anneesDisponibles: [],
       classementVisible: acteur.role !== 'POINT_FOCAL',
     };
   }
@@ -186,16 +186,14 @@ export async function chargerTableauDeBord(
     });
   }
 
-  const anneesDisponibles = annees.map((entree) => entree.annee);
-
   return {
     lignes: converties,
     structures,
     domaines,
     catalogue: { publications, indicateurs },
-    anneesDisponibles: anneesDisponibles.includes(filtres.annee)
-      ? anneesDisponibles
-      : [filtres.annee, ...anneesDisponibles].sort((a, b) => b - a),
+    // Raw list; `anneesProposees` adds the selected year and filters out any
+    // value outside the offered range.
+    anneesDisponibles: annees.map((entree) => entree.annee),
     classementVisible: acteur.role !== 'POINT_FOCAL',
   };
 }

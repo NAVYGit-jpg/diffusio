@@ -70,7 +70,7 @@ const STYLE_INFOBULLE = {
 export function CourbeRespect({ points }: { points: PointCourbe[] }) {
   return (
     <Cadre>
-      <LineChart data={points} margin={{ top: 8, right: 12, bottom: 0, left: -20 }}>
+      <LineChart data={points} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
         <CartesianGrid stroke={COULEUR_GRILLE} strokeDasharray="3 3" vertical={false} />
         <XAxis
           dataKey="libelle"
@@ -179,7 +179,7 @@ type PartStatut = { libelle: string; nombre: number; couleur: string };
 export function BarresStatut({ parts }: { parts: PartStatut[] }) {
   return (
     <Cadre hauteur={220}>
-      <BarChart data={parts} margin={{ top: 8, right: 12, bottom: 0, left: -20 }}>
+      <BarChart data={parts} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
         <CartesianGrid stroke={COULEUR_GRILLE} strokeDasharray="3 3" vertical={false} />
         <XAxis
           dataKey="libelle"
