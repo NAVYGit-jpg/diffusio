@@ -178,15 +178,20 @@ type PartStatut = { libelle: string; nombre: number; couleur: string };
 /** Status breakdown, each bar keeping the colour used by its badge elsewhere. */
 export function BarresStatut({ parts }: { parts: PartStatut[] }) {
   return (
-    <Cadre hauteur={220}>
+    <Cadre hauteur={240}>
       <BarChart data={parts} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
         <CartesianGrid stroke={COULEUR_GRILLE} strokeDasharray="3 3" vertical={false} />
+        {/* Five labels rarely fit side by side in a half-width card; tilting
+            them keeps every category readable instead of dropping some. */}
         <XAxis
           dataKey="libelle"
           tick={{ fill: COULEUR_TEXTE, fontSize: 11 }}
           tickLine={false}
           axisLine={{ stroke: COULEUR_GRILLE }}
           interval={0}
+          angle={-25}
+          textAnchor="end"
+          height={64}
         />
         <YAxis
           allowDecimals={false}

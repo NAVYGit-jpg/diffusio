@@ -94,7 +94,7 @@ export default async function PageTableauDeBord({
   const retards = statistiquesRetard(lignes, aujourdhui);
   const echeances = prochainesEcheances(lignes, aujourdhui);
   const etat = etatRetards(lignes, aujourdhui);
-  const nombres = compteurs(contexte.lignes);
+  const nombres = compteurs(contexte.lignes, aujourdhui);
   const avancement = avancementAnnee(contexte.lignes);
   const courbe = evolutionMensuelle(lignes, annee, aujourdhui);
   const classement = classementStructures(lignes, aujourdhui);

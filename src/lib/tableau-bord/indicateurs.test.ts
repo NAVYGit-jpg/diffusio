@@ -404,15 +404,23 @@ describe('lignesComparables', () => {
 });
 
 describe('compteurs', () => {
-  it('compte par statut sans inclure les annulées dans le total', () => {
-    const resultat = compteurs([
-      ligne({ statut: 'PLANIFIE' }),
-      ligne({ statut: 'A_VENIR' }),
-      ligne({ statut: 'TELEVERSE' }),
-      ligne({ statut: 'MIS_EN_LIGNE' }),
-      ligne({ statut: 'EN_RETARD' }),
-      ligne({ statut: 'ANNULE' }),
-    ]);
+  const aVenir = jour(2026, 9, 10);
+
+  it('répartit les lignes en cinq catégories exclusives', () => {
+    const resultat = compteurs(
+      [
+        ligne({ statut: 'PLANIFIE', dateDiffusionPrevue: aVenir }),
+        ligne({ statut: 'A_VENIR', dateDiffusionPrevue: aVenir }),
+        ligne({ statut: 'TELEVERSE', dateDiffusionPrevue: aVenir }),
+        ligne({
+          statut: 'MIS_EN_LIGNE',
+          dateDiffusionReelle: jour(2026, 2, 10),
+        }),
+        ligne({ statut: 'PLANIFIE', dateDiffusionPrevue: jour(2026, 1, 10) }),
+        ligne({ statut: 'ANNULE', dateDiffusionPrevue: jour(2026, 1, 10) }),
+      ],
+      AUJOURDHUI,
+    );
 
     expect(resultat).toEqual({
       total: 5,
@@ -422,6 +430,54 @@ describe('compteurs', () => {
       enRetard: 1,
       annulees: 1,
     });
+
+    // Les quatre catégories hors annulées reconstituent le total : le
+    // graphique de répartition ne peut donc pas compter une ligne deux fois.
+    expect(
+      resultat.planifiees +
+        resultat.televersees +
+        resultat.misesEnLigne +
+        resultat.enRetard,
+    ).toBe(resultat.total);
+  });
+
+  it('compte comme en retard une échéance passée restée au statut PLANIFIE', () => {
+    // Le statut EN_RETARD n'est écrit que par la tâche nocturne : s'y fier
+    // afficherait « aucun retard » sur une installation où elle n'a pas tourné.
+    const resultat = compteurs(
+      [ligne({ statut: 'PLANIFIE', dateDiffusionPrevue: jour(2026, 1, 10) })],
+      AUJOURDHUI,
+    );
+
+    expect(resultat.enRetard).toBe(1);
+    expect(resultat.planifiees).toBe(0);
+  });
+
+  it('compte comme en retard un fichier téléversé mais non mis en ligne', () => {
+    // Le fichier est arrivé, la publication n'est pas sortie : elle est en retard.
+    const resultat = compteurs(
+      [ligne({ statut: 'TELEVERSE', dateDiffusionPrevue: jour(2026, 1, 10) })],
+      AUJOURDHUI,
+    );
+
+    expect(resultat.enRetard).toBe(1);
+    expect(resultat.televersees).toBe(0);
+  });
+
+  it('ne compte pas en retard une ligne mise en ligne, même tardivement', () => {
+    const resultat = compteurs(
+      [
+        ligne({
+          statut: 'MIS_EN_LIGNE',
+          dateDiffusionPrevue: jour(2026, 1, 10),
+          dateDiffusionReelle: jour(2026, 2, 20),
+        }),
+      ],
+      AUJOURDHUI,
+    );
+
+    expect(resultat.misesEnLigne).toBe(1);
+    expect(resultat.enRetard).toBe(0);
   });
 });
 

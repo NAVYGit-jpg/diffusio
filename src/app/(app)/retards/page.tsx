@@ -14,9 +14,25 @@ export default async function PageRetards() {
   const acteur = await exigerActeur();
   const perimetre = perimetreStructures(acteur);
 
+  const aujourdhui = new Date();
+
+  // Lateness is read from the dates, not from the stored `EN_RETARD` status.
+  // That status is written by the nightly job: relying on it showed "no delay"
+  // on an installation where the job had never run, while the dashboard — which
+  // counts from the dates — reported several. Two screens, two answers.
+  const finDuJour = new Date(
+    Date.UTC(
+      aujourdhui.getUTCFullYear(),
+      aujourdhui.getUTCMonth(),
+      aujourdhui.getUTCDate(),
+    ),
+  );
+
   const lignes = await prisma.ligneCalendrier.findMany({
     where: {
-      statut: 'EN_RETARD',
+      dateDiffusionPrevue: { lt: finDuJour },
+      dateDiffusionReelle: null,
+      statut: { notIn: ['MIS_EN_LIGNE', 'ANNULE'] },
       calendrier: {
         organisationId: acteur.organisationId,
         ...(perimetre === null ? {} : { structureId: { in: perimetre } }),
@@ -30,8 +46,6 @@ export default async function PageRetards() {
     },
     orderBy: { dateDiffusionPrevue: 'asc' },
   });
-
-  const aujourdhui = new Date();
 
   return (
     <div className="mx-auto max-w-6xl">

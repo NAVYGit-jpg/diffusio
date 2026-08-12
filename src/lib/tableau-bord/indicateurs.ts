@@ -366,19 +366,52 @@ export type Compteurs = {
   annulees: number;
 };
 
-/** Headline counters: planned / uploaded / online / late (§10). */
-export function compteurs(lignes: readonly LigneIndicateur[]): Compteurs {
-  const parStatut = (statut: string) =>
-    lignes.filter((ligne) => ligne.statut === statut).length;
-
-  return {
-    total: lignes.filter((ligne) => ligne.statut !== 'ANNULE').length,
-    planifiees: parStatut('PLANIFIE') + parStatut('A_VENIR'),
-    televersees: parStatut('TELEVERSE'),
-    misesEnLigne: parStatut('MIS_EN_LIGNE'),
-    enRetard: parStatut('EN_RETARD'),
-    annulees: parStatut('ANNULE'),
+/**
+ * Headline counters: planned / uploaded / online / late (§10).
+ *
+ * Lateness is derived from the dates, **not** from the stored `EN_RETARD`
+ * status. That status is written by the nightly job, so a fresh installation —
+ * or a job that failed last night — would show "no delay" while deadlines have
+ * visibly passed. The dates cannot lie about that.
+ *
+ * The five counters form a partition of the lines: each line falls into exactly
+ * one, in this order, so the breakdown chart adds up to the total.
+ */
+export function compteurs(
+  lignes: readonly LigneIndicateur[],
+  aujourdhui: Date,
+): Compteurs {
+  const resultat: Compteurs = {
+    total: 0,
+    planifiees: 0,
+    televersees: 0,
+    misesEnLigne: 0,
+    enRetard: 0,
+    annulees: 0,
   };
+
+  for (const ligne of lignes) {
+    if (ligne.statut === 'ANNULE') {
+      resultat.annulees += 1;
+      continue;
+    }
+
+    resultat.total += 1;
+
+    if (estMiseEnLigne(ligne)) {
+      resultat.misesEnLigne += 1;
+    } else if (estEchue(ligne, aujourdhui)) {
+      // A file may well have been uploaded; as long as it is not online, the
+      // publication is late — that is what §10 measures.
+      resultat.enRetard += 1;
+    } else if (ligne.statut === 'TELEVERSE') {
+      resultat.televersees += 1;
+    } else {
+      resultat.planifiees += 1;
+    }
+  }
+
+  return resultat;
 }
 
 /** Percentage of the year's lines already released — the progress bar (§9.1). */
