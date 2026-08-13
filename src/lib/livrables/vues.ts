@@ -1,0 +1,123 @@
+import 'server-only';
+
+import type { ActeurSession } from '@/lib/auth/permissions';
+import { perimetreStructures } from '@/lib/auth/permissions';
+import { prisma } from '@/lib/prisma';
+import type { DetailLigne } from '@/app/(app)/calendrier/dialogue-livrable';
+
+/**
+ * Lines of the "imminentes" and "produits chargés" screens (§9.1).
+ *
+ * Both reuse the deliverable dialog, so both need exactly the shape it expects.
+ * Loading them here, once, keeps the two screens from drifting apart — and puts
+ * the perimeter filter in a single place.
+ */
+
+export type LigneVue = DetailLigne & {
+  structureId: string;
+  structureNom: string;
+  structureSigle: string;
+  annee: number;
+  /** ISO instant of the confirmed release, `null` while nothing is public. */
+  dateDiffusionReelle: string | null;
+  /** Lets the caller tell a full delivery from one merely started. */
+  nombreFichiers: number;
+  nombreValeurs: number;
+};
+
+export async function chargerLignesLivrables(
+  acteur: ActeurSession & { organisationId: string },
+  filtre: { annee?: number },
+): Promise<LigneVue[]> {
+  const perimetre = perimetreStructures(acteur);
+
+  // An empty perimeter means "nothing visible" and must never become "all".
+  if (perimetre !== null && perimetre.length === 0) {
+    return [];
+  }
+
+  const lignes = await prisma.ligneCalendrier.findMany({
+    where: {
+      calendrier: {
+        organisationId: acteur.organisationId,
+        ...(filtre.annee ? { annee: filtre.annee } : {}),
+        ...(perimetre === null ? {} : { structureId: { in: perimetre } }),
+      },
+    },
+    include: {
+      calendrier: {
+        select: {
+          annee: true,
+          structureId: true,
+          structure: { select: { nom: true, sigle: true } },
+        },
+      },
+      publication: {
+        select: {
+          nom: true,
+          indicateursAffilies: {
+            where: { deletedAt: null, actif: true },
+            select: { id: true, nom: true, unite: true },
+          },
+        },
+      },
+      indicateur: { select: { id: true, nom: true, unite: true } },
+      fichiers: {
+        where: { deletedAt: null },
+        orderBy: [{ type: 'asc' }, { version: 'desc' }],
+      },
+      valeurs: true,
+    },
+    orderBy: { dateDiffusionPrevue: 'asc' },
+  });
+
+  return lignes.map((ligne) => ({
+    id: ligne.id,
+    nomElement: ligne.publication?.nom ?? ligne.indicateur?.nom ?? 'Élément',
+    elementType: ligne.elementType,
+    libellePeriode: ligne.libellePeriode,
+    dateDiffusionPrevue: ligne.dateDiffusionPrevue.toISOString(),
+    statut: ligne.statut,
+    lienPublication: ligne.lienPublication,
+    fichiers: ligne.fichiers.map((fichier) => ({
+      id: fichier.id,
+      type: fichier.type,
+      nomOriginal: fichier.nomOriginal,
+      version: fichier.version,
+      tailleOctets: fichier.tailleOctets,
+      televerseAt: fichier.televerseAt.toISOString(),
+    })),
+    valeurs: ligne.valeurs.map((valeur) => ({
+      indicateurId: valeur.indicateurId,
+      valeur: valeur.valeur?.toString() ?? null,
+      valeurTexte: valeur.valeurTexte,
+      commentaire: valeur.commentaire,
+      nonDisponible: valeur.nonDisponible,
+    })),
+    indicateursASaisir: ligne.publication
+      ? ligne.publication.indicateursAffilies
+      : ligne.indicateur
+        ? [ligne.indicateur]
+        : [],
+    structureId: ligne.calendrier.structureId,
+    structureNom: ligne.calendrier.structure.nom,
+    structureSigle: ligne.calendrier.structure.sigle,
+    annee: ligne.calendrier.annee,
+    dateDiffusionReelle: ligne.dateDiffusionReelle?.toISOString() ?? null,
+    nombreFichiers: ligne.fichiers.length,
+    nombreValeurs: ligne.valeurs.length,
+  }));
+}
+
+/** Raw values needed by the pure selection rules. */
+export function critereSelection(ligne: LigneVue) {
+  return {
+    statut: ligne.statut,
+    dateDiffusionPrevue: new Date(ligne.dateDiffusionPrevue),
+    dateDiffusionReelle: ligne.dateDiffusionReelle
+      ? new Date(ligne.dateDiffusionReelle)
+      : null,
+    nombreFichiers: ligne.nombreFichiers,
+    nombreValeurs: ligne.nombreValeurs,
+  };
+}

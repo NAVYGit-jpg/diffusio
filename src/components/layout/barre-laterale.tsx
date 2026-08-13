@@ -2,11 +2,13 @@
 
 import {
   Building2,
+  CalendarClock,
   CalendarDays,
   ClipboardList,
   LayoutDashboard,
   MessageSquare,
   Bell,
+  PackageCheck,
   TriangleAlert,
   Users,
 } from 'lucide-react';
@@ -53,6 +55,18 @@ const ENTREES: Entree[] = [
     href: '/calendrier',
     libelle: 'Calendrier de diffusion',
     icone: CalendarDays,
+    roles: ['SUPER_ADMIN', 'ADMIN', 'POINT_FOCAL'],
+  },
+  {
+    href: '/imminentes',
+    libelle: 'Publications imminentes',
+    icone: CalendarClock,
+    roles: ['SUPER_ADMIN', 'ADMIN', 'POINT_FOCAL'],
+  },
+  {
+    href: '/produits-charges',
+    libelle: 'Produits chargés',
+    icone: PackageCheck,
     roles: ['SUPER_ADMIN', 'ADMIN', 'POINT_FOCAL'],
   },
   {
