@@ -11,11 +11,30 @@ import { ANNEE_MAX, ANNEE_MIN } from '@/lib/calendrier/annees';
 
 export type ParametresBruts = Record<string, string | string[] | undefined>;
 
+export type TypeElement = 'PUBLICATION' | 'INDICATEUR';
+
+export const TYPES_ELEMENT: readonly TypeElement[] = [
+  'PUBLICATION',
+  'INDICATEUR',
+];
+
+export const LIBELLE_TYPE_ELEMENT: Record<TypeElement, string> = {
+  PUBLICATION: 'Publication',
+  INDICATEUR: 'Indicateur',
+};
+
+/**
+ * Every categorical filter holds a list. An **empty list means "everything"**,
+ * never "nothing": a filter starts out open, and treating the empty case as an
+ * exclusion would show a blank dashboard the moment somebody unticks the last
+ * box.
+ */
 export type FiltresLus = {
   annee: number;
-  structureId: string | null;
-  domaineId: string | null;
-  periodicite: string | null;
+  structureIds: string[];
+  domaineIds: string[];
+  periodicites: string[];
+  typesElement: TypeElement[];
 };
 
 /**
@@ -32,6 +51,34 @@ export function lireParametre(
   const brut = Array.isArray(valeur) ? valeur[0] : valeur;
 
   return typeof brut === 'string' && brut.trim() !== '' ? brut.trim() : null;
+}
+
+/**
+ * Every value carried by one key.
+ *
+ * Accepts both forms a query string can take: repeated keys
+ * (`?domaine=a&domaine=b`) and a comma-separated list (`?domaine=a,b`), because
+ * a URL edited by hand or trimmed by a mail client may arrive either way.
+ * Duplicates are removed and blanks dropped.
+ */
+export function lireParametres(
+  parametres: ParametresBruts,
+  cle: string,
+): string[] {
+  const valeur = parametres[cle];
+
+  if (valeur === undefined) {
+    return [];
+  }
+
+  const brut = Array.isArray(valeur) ? valeur : [valeur];
+
+  const valeurs = brut
+    .flatMap((element) => element.split(','))
+    .map((element) => element.trim())
+    .filter((element) => element !== '');
+
+  return [...new Set(valeurs)];
 }
 
 /**
@@ -74,10 +121,36 @@ export function lireFiltres(
 ): FiltresLus {
   return {
     annee: lireAnnee(parametres, anneeParDefaut(maintenant)),
-    structureId: lireParametre(parametres, 'structure'),
-    domaineId: lireParametre(parametres, 'domaine'),
-    periodicite: lireParametre(parametres, 'periodicite'),
+    structureIds: lireParametres(parametres, 'structure'),
+    domaineIds: lireParametres(parametres, 'domaine'),
+    periodicites: lireParametres(parametres, 'periodicite'),
+    // Anything that is not one of the two known types is dropped rather than
+    // passed to the query: an unknown value would silently return nothing.
+    typesElement: lireParametres(parametres, 'type').filter(
+      (valeur): valeur is TypeElement =>
+        (TYPES_ELEMENT as readonly string[]).includes(valeur),
+    ),
   };
+}
+
+/** Builds the dashboard address from a set of filters. */
+export function adresseTableauDeBord(filtres: FiltresLus): string {
+  const parametres = new URLSearchParams();
+
+  parametres.set('annee', String(filtres.annee));
+
+  const ajouter = (cle: string, valeurs: readonly string[]) => {
+    for (const valeur of valeurs) {
+      parametres.append(cle, valeur);
+    }
+  };
+
+  ajouter('structure', filtres.structureIds);
+  ajouter('domaine', filtres.domaineIds);
+  ajouter('periodicite', filtres.periodicites);
+  ajouter('type', filtres.typesElement);
+
+  return `/tableau-de-bord?${parametres.toString()}`;
 }
 
 /**

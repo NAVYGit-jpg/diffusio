@@ -130,6 +130,16 @@ export default async function PageTableauDeBord({
 
   const vide = contexte.lignes.length === 0;
 
+  // An empty screen has two very different causes, and telling them apart
+  // matters: inviting somebody to "generate the calendar" when one already
+  // exists and their filters simply exclude everything sends them off to redo
+  // work that is already done.
+  const filtresActifs =
+    filtres.structureIds.length +
+    filtres.domaineIds.length +
+    filtres.periodicites.length +
+    filtres.typesElement.length;
+
   return (
     <div className="mx-auto max-w-6xl">
       <header className="mb-6">
@@ -147,7 +157,27 @@ export default async function PageTableauDeBord({
         domaines={contexte.domaines}
       />
 
-      {vide ? (
+      {vide && filtresActifs > 0 ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Aucune ligne ne correspond à vos filtres</CardTitle>
+            <CardDescription>
+              Le calendrier {annee} contient des lignes, mais aucune ne réunit{' '}
+              {filtresActifs > 1
+                ? `les ${filtresActifs} critères que vous avez choisis`
+                : 'le critère que vous avez choisi'}
+              .
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild size="sm" variant="outline">
+              <Link href={`/tableau-de-bord?annee=${annee}`}>
+                Retirer tous les filtres
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      ) : vide ? (
         <Card>
           <CardHeader>
             <CardTitle>Aucune donnée pour {annee}</CardTitle>

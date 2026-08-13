@@ -14,11 +14,13 @@ import type { LigneIndicateur } from './indicateurs';
  * not the other structure's data.
  */
 
+/** Empty lists mean "no restriction", never "nothing". */
 export type FiltresTableauDeBord = {
   annee: number;
-  structureId?: string | null;
-  domaineId?: string | null;
-  periodicite?: string | null;
+  structureIds: string[];
+  domaineIds: string[];
+  periodicites: string[];
+  typesElement: string[];
 };
 
 export type ContexteTableauDeBord = {
@@ -35,36 +37,42 @@ export type ContexteTableauDeBord = {
 /**
  * Resolves the structures the dashboard may read.
  *
- * Returns `null` for "no restriction". An explicitly requested structure is
- * intersected with the perimeter rather than replacing it — that intersection
- * is the whole point.
+ * Returns `null` for "no restriction". Requested structures are **intersected**
+ * with the perimeter rather than replacing it — that intersection is the whole
+ * point: asking for a structure outside one's perimeter must narrow the view,
+ * never widen it.
  */
 function structuresLisibles(
   acteur: ActeurSession,
-  structureDemandee?: string | null,
+  structuresDemandees: readonly string[],
 ): string[] | null {
   const perimetre = perimetreStructures(acteur);
 
-  if (!structureDemandee) {
+  if (structuresDemandees.length === 0) {
     return perimetre;
   }
 
   if (perimetre === null) {
-    return [structureDemandee];
+    return [...structuresDemandees];
   }
 
-  return perimetre.filter((id) => id === structureDemandee);
+  return perimetre.filter((id) => structuresDemandees.includes(id));
 }
 
 export async function chargerTableauDeBord(
   acteur: ActeurSession & { organisationId: string },
   filtres: FiltresTableauDeBord,
 ): Promise<ContexteTableauDeBord> {
-  const lisibles = structuresLisibles(acteur, filtres.structureId);
+  const lisibles = structuresLisibles(acteur, filtres.structureIds);
+
+  // The dropdown must keep offering the whole perimeter even once a structure
+  // is ticked: narrowing it to the current selection would make a second choice
+  // impossible.
+  const perimetreComplet = perimetreStructures(acteur);
 
   // An ADMIN with no structure assigned, or a POINT_FOCAL without a structure:
   // an empty list means "nothing", and must not be turned into "everything".
-  if (lisibles !== null && lisibles.length === 0) {
+  if (perimetreComplet !== null && perimetreComplet.length === 0) {
     return {
       lignes: [],
       structures: [],
@@ -77,9 +85,16 @@ export async function chargerTableauDeBord(
 
   const filtreStructure = lisibles === null ? {} : { structureId: { in: lisibles } };
 
+  // Element type is a column of the calendar line, so it filters in SQL.
+  const filtreType =
+    filtres.typesElement.length === 0
+      ? {}
+      : { elementType: { in: filtres.typesElement as ('PUBLICATION' | 'INDICATEUR')[] } };
+
   const [lignes, structures, domaines, annees] = await Promise.all([
     prisma.ligneCalendrier.findMany({
       where: {
+        ...filtreType,
         calendrier: {
           organisationId: acteur.organisationId,
           annee: filtres.annee,
@@ -113,11 +128,12 @@ export async function chargerTableauDeBord(
       },
     }),
 
+    // Perimeter, not selection: see the note above.
     prisma.structure.findMany({
       where: {
         organisationId: acteur.organisationId,
         deletedAt: null,
-        ...(lisibles === null ? {} : { id: { in: lisibles } }),
+        ...(perimetreComplet === null ? {} : { id: { in: perimetreComplet } }),
       },
       select: { id: true, nom: true, sigle: true },
       orderBy: { nom: 'asc' },
@@ -129,31 +145,62 @@ export async function chargerTableauDeBord(
       orderBy: { nom: 'asc' },
     }),
 
+    // Years come from the whole perimeter so the selector keeps its choices
+    // when a structure filter is applied.
     prisma.calendrier.findMany({
-      where: { organisationId: acteur.organisationId, ...filtreStructure },
+      where: {
+        organisationId: acteur.organisationId,
+        ...(perimetreComplet === null
+          ? {}
+          : { structureId: { in: perimetreComplet } }),
+      },
       select: { annee: true },
       distinct: ['annee'],
       orderBy: { annee: 'desc' },
     }),
   ]);
 
-  // Catalogue counts are read over the perimeter, not over the calendar: an
-  // element declared but never scheduled still belongs to the catalogue.
+  // Catalogue counts follow the perimeter and the filters, but not the calendar:
+  // an element declared and never scheduled still belongs to the catalogue.
+  const compterPublications =
+    filtres.typesElement.length === 0 || filtres.typesElement.includes('PUBLICATION');
+  const compterIndicateurs =
+    filtres.typesElement.length === 0 || filtres.typesElement.includes('INDICATEUR');
+
+  const filtreDomaine =
+    filtres.domaineIds.length === 0 ? {} : { domaineId: { in: filtres.domaineIds } };
+  const filtrePeriodicite =
+    filtres.periodicites.length === 0
+      ? {}
+      : {
+          periodicite: {
+            in: filtres.periodicites as ('MENSUELLE' | 'TRIMESTRIELLE')[],
+          },
+        };
+
   const [publications, indicateurs] = await Promise.all([
-    prisma.publication.count({
-      where: {
-        organisationId: acteur.organisationId,
-        deletedAt: null,
-        ...filtreStructure,
-      },
-    }),
-    prisma.indicateur.count({
-      where: {
-        organisationId: acteur.organisationId,
-        deletedAt: null,
-        ...filtreStructure,
-      },
-    }),
+    compterPublications
+      ? prisma.publication.count({
+          where: {
+            organisationId: acteur.organisationId,
+            deletedAt: null,
+            ...filtreStructure,
+            ...filtreDomaine,
+            ...filtrePeriodicite,
+          },
+        })
+      : Promise.resolve(0),
+    compterIndicateurs
+      ? prisma.indicateur.count({
+          where: {
+            organisationId: acteur.organisationId,
+            deletedAt: null,
+            ...filtreStructure,
+            ...filtreDomaine,
+            ...filtrePeriodicite,
+          },
+        })
+      : Promise.resolve(0),
   ]);
 
   // Domain and periodicity live on the catalogue element, not on the calendar
@@ -165,10 +212,16 @@ export async function chargerTableauDeBord(
     const domaineId = element?.domaineId ?? null;
     const periodicite = (element?.periodicite as string | undefined) ?? '';
 
-    if (filtres.domaineId && domaineId !== filtres.domaineId) {
+    if (
+      filtres.domaineIds.length > 0 &&
+      (domaineId === null || !filtres.domaineIds.includes(domaineId))
+    ) {
       continue;
     }
-    if (filtres.periodicite && periodicite !== filtres.periodicite) {
+    if (
+      filtres.periodicites.length > 0 &&
+      !filtres.periodicites.includes(periodicite)
+    ) {
       continue;
     }
 

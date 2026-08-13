@@ -2,11 +2,13 @@ import { describe, expect, it } from 'vitest';
 
 import { jour } from '@/lib/calendrier/dates';
 import {
+  adresseTableauDeBord,
   anneeParDefaut,
   anneesProposees,
   lireAnnee,
   lireFiltres,
   lireParametre,
+  lireParametres,
 } from './filtres-url';
 
 describe('lireParametre', () => {
@@ -64,33 +66,110 @@ describe('anneeParDefaut', () => {
   });
 });
 
+describe('lireParametres', () => {
+  it('lit une clé répétée', () => {
+    expect(lireParametres({ domaine: ['a', 'b'] }, 'domaine')).toEqual(['a', 'b']);
+  });
+
+  it('lit une liste séparée par des virgules', () => {
+    // Une adresse retapée à la main ou raccourcie par un client de messagerie
+    // peut arriver sous l'une ou l'autre forme.
+    expect(lireParametres({ domaine: 'a,b' }, 'domaine')).toEqual(['a', 'b']);
+  });
+
+  it('supprime les doublons et les valeurs vides', () => {
+    expect(lireParametres({ domaine: ['a', '', 'a', ' b '] }, 'domaine')).toEqual([
+      'a',
+      'b',
+    ]);
+  });
+
+  it('retourne une liste vide pour une clé absente', () => {
+    expect(lireParametres({}, 'domaine')).toEqual([]);
+  });
+});
+
 describe('lireFiltres', () => {
-  it('lit les quatre filtres ensemble', () => {
+  it('lit les cinq filtres ensemble', () => {
     expect(
       lireFiltres(
         {
           annee: '2027',
-          structure: 'str-1',
+          structure: ['str-1', 'str-2'],
           domaine: 'dom-1',
-          periodicite: 'MENSUELLE',
+          periodicite: ['MENSUELLE', 'ANNUELLE'],
+          type: 'PUBLICATION',
         },
         jour(2026, 3, 1),
       ),
     ).toEqual({
       annee: 2027,
-      structureId: 'str-1',
-      domaineId: 'dom-1',
-      periodicite: 'MENSUELLE',
+      structureIds: ['str-1', 'str-2'],
+      domaineIds: ['dom-1'],
+      periodicites: ['MENSUELLE', 'ANNUELLE'],
+      typesElement: ['PUBLICATION'],
     });
   });
 
   it('ne pose aucun filtre sur une adresse nue', () => {
+    // Listes vides : « tout », jamais « rien ».
     expect(lireFiltres({}, jour(2026, 3, 1))).toEqual({
       annee: 2026,
-      structureId: null,
-      domaineId: null,
-      periodicite: null,
+      structureIds: [],
+      domaineIds: [],
+      periodicites: [],
+      typesElement: [],
     });
+  });
+
+  it('écarte un type de produit inconnu', () => {
+    // Le laisser passer ferait remonter une requête sans aucun résultat.
+    const filtres = lireFiltres(
+      { type: ['PUBLICATION', 'AUTRE_CHOSE'] },
+      jour(2026, 3, 1),
+    );
+
+    expect(filtres.typesElement).toEqual(['PUBLICATION']);
+  });
+});
+
+describe('adresseTableauDeBord', () => {
+  it('répète la clé pour chaque valeur choisie', () => {
+    const adresse = adresseTableauDeBord({
+      annee: 2026,
+      structureIds: ['a', 'b'],
+      domaineIds: [],
+      periodicites: [],
+      typesElement: ['INDICATEUR'],
+    });
+
+    expect(adresse).toBe(
+      '/tableau-de-bord?annee=2026&structure=a&structure=b&type=INDICATEUR',
+    );
+  });
+
+  it('fait l’aller-retour sans rien perdre', () => {
+    const depart = {
+      annee: 2027,
+      structureIds: ['s1', 's2'],
+      domaineIds: ['d1'],
+      periodicites: ['MENSUELLE'],
+      typesElement: ['PUBLICATION' as const],
+    };
+
+    const parametres = Object.fromEntries(
+      [...new URLSearchParams(adresseTableauDeBord(depart).split('?')[1])].reduce(
+        (accumulateur, [cle, valeur]) => {
+          const existant = accumulateur.get(cle);
+          accumulateur.set(cle, existant ? [...existant, valeur] : [valeur]);
+
+          return accumulateur;
+        },
+        new Map<string, string[]>(),
+      ),
+    );
+
+    expect(lireFiltres(parametres, jour(2026, 3, 1))).toEqual(depart);
   });
 });
 
