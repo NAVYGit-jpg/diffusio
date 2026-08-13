@@ -1,7 +1,10 @@
 import type { ReactNode } from 'react';
 
 import { BarreLaterale } from '@/components/layout/barre-laterale';
-import { LogoDiffusio } from '@/components/layout/logo-diffusio';
+import {
+  LogoOrganisation,
+  SloganOrganisation,
+} from '@/components/layout/logo-organisation';
 import { MenuUtilisateur } from '@/components/layout/menu-utilisateur';
 import { Button } from '@/components/ui/button';
 import { deconnexionAction } from '@/lib/actions/auth';
@@ -40,10 +43,8 @@ export default async function LayoutApplication({
         className="sticky top-0 z-10 flex h-14 items-center justify-between gap-4 border-b bg-background px-4"
       >
         <div className="flex items-center gap-3">
-          <LogoDiffusio hauteur={26} priorite />
-          <span className="hidden border-l pl-3 text-sm text-muted-foreground lg:inline">
-            Calendrier de diffusion statistique
-          </span>
+          <LogoOrganisation hauteur={26} priorite />
+          <SloganOrganisation className="hidden border-l pl-3 text-sm text-muted-foreground lg:inline" />
         </div>
 
         <div className="flex items-center gap-3">
@@ -76,8 +77,14 @@ export default async function LayoutApplication({
       </header>
 
       <div className="flex flex-1">
+        {/* La navigation reste en place pendant que le contenu défile : sur un
+            long calendrier, une barre qui remonte avec la page oblige à
+            revenir en haut pour changer d'écran. `top-14` la cale sous
+            l'en-tête, lui-même collant. */}
         <aside className="hidden w-64 shrink-0 border-r md:block">
-          <BarreLaterale role={acteur.role} />
+          <div className="sticky top-14 max-h-[calc(100svh-3.5rem)] overflow-y-auto">
+            <BarreLaterale role={acteur.role} />
+          </div>
         </aside>
 
         <main className="min-w-0 flex-1 p-4 sm:p-6">{children}</main>

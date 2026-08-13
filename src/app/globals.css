@@ -190,3 +190,52 @@
     print-color-adjust: exact !important;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Identite visuelle de l'organisation (cahier des charges §9.4).
+
+   Les variables sont ecrites par le layout racine, ou en direct par l'ecran
+   « Apparence » pendant que le super admin fait ses choix. Elles sont branchees
+   ici sur les jetons de shadcn/ui pour que le changement traverse toute
+   l'application sans toucher a chaque composant.
+
+   Les valeurs de repli protegent la page quand aucune organisation n'est encore
+   enregistree : une application sans style vaut mieux qu'une page blanche.
+--------------------------------------------------------------------------- */
+@layer base {
+  :root {
+    --couleur-primaire: #1e40af;
+    --couleur-secondaire: #475569;
+    --couleur-accent: #0891b2;
+    --couleur-bouton: var(--couleur-primaire);
+    --couleur-primaire-douce: #eef2ff;
+    --ombre-carte: 0 1px 2px 0 rgb(0 0 0 / 0.05), 0 1px 3px 0 rgb(0 0 0 / 0.06);
+    --epaisseur-bordure: 1px;
+    --facteur-espacement: 1;
+    --police-interface: var(--font-geist-sans);
+  }
+
+  html {
+    font-family: var(--police-interface), system-ui, sans-serif;
+  }
+
+  /* Le bouton principal et les accents suivent la charte choisie. */
+  :root {
+    --primary: var(--couleur-bouton);
+    --ring: var(--couleur-primaire);
+    --sidebar-primary: var(--couleur-primaire);
+  }
+
+}
+
+/* Le style d'interface agit sur la texture, jamais sur la disposition :
+   changer de style ne doit pas deplacer ce que l'utilisateur a appris.
+
+   Regle volontairement hors de toute couche : le CSS non couche l'emporte sur
+   les utilitaires de Tailwind. Placee dans @layer base, elle etait battue par
+   la classe shadow-sm du composant Card et le choix de style restait sans
+   effet visible. */
+[data-slot='card'] {
+  box-shadow: var(--ombre-carte);
+  border-width: var(--epaisseur-bordure);
+}

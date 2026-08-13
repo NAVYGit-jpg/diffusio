@@ -24,7 +24,10 @@ export const config = {
   // answered with the sign-in page instead of its bytes: the logo of the
   // sign-in screen itself would be redirected to that very screen. Anything
   // served from `public/` is meant to be readable without a session.
+  // `api/logo` is excluded for the same reason: the organisation's wordmark is
+  // fetched by mail clients, which carry no session. Redirecting them to the
+  // sign-in page would show a broken image in every message.
   matcher: [
-    '/((?!api/auth|api/cron|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|avif)$).*)',
+    '/((?!api/auth|api/cron|api/logo|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|avif)$).*)',
   ],
 };

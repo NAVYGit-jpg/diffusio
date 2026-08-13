@@ -3,6 +3,11 @@ import { Geist, Geist_Mono } from 'next/font/google';
 
 import './globals.css';
 import { FournisseurTheme } from '@/components/layout/fournisseur-theme';
+import {
+  REGLAGES_PAR_DEFAUT,
+  adresseGoogleFonts,
+  variablesCss,
+} from '@/lib/apparence/theme';
 import { prisma } from '@/lib/prisma';
 
 const geistSans = Geist({
@@ -33,7 +38,10 @@ export const metadata: Metadata = {
  * defaults when the database is unreachable: an unstyled application is better
  * than none at all.
  */
-async function couleursOrganisation(): Promise<Record<string, string>> {
+async function apparenceOrganisation(): Promise<{
+  variables: Record<string, string>;
+  police: string;
+}> {
   try {
     const organisation = await prisma.organisation.findFirst({
       where: { deletedAt: null },
@@ -41,22 +49,31 @@ async function couleursOrganisation(): Promise<Record<string, string>> {
         couleurPrimaire: true,
         couleurSecondaire: true,
         couleurAccent: true,
+        couleurFond: true,
+        couleurBouton: true,
+        police: true,
+        styleInterface: true,
+        densiteInterface: true,
         radiusInterface: true,
       },
     });
 
     if (!organisation) {
-      return {};
+      return {
+        variables: variablesCss(REGLAGES_PAR_DEFAUT),
+        police: REGLAGES_PAR_DEFAUT.police,
+      };
     }
 
     return {
-      '--couleur-primaire': organisation.couleurPrimaire,
-      '--couleur-secondaire': organisation.couleurSecondaire,
-      '--couleur-accent': organisation.couleurAccent,
-      '--radius': `${organisation.radiusInterface}rem`,
+      variables: variablesCss(organisation),
+      police: organisation.police,
     };
   } catch {
-    return {};
+    return {
+      variables: variablesCss(REGLAGES_PAR_DEFAUT),
+      police: REGLAGES_PAR_DEFAUT.police,
+    };
   }
 }
 
@@ -65,15 +82,31 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const couleurs = await couleursOrganisation();
+  const { variables, police } = await apparenceOrganisation();
+  const feuillePolice = adresseGoogleFonts(police);
 
   return (
     // `suppressHydrationWarning`: next-themes writes the theme class on <html>
     // before React hydrates, which React would otherwise report as a mismatch.
     <html lang="fr" suppressHydrationWarning>
+      <head>
+        {/* Only when the chosen font is not already bundled: asking Google for
+            a font we ship ourselves would be a needless external request. */}
+        {feuillePolice && (
+          <>
+            <link rel="preconnect" href="https://fonts.googleapis.com" />
+            <link
+              rel="preconnect"
+              href="https://fonts.gstatic.com"
+              crossOrigin=""
+            />
+            <link rel="stylesheet" href={feuillePolice} />
+          </>
+        )}
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-        style={couleurs as React.CSSProperties}
+        style={variables as React.CSSProperties}
       >
         <FournisseurTheme>{children}</FournisseurTheme>
       </body>

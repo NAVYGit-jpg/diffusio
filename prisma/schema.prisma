@@ -66,6 +66,14 @@ enum DensiteInterface {
   CONFORTABLE
 }
 
+// Parti pris visuel d'ensemble (§9.4) : il agit sur les ombres, les bordures et
+// l'intensite des aplats, pas sur la disposition des ecrans.
+enum StyleInterface {
+  MODERNE
+  CLASSIQUE
+  MINIMALISTE
+}
+
 enum StatutCalendrier {
   BROUILLON
   SOUMIS
@@ -128,10 +136,21 @@ model Organisation {
 
   // Identite visuelle — injectee en variables CSS au niveau du layout racine (§9.4)
   logoUrl           String?
+  // Logo televerse, servi par /api/logo. Stocke en base plutot qu'au bucket :
+  // les messageries n'accedent pas a un fichier protege, et un logo pese peu.
+  logoFichier       Bytes?
+  logoMimeType      String?
+  slogan            String           @default("Calendrier de diffusion statistique")
   couleurPrimaire   String           @default("#1e40af")
   couleurSecondaire String           @default("#475569")
   couleurAccent     String           @default("#0891b2")
+  couleurFond       String           @default("#ffffff")
+  // Nul = la couleur des boutons suit la couleur principale.
+  couleurBouton     String?
+  // Vrai : la palette est deduite du logo a chaque televersement.
+  paletteAutomatique Boolean         @default(false)
   police            String           @default("Geist")
+  styleInterface    StyleInterface   @default(MODERNE)
   densiteInterface  DensiteInterface @default(CONFORTABLE)
   radiusInterface   Float            @default(0.5)
 

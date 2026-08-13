@@ -7,7 +7,7 @@ import { prisma } from '@/lib/prisma';
 import { FormulaireApparence } from './formulaire-apparence';
 
 export const metadata: Metadata = {
-  title: 'Logo et couleurs — DIFFUSIO',
+  title: 'Apparence — DIFFUSIO',
 };
 
 export default async function PageApparence() {
@@ -22,28 +22,41 @@ export default async function PageApparence() {
     select: {
       nom: true,
       sigle: true,
+      slogan: true,
       logoUrl: true,
+      logoMimeType: true,
       couleurPrimaire: true,
       couleurSecondaire: true,
       couleurAccent: true,
+      couleurFond: true,
+      couleurBouton: true,
+      paletteAutomatique: true,
+      police: true,
+      styleInterface: true,
       densiteInterface: true,
       radiusInterface: true,
     },
   });
 
   return (
-    <div className="mx-auto max-w-2xl">
+    <div className="mx-auto max-w-4xl">
       <header className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Logo et couleurs
-        </h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Apparence</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Ces réglages s&apos;appliquent à tous les utilisateurs de{' '}
-          {organisation.nom}, immédiatement.
+          Adaptez l&apos;application à la charte graphique de {organisation.nom}.
+          Les changements s&apos;appliquent à tous les utilisateurs dès
+          l&apos;enregistrement.
         </p>
       </header>
 
-      <FormulaireApparence organisation={organisation} />
+      <FormulaireApparence
+        organisation={{
+          ...organisation,
+          // The bytes stay on the server; the form only needs to know whether a
+          // logo exists, and fetches it from /api/logo for the preview.
+          aUnLogoTeleverse: organisation.logoMimeType !== null,
+        }}
+      />
     </div>
   );
 }

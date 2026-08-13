@@ -182,9 +182,35 @@ const apparenceSchema = z.object({
     .string()
     .trim()
     .regex(/^#[0-9a-fA-F]{6}$/, 'Choisissez une couleur valide.'),
+  couleurFond: z
+    .string()
+    .trim()
+    .regex(/^#[0-9a-fA-F]{6}$/, 'Choisissez une couleur valide.'),
+  couleurBouton: z
+    .string()
+    .trim()
+    .transform((valeur) => (valeur === '' ? null : valeur))
+    .nullable()
+    .refine(
+      (valeur) => valeur === null || /^#[0-9a-fA-F]{6}$/.test(valeur),
+      'Choisissez une couleur valide.',
+    ),
+  slogan: z
+    .string()
+    .trim()
+    .min(1, 'Le slogan ne peut pas être vide.')
+    .max(120, 'Le slogan ne peut pas dépasser 120 caractères.'),
+  police: z.string().trim().min(1),
+  styleInterface: z.enum(['MODERNE', 'CLASSIQUE', 'MINIMALISTE']),
+  paletteAutomatique: z.coerce.boolean(),
   densiteInterface: z.enum(['COMPACTE', 'CONFORTABLE']),
   radiusInterface: z.coerce.number().min(0).max(2),
 });
+
+/** Uploaded logo ceiling: a wordmark that heavy is a mistake, not a need. */
+const LOGO_TAILLE_MAX = 1024 * 1024;
+
+const FORMATS_LOGO = ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'];
 
 /**
  * Organisation appearance (§9.4).
@@ -213,6 +239,12 @@ export async function enregistrerApparenceAction(
     couleurPrimaire: donnees.get('couleurPrimaire'),
     couleurSecondaire: donnees.get('couleurSecondaire'),
     couleurAccent: donnees.get('couleurAccent'),
+    couleurFond: donnees.get('couleurFond'),
+    couleurBouton: donnees.get('couleurBouton') ?? '',
+    slogan: donnees.get('slogan'),
+    police: donnees.get('police'),
+    styleInterface: donnees.get('styleInterface'),
+    paletteAutomatique: donnees.get('paletteAutomatique') === 'on',
     densiteInterface: donnees.get('densiteInterface'),
     radiusInterface: donnees.get('radiusInterface'),
   });
@@ -221,9 +253,52 @@ export async function enregistrerApparenceAction(
     return { erreursChamps: analyse.error.flatten().fieldErrors };
   }
 
+  // ---------------------------------------------------------- logo téléversé
+  const fichier = donnees.get('logoFichier');
+  // `Uint8Array<ArrayBuffer>` rather than the looser `Uint8Array`: Prisma 7
+  // refuses a buffer that might be shared across threads.
+  let logo:
+    | { logoFichier: Uint8Array<ArrayBuffer>; logoMimeType: string }
+    | undefined;
+
+  if (fichier instanceof File && fichier.size > 0) {
+    if (!FORMATS_LOGO.includes(fichier.type)) {
+      return {
+        erreursChamps: {
+          logoFichier: ['Formats acceptés : PNG, JPEG, WebP ou SVG.'],
+        },
+      };
+    }
+
+    if (fichier.size > LOGO_TAILLE_MAX) {
+      return {
+        erreursChamps: {
+          logoFichier: [
+            `Ce fichier pèse ${Math.round(fichier.size / 1024)} Ko, au-delà de la limite de ${LOGO_TAILLE_MAX / 1024} Ko.`,
+          ],
+        },
+      };
+    }
+
+    logo = {
+      logoFichier: new Uint8Array(await fichier.arrayBuffer()),
+      logoMimeType: fichier.type,
+    };
+  }
+
+  // Removing the uploaded logo falls back to the DIFFUSIO wordmark rather than
+  // leaving the header empty.
+  const retirerLogo = donnees.get('retirerLogo') === '1';
+
   await prisma.organisation.update({
     where: { id: acteur.organisationId },
-    data: analyse.data,
+    data: {
+      ...analyse.data,
+      ...(logo ?? {}),
+      ...(retirerLogo && !logo
+        ? { logoFichier: null, logoMimeType: null }
+        : {}),
+    },
   });
 
   await prisma.journalAudit.create({

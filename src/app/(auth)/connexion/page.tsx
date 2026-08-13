@@ -1,6 +1,9 @@
 import type { Metadata } from 'next';
 
-import { LogoDiffusio } from '@/components/layout/logo-diffusio';
+import {
+  LogoOrganisation,
+  SloganOrganisation,
+} from '@/components/layout/logo-organisation';
 import { redirect } from 'next/navigation';
 
 import { auth } from '@/auth';
@@ -33,10 +36,8 @@ export default async function PageConnexion({
     <main className="flex min-h-svh items-center justify-center bg-muted/40 p-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center text-center">
-          <LogoDiffusio hauteur={40} priorite />
-          <p className="mt-3 text-sm text-muted-foreground">
-            Calendrier de diffusion statistique
-          </p>
+          <LogoOrganisation hauteur={40} priorite />
+          <SloganOrganisation className="mt-3 text-sm text-muted-foreground" />
         </div>
 
         <FormulaireConnexion
