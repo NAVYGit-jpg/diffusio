@@ -54,7 +54,7 @@ describe('construireLignesExport', () => {
       source({ statut: 'MIS_EN_LIGNE', periodicite: 'TRIMESTRIELLE' }),
     ]);
 
-    expect(ligne.statut).toBe('Mis en ligne');
+    expect(ligne.statut).toBe('Publié');
     expect(ligne.periodicite).toBe('Trimestrielle');
   });
 

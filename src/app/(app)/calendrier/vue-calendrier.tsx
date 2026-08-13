@@ -37,6 +37,11 @@ import {
   previsualiserCalendrierAction,
 } from '@/lib/actions/calendrier';
 import { ANNEES_DISPONIBLES } from '@/lib/calendrier/annees';
+import {
+  classesBadgeStatut,
+  libelleStatut,
+  statutAffiche,
+} from '@/lib/calendrier/statuts';
 import { LIBELLE_PERIODICITE } from '@/lib/catalogue/schemas';
 import { peutModifierLignes } from '@/lib/calendrier/workflow';
 import { BandeauWorkflow } from './bandeau-workflow';
@@ -64,14 +69,6 @@ type LigneCalendrier = DetailLigne & {
 
 const ETAT_INITIAL: EtatCalendrier = {};
 
-const LIBELLE_STATUT: Record<string, string> = {
-  PLANIFIE: 'Planifié',
-  A_VENIR: 'À venir',
-  TELEVERSE: 'Téléversé',
-  MIS_EN_LIGNE: 'Mis en ligne',
-  EN_RETARD: 'En retard',
-  ANNULE: 'Annulé',
-};
 
 /** DD/MM/YYYY from an ISO calendar day, read in UTC to avoid a shift. */
 function formaterDate(iso: string): string {
@@ -679,17 +676,18 @@ export function VueCalendrier({
                       )}
                     </TableCell>
                     <TableCell>
-                      <Badge
-                        variant={
-                          ligne.statut === 'MIS_EN_LIGNE'
-                            ? 'default'
-                            : ligne.statut === 'EN_RETARD'
-                              ? 'destructive'
-                              : 'secondary'
-                        }
-                      >
-                        {LIBELLE_STATUT[ligne.statut] ?? ligne.statut}
-                      </Badge>
+                      {(() => {
+                        const affiche = statutAffiche(ligne);
+
+                        return (
+                          <Badge
+                            variant="outline"
+                            className={classesBadgeStatut(affiche)}
+                          >
+                            {libelleStatut(affiche)}
+                          </Badge>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell className="text-right whitespace-nowrap">
                       <Button

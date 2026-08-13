@@ -62,6 +62,73 @@ async function chargerLigne(ligneId: string, acteur: Awaited<ReturnType<typeof e
   return ligne;
 }
 
+/**
+ * Moves a line to `TELEVERSE` — "Livré" on screen — once everything §6 asks for
+ * is there, and warns the administrators.
+ *
+ * Called both after a file upload and after the indicator values are saved.
+ * Before, only the second path did it: a publication with no affiliated
+ * indicator could receive its PDF and stay "Planifié", because nobody ever ran
+ * the check. The state has to follow what has actually been handed over, not
+ * which button was pressed last.
+ *
+ * Returns whether the line has just changed state, so the caller can say so.
+ */
+async function basculerSiComplet(
+  ligneId: string,
+  acteur: Awaited<ReturnType<typeof exigerActeur>>,
+): Promise<boolean> {
+  const ligne = await chargerLigne(ligneId, acteur);
+
+  if (!ligne || ligne.statut === 'MIS_EN_LIGNE' || ligne.statut === 'ANNULE') {
+    return false;
+  }
+
+  const affilies = ligne.publication?.indicateursAffilies ?? [];
+
+  const valeurs: ValeurSaisie[] = ligne.valeurs.map((valeur) => ({
+    indicateurId: valeur.indicateurId,
+    valeur:
+      valeur.valeur !== null
+        ? String(valeur.valeur)
+        : (valeur.valeurTexte ?? ''),
+    nonDisponible: valeur.nonDisponible,
+    commentaire: valeur.commentaire ?? '',
+  }));
+
+  const completude = evaluerCompletude({
+    elementType: ligne.elementType,
+    fichiers: ligne.fichiers.map((fichier) => ({
+      type: fichier.type as 'PDF' | 'EXCEL' | 'AUTRE',
+    })),
+    indicateursAffilies: affilies,
+    valeurs: ligne.indicateurId ? [] : valeurs,
+    valeurPropre: ligne.indicateurId ? valeurs[0] : undefined,
+  });
+
+  if (!completude.complet || ligne.statut === 'TELEVERSE') {
+    return false;
+  }
+
+  await prisma.ligneCalendrier.update({
+    where: { id: ligne.id },
+    data: { statut: 'TELEVERSE' },
+  });
+
+  await notifier(
+    await encadrementDe(acteur.organisationId, ligne.calendrier.structureId),
+    {
+      type: 'LIVRABLE_TELEVERSE',
+      titre: 'Livré — en attente de confirmation de publication',
+      message: `${ligne.publication?.nom ?? ligne.indicateur?.nom} — ${ligne.libellePeriode} est prêt.`,
+      lien: `/calendrier?structure=${ligne.calendrier.structureId}&annee=${ligne.calendrier.annee}`,
+    },
+    acteur.id,
+  );
+
+  return true;
+}
+
 export async function televerserFichierAction(
   _etatPrecedent: EtatLivrable,
   donnees: FormData,
@@ -162,14 +229,20 @@ export async function televerserFichierAction(
     },
   });
 
+  const bascule = await basculerSiComplet(ligne.id, acteur);
+
   revalidatePath('/calendrier');
+
+  const rappelVersion =
+    version === 1
+      ? ''
+      : ` (version ${version} — les précédentes restent consultables)`;
 
   return {
     succes: true,
-    message:
-      version === 1
-        ? 'Fichier téléversé.'
-        : `Fichier téléversé (version ${version}). Les versions précédentes restent consultables.`,
+    message: bascule
+      ? `Fichier déposé${rappelVersion}. La ligne passe au statut « Livré » et vos administrateurs ont été prévenus.`
+      : `Fichier déposé${rappelVersion}.`,
   };
 }
 
@@ -267,29 +340,15 @@ export async function enregistrerValeursAction(
     };
   }
 
-  if (ligne.statut !== 'TELEVERSE') {
-    await prisma.ligneCalendrier.update({
-      where: { id: ligne.id },
-      data: { statut: 'TELEVERSE' },
-    });
-
-    await notifier(
-      await encadrementDe(acteur.organisationId, ligne.calendrier.structureId),
-      {
-        type: 'LIVRABLE_TELEVERSE',
-        titre: 'En attente de confirmation de mise en ligne',
-        message: `${ligne.publication?.nom ?? ligne.indicateur?.nom} — ${ligne.libellePeriode} est prêt.`,
-        lien: `/calendrier?structure=${ligne.calendrier.structureId}&annee=${ligne.calendrier.annee}`,
-      },
-      acteur.id,
-    );
-  }
+  const bascule = await basculerSiComplet(ligne.id, acteur);
 
   revalidatePath('/calendrier');
 
   return {
     succes: true,
-    message: 'Livrable complet. Vos administrateurs ont été prévenus.',
+    message: bascule
+      ? 'Livrable complet : la ligne passe au statut « Livré ». Vos administrateurs ont été prévenus.'
+      : 'Valeurs enregistrées.',
   };
 }
 

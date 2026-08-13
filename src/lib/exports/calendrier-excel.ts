@@ -1,4 +1,7 @@
 import { formaterJJMMAAAA } from '@/lib/calendrier/dates';
+// The status wording lives in one place, so the workbook and the screen can
+// never drift apart.
+import { libelleStatut } from '@/lib/calendrier/statuts';
 
 /**
  * Shaping of the calendar export (cahier des charges §9.3 and §10).
@@ -30,14 +33,6 @@ export type LigneExport = Record<
   string
 >;
 
-export const LIBELLE_STATUT_EXPORT: Record<string, string> = {
-  PLANIFIE: 'Planifié',
-  A_VENIR: 'À venir',
-  TELEVERSE: 'Téléversé',
-  MIS_EN_LIGNE: 'Mis en ligne',
-  EN_RETARD: 'En retard',
-  ANNULE: 'Annulé',
-};
 
 export const LIBELLE_PERIODICITE_EXPORT: Record<string, string> = {
   MENSUELLE: 'Mensuelle',
@@ -89,7 +84,7 @@ export function construireLignesExport(
     diffusionReelle: source.dateDiffusionReelle
       ? formaterJJMMAAAA(source.dateDiffusionReelle)
       : '—',
-    statut: LIBELLE_STATUT_EXPORT[source.statut] ?? source.statut,
+    statut: libelleStatut(source.statut),
     pointFocal: source.pointFocal ?? '—',
     lien: source.lienPublication ?? '—',
   }));

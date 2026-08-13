@@ -29,6 +29,10 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { formaterJJMMAAAA } from '@/lib/calendrier/dates';
+import {
+  COULEUR_STATUT,
+  LIBELLE_STATUT_PLURIEL,
+} from '@/lib/calendrier/statuts';
 import { exigerActeur } from '@/lib/auth/session';
 import { chargerActiviteRecente } from '@/lib/tableau-bord/donnees';
 import { anneesProposees, lireFiltres } from '@/lib/tableau-bord/filtres-url';
@@ -41,15 +45,6 @@ import { BarresRepartition, BarresStatut, CourbeRespect } from './graphiques';
 
 export const metadata: Metadata = {
   title: 'Tableau de bord — DIFFUSIO',
-};
-
-/** Colours matching the badges used on the calendar screen. */
-const COULEURS_STATUT: Record<string, string> = {
-  Planifiées: 'var(--chart-2)',
-  Téléversées: 'var(--chart-3)',
-  'Mises en ligne': 'oklch(0.62 0.15 155)',
-  'En retard': 'var(--destructive)',
-  Annulées: 'var(--chart-1)',
 };
 
 function tonDuTaux(taux: number | null): 'neutre' | 'positif' | 'alerte' {
@@ -93,13 +88,21 @@ export default async function PageTableauDeBord({
     parStructure,
   } = rapport;
 
-  const partsStatut = [
-    { libelle: 'Planifiées', nombre: nombres.planifiees },
-    { libelle: 'Téléversées', nombre: nombres.televersees },
-    { libelle: 'Mises en ligne', nombre: nombres.misesEnLigne },
-    { libelle: 'En retard', nombre: nombres.enRetard },
-    { libelle: 'Annulées', nombre: nombres.annulees },
-  ].map((part) => ({ ...part, couleur: COULEURS_STATUT[part.libelle] }));
+  // Labels and colours come from the shared status table, so the chart matches
+  // the badges on the calendar screen.
+  const partsStatut = (
+    [
+      { statut: 'PLANIFIE', nombre: nombres.planifiees },
+      { statut: 'TELEVERSE', nombre: nombres.televersees },
+      { statut: 'MIS_EN_LIGNE', nombre: nombres.misesEnLigne },
+      { statut: 'EN_RETARD', nombre: nombres.enRetard },
+      { statut: 'ANNULE', nombre: nombres.annulees },
+    ] as const
+  ).map((part) => ({
+    libelle: LIBELLE_STATUT_PLURIEL[part.statut],
+    nombre: part.nombre,
+    couleur: COULEUR_STATUT[part.statut],
+  }));
 
   const echeancesProches = [...lignes]
     .filter(
@@ -266,13 +269,13 @@ export default async function PageTableauDeBord({
               icone={CalendarClock}
             />
             <CarteIndicateur
-              libelle="Téléversées"
+              libelle="Livrées"
               valeur={nombres.televersees}
-              precision="En attente de confirmation de mise en ligne"
+              precision="En attente de confirmation de publication"
               icone={FileUp}
             />
             <CarteIndicateur
-              libelle="Mises en ligne"
+              libelle="Publiées"
               valeur={nombres.misesEnLigne}
               precision={`${avancement} % du calendrier`}
               icone={Globe2}

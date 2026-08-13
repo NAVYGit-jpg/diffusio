@@ -240,12 +240,12 @@ export function indicateursDuRapport(
       precision: `Calendrier ${rapport.annee}`,
     },
     {
-      libelle: 'Téléversées',
+      libelle: 'Livrées',
       valeur: String(nombres.televersees),
-      precision: 'En attente de confirmation de mise en ligne',
+      precision: 'En attente de confirmation de publication',
     },
     {
-      libelle: 'Mises en ligne',
+      libelle: 'Publiées',
       valeur: String(nombres.misesEnLigne),
       precision: `${avancement} % du calendrier`,
     },

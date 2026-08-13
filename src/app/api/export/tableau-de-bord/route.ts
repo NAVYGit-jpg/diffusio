@@ -2,6 +2,7 @@ import ExcelJS from 'exceljs';
 
 import { auth } from '@/auth';
 import { formaterJJMMAAAA } from '@/lib/calendrier/dates';
+import { LIBELLE_STATUT_PLURIEL } from '@/lib/calendrier/statuts';
 import { prisma } from '@/lib/prisma';
 import { lireFiltres } from '@/lib/tableau-bord/filtres-url';
 import {
@@ -264,11 +265,26 @@ export async function GET(requete: Request): Promise<Response> {
     ligneRepartition,
     'Par statut',
     [
-      { libelle: 'Planifiées', nombre: rapport.nombres.planifiees },
-      { libelle: 'Téléversées', nombre: rapport.nombres.televersees },
-      { libelle: 'Mises en ligne', nombre: rapport.nombres.misesEnLigne },
-      { libelle: 'En retard', nombre: rapport.nombres.enRetard },
-      { libelle: 'Annulées', nombre: rapport.nombres.annulees },
+      {
+        libelle: LIBELLE_STATUT_PLURIEL.PLANIFIE,
+        nombre: rapport.nombres.planifiees,
+      },
+      {
+        libelle: LIBELLE_STATUT_PLURIEL.TELEVERSE,
+        nombre: rapport.nombres.televersees,
+      },
+      {
+        libelle: LIBELLE_STATUT_PLURIEL.MIS_EN_LIGNE,
+        nombre: rapport.nombres.misesEnLigne,
+      },
+      {
+        libelle: LIBELLE_STATUT_PLURIEL.EN_RETARD,
+        nombre: rapport.nombres.enRetard,
+      },
+      {
+        libelle: LIBELLE_STATUT_PLURIEL.ANNULE,
+        nombre: rapport.nombres.annulees,
+      },
     ].filter((part) => part.nombre > 0),
   );
 

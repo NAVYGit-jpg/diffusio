@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { formaterJJMMAAAA } from '@/lib/calendrier/dates';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
@@ -80,6 +81,64 @@ export type DetailLigne = {
 const ETAT_LIVRABLE: EtatLivrable = {};
 const ETAT_MISE_EN_LIGNE: EtatMiseEnLigne = {};
 
+/**
+ * One named upload slot.
+ *
+ * `accept` only guides the file picker. The stored type is derived from the
+ * file itself, so a spreadsheet dropped in the PDF slot is still filed as a
+ * spreadsheet — the slots organise the screen, they do not decide the truth.
+ */
+function DepotFichier({
+  ligneId,
+  action,
+  enCours,
+  identifiant,
+  intitule,
+  precision,
+  accept,
+  depose,
+}: {
+  ligneId: string;
+  action: (donnees: FormData) => void;
+  enCours: boolean;
+  identifiant: string;
+  intitule: string;
+  precision: string;
+  accept: string;
+  depose: boolean;
+}) {
+  return (
+    <form action={action} className="flex flex-wrap items-end gap-2">
+      <input type="hidden" name="ligneId" value={ligneId} />
+      <div className="min-w-48 flex-1 space-y-1.5">
+        <Label htmlFor={identifiant} className="flex items-center gap-2">
+          {intitule}
+          {depose && (
+            <Badge
+              variant="outline"
+              className="border-emerald-300 bg-emerald-100 text-emerald-900 dark:border-emerald-500/40 dark:bg-emerald-500/20 dark:text-emerald-200"
+            >
+              Déposé
+            </Badge>
+          )}
+        </Label>
+        <Input id={identifiant} name="fichier" type="file" accept={accept} required />
+        <p className="text-xs text-muted-foreground">
+          {depose ? 'Déposer à nouveau créera une nouvelle version.' : precision}
+        </p>
+      </div>
+      <Button type="submit" variant="secondary" disabled={enCours}>
+        {enCours ? (
+          <LoaderCircle className="animate-spin" aria-hidden />
+        ) : (
+          <Upload aria-hidden />
+        )}
+        {depose ? 'Remplacer' : 'Déposer'}
+      </Button>
+    </form>
+  );
+}
+
 function formaterTaille(octets: number): string {
   if (octets < 1024) return `${octets} o`;
   if (octets < 1024 * 1024) return `${Math.round(octets / 1024)} Ko`;
@@ -115,6 +174,9 @@ export function DialogueLivrable({
 
   const estAdmin = role === 'ADMIN' || role === 'SUPER_ADMIN';
   const dejaEnLigne = ligne.statut === 'MIS_EN_LIGNE';
+
+  const aUnPdf = ligne.fichiers.some((fichier) => fichier.type === 'PDF');
+  const aUnExcel = ligne.fichiers.some((fichier) => fichier.type === 'EXCEL');
 
   useEffect(() => {
     if (etatFichier.succes) {
@@ -187,7 +249,7 @@ export function DialogueLivrable({
             <DialogTitle>{ligne.nomElement}</DialogTitle>
             <DialogDescription>
               {ligne.libellePeriode} · diffusion prévue le{' '}
-              {ligne.dateDiffusionPrevue}
+              {formaterJJMMAAAA(new Date(ligne.dateDiffusionPrevue))}
             </DialogDescription>
           </DialogHeader>
 
@@ -257,29 +319,36 @@ export function DialogueLivrable({
             )}
 
             {!dejaEnLigne && (
-              <form action={actionFichier} className="flex flex-wrap items-end gap-2">
-                <input type="hidden" name="ligneId" value={ligne.id} />
-                <div className="min-w-48 flex-1 space-y-1.5">
-                  <Label htmlFor={`fichier-${ligne.id}`}>
-                    Ajouter un fichier (.pdf, .xlsx, .xls, .csv — 20 Mo max)
-                  </Label>
-                  <Input
-                    id={`fichier-${ligne.id}`}
-                    name="fichier"
-                    type="file"
-                    accept=".pdf,.xlsx,.xls,.csv"
-                    required
-                  />
-                </div>
-                <Button type="submit" variant="secondary" disabled={televersementEnCours}>
-                  {televersementEnCours ? (
-                    <LoaderCircle className="animate-spin" aria-hidden />
-                  ) : (
-                    <Upload aria-hidden />
-                  )}
-                  Téléverser
-                </Button>
-              </form>
+              // Two named slots rather than one generic picker: a publication
+              // travels with its PDF and, most of the time, the spreadsheet of
+              // its figures. A single "add a file" field never says that.
+              <div className="space-y-3">
+                <DepotFichier
+                  ligneId={ligne.id}
+                  action={actionFichier}
+                  enCours={televersementEnCours}
+                  identifiant={`pdf-${ligne.id}`}
+                  intitule="Fichier PDF de la publication"
+                  precision={
+                    ligne.elementType === 'PUBLICATION'
+                      ? 'Obligatoire — 20 Mo maximum'
+                      : 'Facultatif — 20 Mo maximum'
+                  }
+                  accept=".pdf"
+                  depose={aUnPdf}
+                />
+
+                <DepotFichier
+                  ligneId={ligne.id}
+                  action={actionFichier}
+                  enCours={televersementEnCours}
+                  identifiant={`excel-${ligne.id}`}
+                  intitule="Fichier Excel des données"
+                  precision="Facultatif — .xlsx, .xls ou .csv, 20 Mo maximum"
+                  accept=".xlsx,.xls,.csv"
+                  depose={aUnExcel}
+                />
+              </div>
             )}
           </section>
 
@@ -384,7 +453,7 @@ export function DialogueLivrable({
             {estAdmin && !dejaEnLigne && ligne.statut === 'TELEVERSE' && (
               <Button onClick={ouvrirMiseEnLigne}>
                 <Globe aria-hidden />
-                Mis en ligne
+                Publier
               </Button>
             )}
           </DialogFooter>
@@ -395,7 +464,7 @@ export function DialogueLivrable({
       <Dialog open={modaleMiseEnLigne} onOpenChange={setModaleMiseEnLigne}>
         <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Confirmer la mise en ligne</DialogTitle>
+            <DialogTitle>Confirmer la publication</DialogTitle>
             <DialogDescription>
               Un message sera envoyé au point focal, avec les adresses ci-dessous
               en copie. La liste sera mémorisée pour les périodes suivantes.

@@ -170,18 +170,18 @@ function observationAvancement(donnees: DonneesCommentaire): Observation {
     compteurs.televersees > 0
       ? ` ${accorder(
           compteurs.televersees,
-          'livrable attend',
-          'livrables attendent',
-        )} la confirmation de mise en ligne.`
+          'livrable a été remis et attend',
+          'livrables ont été remis et attendent',
+        )} la confirmation de publication.`
       : '';
 
   return {
     ton: avancement >= 75 ? 'positif' : 'neutre',
     texte: `L’année est réalisée à ${avancement} % : ${accorder(
       compteurs.misesEnLigne,
-      'ligne a été mise',
-      'lignes ont été mises',
-    )} en ligne.${attente}`,
+      'ligne a été publiée',
+      'lignes ont été publiées',
+    )}.${attente}`,
   };
 }
 

@@ -280,6 +280,8 @@ describe('avancement', () => {
       },
     });
 
-    expect(resultat).toContain('3 livrables attendent la confirmation');
+    expect(resultat).toContain(
+      '3 livrables ont été remis et attendent la confirmation de publication',
+    );
   });
 });
