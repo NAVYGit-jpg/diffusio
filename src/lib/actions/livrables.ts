@@ -13,7 +13,11 @@ import {
   validerFichier,
 } from '@/lib/livrables/regles';
 import { supprimer, televerser, urlSignee } from '@/lib/livrables/stockage';
-import { encadrementDe, notifier } from '@/lib/notifications/destinataires';
+import {
+  encadrementDe,
+  notifier,
+  pointsFocauxDe,
+} from '@/lib/notifications/destinataires';
 import { prisma } from '@/lib/prisma';
 
 export type EtatLivrable = {
@@ -129,40 +133,26 @@ async function basculerSiComplet(
   return true;
 }
 
-export async function televerserFichierAction(
-  _etatPrecedent: EtatLivrable,
-  donnees: FormData,
-): Promise<EtatLivrable> {
-  const acteur = await exigerActeur();
-  const ligneId = String(donnees.get('ligneId') ?? '');
-  const ligne = await chargerLigne(ligneId, acteur);
+/** Files the deposit form may carry, in the order they are shown. */
+const EMPLACEMENTS = [
+  { champ: 'fichierPdf', libelle: 'PDF' },
+  { champ: 'fichierExcel', libelle: 'Excel' },
+] as const;
 
-  if (!ligne) {
-    return { erreur: "Cette ligne de calendrier n'existe plus." };
-  }
+type FichierDepose = { nom: string; type: string; version: number };
 
-  try {
-    assertPermission(acteur, 'livrable:televerser', ligne.calendrier.structureId);
-  } catch (erreur) {
-    if (erreur instanceof PermissionRefusee) {
-      return { erreur: erreur.message };
-    }
-    throw erreur;
-  }
-
-  if (ligne.statut === 'MIS_EN_LIGNE') {
-    return {
-      erreur:
-        'Cette publication est déjà en ligne : son contenu ne peut plus être remplacé.',
-    };
-  }
-
-  const fichier = donnees.get('fichier');
-
-  if (!(fichier instanceof File)) {
-    return { erreur: 'Choisissez un fichier.' };
-  }
-
+/**
+ * Stores one uploaded file and records it.
+ *
+ * The bucket write happens first: if the row cannot then be created, the object
+ * is removed again, because nothing would ever reference it.
+ */
+async function deposerUnFichier(
+  fichier: File,
+  ligne: NonNullable<Awaited<ReturnType<typeof chargerLigne>>>,
+  acteur: Awaited<ReturnType<typeof exigerActeur>>,
+  dejaDeposes: readonly { type: string; version: number }[],
+): Promise<{ depose?: FichierDepose; erreur?: string }> {
   const erreurs = validerFichier(
     { nom: fichier.name, taille: fichier.size },
     tailleMax(),
@@ -174,7 +164,7 @@ export async function televerserFichierAction(
 
   const type = typeDeFichier(fichier.name)!;
   const version = prochaineVersion(
-    ligne.fichiers.map((existant) => ({
+    dejaDeposes.map((existant) => ({
       type: existant.type as 'PDF' | 'EXCEL' | 'AUTRE',
       version: existant.version,
     })),
@@ -212,8 +202,6 @@ export async function televerserFichierAction(
       },
     });
   } catch (erreur) {
-    // The object is already in the bucket; without its row nothing would ever
-    // reference it again.
     await supprimer(chemin);
     throw erreur;
   }
@@ -229,28 +217,21 @@ export async function televerserFichierAction(
     },
   });
 
-  const bascule = await basculerSiComplet(ligne.id, acteur);
-
-  revalidatePath('/calendrier');
-
-  const rappelVersion =
-    version === 1
-      ? ''
-      : ` (version ${version} — les précédentes restent consultables)`;
-
-  return {
-    succes: true,
-    message: bascule
-      ? `Fichier déposé${rappelVersion}. La ligne passe au statut « Livré » et vos administrateurs ont été prévenus.`
-      : `Fichier déposé${rappelVersion}.`,
-  };
+  return { depose: { nom: fichier.name, type, version } };
 }
 
 /**
- * Saves the indicator values of a line and, when everything required is there,
- * moves it to `TELEVERSE` and warns the administrators (§6).
+ * Saves everything the deliverable screen holds, in one go (§6).
+ *
+ * Files and indicator values used to travel through two separate actions, so a
+ * user had to press one button per file and another for the values — and could
+ * leave with a file chosen but never sent. One form, one button, one save.
+ *
+ * Order matters: the files are stored first, so the completeness check that
+ * follows sees them. Getting it the other way round would leave a line complete
+ * in fact but still "Planifié" until the next save.
  */
-export async function enregistrerValeursAction(
+export async function enregistrerLivrableAction(
   _etatPrecedent: EtatLivrable,
   donnees: FormData,
 ): Promise<EtatLivrable> {
@@ -272,9 +253,48 @@ export async function enregistrerValeursAction(
   }
 
   if (ligne.statut === 'MIS_EN_LIGNE') {
-    return { erreur: 'Cette publication est déjà en ligne.' };
+    return {
+      erreur:
+        'Cette publication est déjà en ligne : son contenu ne peut plus être remplacé.',
+    };
   }
 
+  // ------------------------------------------------------------- fichiers
+  const deposes: FichierDepose[] = [];
+  // Versions are numbered per type, so each deposit has to see the previous
+  // ones — including a file stored a moment ago in this same call.
+  const connus = ligne.fichiers.map((fichier) => ({
+    type: fichier.type as string,
+    version: fichier.version,
+  }));
+
+  for (const emplacement of EMPLACEMENTS) {
+    const fichier = donnees.get(emplacement.champ);
+
+    // An untouched file input still submits an empty File; it is not an error,
+    // simply nothing to store.
+    if (!(fichier instanceof File) || fichier.size === 0) {
+      continue;
+    }
+
+    const resultat = await deposerUnFichier(fichier, ligne, acteur, connus);
+
+    if (resultat.erreur) {
+      return {
+        erreur: `Fichier ${emplacement.libelle} : ${resultat.erreur}`,
+      };
+    }
+
+    if (resultat.depose) {
+      deposes.push(resultat.depose);
+      connus.push({
+        type: resultat.depose.type,
+        version: resultat.depose.version,
+      });
+    }
+  }
+
+  // -------------------------------------------------------------- valeurs
   const affilies = ligne.publication?.indicateursAffilies ?? [];
   const cibles = ligne.indicateurId
     ? [{ id: ligne.indicateurId, nom: ligne.indicateur?.nom ?? '' }]
@@ -320,9 +340,19 @@ export async function enregistrerValeursAction(
     });
   }
 
+  // -------------------------------------------------------- notifications
+  if (deposes.length > 0) {
+    await prevenirDuDepot(ligne, acteur, deposes);
+  }
+
+  const bascule = await basculerSiComplet(ligne.id, acteur);
+
+  revalidatePath('/calendrier');
+
+  // ------------------------------------------------------------- réponse
   const completude = evaluerCompletude({
     elementType: ligne.elementType,
-    fichiers: ligne.fichiers.map((fichier) => ({
+    fichiers: connus.map((fichier) => ({
       type: fichier.type as 'PDF' | 'EXCEL' | 'AUTRE',
     })),
     indicateursAffilies: affilies,
@@ -330,26 +360,57 @@ export async function enregistrerValeursAction(
     valeurPropre: ligne.indicateurId ? saisies[0] : undefined,
   });
 
-  if (!completude.complet) {
-    revalidatePath('/calendrier');
+  const resume =
+    deposes.length === 0
+      ? 'Modifications enregistrées.'
+      : `${deposes.length === 1 ? 'Fichier déposé' : `${deposes.length} fichiers déposés`} et modifications enregistrées.`;
 
+  if (bascule) {
     return {
       succes: true,
-      message: 'Valeurs enregistrées.',
-      messagesCompletude: completude.messages,
+      message: `${resume} La ligne passe au statut « Livré » et les personnes concernées ont été prévenues.`,
     };
   }
 
-  const bascule = await basculerSiComplet(ligne.id, acteur);
-
-  revalidatePath('/calendrier');
-
   return {
     succes: true,
-    message: bascule
-      ? 'Livrable complet : la ligne passe au statut « Livré ». Vos administrateurs ont été prévenus.'
-      : 'Valeurs enregistrées.',
+    message: resume,
+    messagesCompletude: completude.complet ? undefined : completude.messages,
   };
+}
+
+/**
+ * Tells everyone concerned that a file has just been deposited (§8).
+ *
+ * "Concerned" means the administrators supervising the structure **and** the
+ * other points focaux of that structure: a deputy who does not know the titular
+ * has already filed the report will file it a second time. The author is left
+ * out by `notifier` — being told about one's own action is noise.
+ */
+async function prevenirDuDepot(
+  ligne: NonNullable<Awaited<ReturnType<typeof chargerLigne>>>,
+  acteur: Awaited<ReturnType<typeof exigerActeur>>,
+  deposes: readonly FichierDepose[],
+): Promise<void> {
+  const [encadrement, pointsFocaux] = await Promise.all([
+    encadrementDe(acteur.organisationId, ligne.calendrier.structureId),
+    pointsFocauxDe(acteur.organisationId, ligne.calendrier.structureId),
+  ]);
+
+  const nomElement = ligne.publication?.nom ?? ligne.indicateur?.nom ?? 'Élément';
+  const liste = deposes.map((fichier) => fichier.nom).join(', ');
+
+  await notifier(
+    [...encadrement, ...pointsFocaux],
+    {
+      type: 'LIVRABLE_TELEVERSE',
+      titre:
+        deposes.length === 1 ? 'Nouveau fichier déposé' : 'Nouveaux fichiers déposés',
+      message: `${acteur.nomComplet} a déposé ${liste} pour ${nomElement} — ${ligne.libellePeriode}.`,
+      lien: `/calendrier?structure=${ligne.calendrier.structureId}&annee=${ligne.calendrier.annee}`,
+    },
+    acteur.id,
+  );
 }
 
 /** Short-lived download link for one file (§6). */

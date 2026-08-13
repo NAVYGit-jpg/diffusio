@@ -8,6 +8,7 @@ import {
   FileText,
   Globe,
   LoaderCircle,
+  Save,
   Upload,
 } from 'lucide-react';
 import { useActionState, useEffect, useState, useTransition } from 'react';
@@ -32,9 +33,8 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import {
   type EtatLivrable,
-  enregistrerValeursAction,
+  enregistrerLivrableAction,
   obtenirLienFichierAction,
-  televerserFichierAction,
 } from '@/lib/actions/livrables';
 import {
   type EtatMiseEnLigne,
@@ -82,60 +82,52 @@ const ETAT_LIVRABLE: EtatLivrable = {};
 const ETAT_MISE_EN_LIGNE: EtatMiseEnLigne = {};
 
 /**
- * One named upload slot.
+ * One named upload slot inside the single deliverable form.
+ *
+ * Not a form of its own: the file travels with the rest when the user presses
+ * "Enregistrer". The field is never `required` — somebody correcting a value on
+ * a line whose PDF is already stored must not be forced to pick it again.
  *
  * `accept` only guides the file picker. The stored type is derived from the
  * file itself, so a spreadsheet dropped in the PDF slot is still filed as a
  * spreadsheet — the slots organise the screen, they do not decide the truth.
  */
 function DepotFichier({
-  ligneId,
-  action,
-  enCours,
   identifiant,
+  champ,
   intitule,
   precision,
   accept,
   depose,
 }: {
-  ligneId: string;
-  action: (donnees: FormData) => void;
-  enCours: boolean;
   identifiant: string;
+  champ: string;
   intitule: string;
   precision: string;
   accept: string;
   depose: boolean;
 }) {
   return (
-    <form action={action} className="flex flex-wrap items-end gap-2">
-      <input type="hidden" name="ligneId" value={ligneId} />
-      <div className="min-w-48 flex-1 space-y-1.5">
-        <Label htmlFor={identifiant} className="flex items-center gap-2">
-          {intitule}
-          {depose && (
-            <Badge
-              variant="outline"
-              className="border-emerald-300 bg-emerald-100 text-emerald-900 dark:border-emerald-500/40 dark:bg-emerald-500/20 dark:text-emerald-200"
-            >
-              Déposé
-            </Badge>
-          )}
-        </Label>
-        <Input id={identifiant} name="fichier" type="file" accept={accept} required />
-        <p className="text-xs text-muted-foreground">
-          {depose ? 'Déposer à nouveau créera une nouvelle version.' : precision}
-        </p>
-      </div>
-      <Button type="submit" variant="secondary" disabled={enCours}>
-        {enCours ? (
-          <LoaderCircle className="animate-spin" aria-hidden />
-        ) : (
-          <Upload aria-hidden />
+    <div className="space-y-1.5">
+      <Label htmlFor={identifiant} className="flex items-center gap-2">
+        <Upload className="size-4 text-muted-foreground" aria-hidden />
+        {intitule}
+        {depose && (
+          <Badge
+            variant="outline"
+            className="border-emerald-300 bg-emerald-100 text-emerald-900 dark:border-emerald-500/40 dark:bg-emerald-500/20 dark:text-emerald-200"
+          >
+            Déposé
+          </Badge>
         )}
-        {depose ? 'Remplacer' : 'Déposer'}
-      </Button>
-    </form>
+      </Label>
+      <Input id={identifiant} name={champ} type="file" accept={accept} />
+      <p className="text-xs text-muted-foreground">
+        {depose
+          ? 'Choisir un nouveau fichier créera une version ; l’ancienne reste consultable.'
+          : precision}
+      </p>
+    </div>
   );
 }
 
@@ -156,12 +148,9 @@ export function DialogueLivrable({
   ouvert: boolean;
   onOuvertChange: (ouvert: boolean) => void;
 }) {
-  const [etatFichier, actionFichier, televersementEnCours] = useActionState(
-    televerserFichierAction,
-    ETAT_LIVRABLE,
-  );
-  const [etatValeurs, actionValeurs, valeursEnCours] = useActionState(
-    enregistrerValeursAction,
+  // One action for the whole screen: files and values are saved together.
+  const [etatLivrable, actionLivrable, enregistrementEnCours] = useActionState(
+    enregistrerLivrableAction,
     ETAT_LIVRABLE,
   );
   const [etatMiseEnLigne, actionMiseEnLigne, miseEnLigneEnCours] = useActionState(
@@ -179,22 +168,13 @@ export function DialogueLivrable({
   const aUnExcel = ligne.fichiers.some((fichier) => fichier.type === 'EXCEL');
 
   useEffect(() => {
-    if (etatFichier.succes) {
-      toast.success(etatFichier.message ?? 'Fichier téléversé.');
+    if (etatLivrable.succes) {
+      toast.success(etatLivrable.message ?? 'Modifications enregistrées.');
     }
-    if (etatFichier.erreur) {
-      toast.error(etatFichier.erreur);
+    if (etatLivrable.erreur) {
+      toast.error(etatLivrable.erreur);
     }
-  }, [etatFichier]);
-
-  useEffect(() => {
-    if (etatValeurs.succes) {
-      toast.success(etatValeurs.message ?? 'Enregistré.');
-    }
-    if (etatValeurs.erreur) {
-      toast.error(etatValeurs.erreur);
-    }
-  }, [etatValeurs]);
+  }, [etatLivrable]);
 
   useEffect(() => {
     if (etatMiseEnLigne.succes) {
@@ -276,110 +256,113 @@ export function DialogueLivrable({
             </Alert>
           )}
 
-          {/* ---------------------------------------------------- fichiers */}
-          <section className="space-y-3">
-            <h3 className="font-medium">Fichiers</h3>
+          {/* Un seul formulaire pour tout l'écran : fichiers et valeurs
+              partent ensemble, avec un unique bouton d'enregistrement. */}
+          <form action={actionLivrable} className="space-y-4">
+            <input type="hidden" name="ligneId" value={ligne.id} />
 
-            {ligne.fichiers.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                Aucun fichier déposé.
-                {ligne.elementType === 'PUBLICATION' &&
-                  ' Le PDF de la publication est obligatoire.'}
-              </p>
-            ) : (
-              <ul className="space-y-1">
-                {ligne.fichiers.map((fichier) => (
-                  <li
-                    key={fichier.id}
-                    className="flex items-center justify-between gap-2 rounded-md border p-2 text-sm"
-                  >
-                    <span className="flex min-w-0 items-center gap-2">
-                      <FileText
-                        className="size-4 shrink-0 text-muted-foreground"
-                        aria-hidden
-                      />
-                      <span className="truncate">{fichier.nomOriginal}</span>
-                      <Badge variant="outline">v{fichier.version}</Badge>
-                      <span className="shrink-0 text-xs text-muted-foreground">
-                        {formaterTaille(fichier.tailleOctets)}
-                      </span>
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      disabled={telechargementEnCours}
-                      onClick={() => telecharger(fichier.id)}
-                      aria-label={`Télécharger ${fichier.nomOriginal}`}
+            {etatLivrable.messagesCompletude &&
+              etatLivrable.messagesCompletude.length > 0 && (
+                <Alert variant="destructive">
+                  <CircleAlert aria-hidden />
+                  <AlertDescription>
+                    <p className="mb-1">
+                      Enregistré, mais il manque encore ceci pour que la ligne
+                      passe au statut « Livré » :
+                    </p>
+                    <ul className="space-y-0.5">
+                      {etatLivrable.messagesCompletude.map((message) => (
+                        <li key={message}>· {message}</li>
+                      ))}
+                    </ul>
+                  </AlertDescription>
+                </Alert>
+              )}
+
+            {/* -------------------------------------------------- fichiers */}
+            <section className="space-y-3">
+              <h3 className="font-medium">Fichiers</h3>
+
+              {ligne.fichiers.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Aucun fichier déposé.
+                  {ligne.elementType === 'PUBLICATION' &&
+                    ' Le PDF de la publication est obligatoire.'}
+                </p>
+              ) : (
+                <ul className="space-y-1">
+                  {ligne.fichiers.map((fichier) => (
+                    <li
+                      key={fichier.id}
+                      className="flex items-center justify-between gap-2 rounded-md border p-2 text-sm"
                     >
-                      <Download aria-hidden />
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            )}
+                      <span className="flex min-w-0 items-center gap-2">
+                        <FileText
+                          className="size-4 shrink-0 text-muted-foreground"
+                          aria-hidden
+                        />
+                        <span className="truncate">{fichier.nomOriginal}</span>
+                        <Badge variant="outline">v{fichier.version}</Badge>
+                        <span className="shrink-0 text-xs text-muted-foreground">
+                          {formaterTaille(fichier.tailleOctets)}
+                        </span>
+                      </span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        disabled={telechargementEnCours}
+                        onClick={() => telecharger(fichier.id)}
+                        aria-label={`Télécharger ${fichier.nomOriginal}`}
+                      >
+                        <Download aria-hidden />
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              )}
 
-            {!dejaEnLigne && (
-              // Two named slots rather than one generic picker: a publication
-              // travels with its PDF and, most of the time, the spreadsheet of
-              // its figures. A single "add a file" field never says that.
-              <div className="space-y-3">
-                <DepotFichier
-                  ligneId={ligne.id}
-                  action={actionFichier}
-                  enCours={televersementEnCours}
-                  identifiant={`pdf-${ligne.id}`}
-                  intitule="Fichier PDF de la publication"
-                  precision={
-                    ligne.elementType === 'PUBLICATION'
-                      ? 'Obligatoire — 20 Mo maximum'
-                      : 'Facultatif — 20 Mo maximum'
-                  }
-                  accept=".pdf"
-                  depose={aUnPdf}
-                />
+              {!dejaEnLigne && (
+                // Two named slots rather than one generic picker: a publication
+                // travels with its PDF and, most of the time, the spreadsheet of
+                // its figures. A single "add a file" field never says that.
+                <div className="space-y-3">
+                  <DepotFichier
+                    identifiant={`pdf-${ligne.id}`}
+                    champ="fichierPdf"
+                    intitule="Fichier PDF de la publication"
+                    precision={
+                      ligne.elementType === 'PUBLICATION'
+                        ? 'Obligatoire — 20 Mo maximum'
+                        : 'Facultatif — 20 Mo maximum'
+                    }
+                    accept=".pdf"
+                    depose={aUnPdf}
+                  />
 
-                <DepotFichier
-                  ligneId={ligne.id}
-                  action={actionFichier}
-                  enCours={televersementEnCours}
-                  identifiant={`excel-${ligne.id}`}
-                  intitule="Fichier Excel des données"
-                  precision="Facultatif — .xlsx, .xls ou .csv, 20 Mo maximum"
-                  accept=".xlsx,.xls,.csv"
-                  depose={aUnExcel}
-                />
-              </div>
-            )}
-          </section>
+                  <DepotFichier
+                    identifiant={`excel-${ligne.id}`}
+                    champ="fichierExcel"
+                    intitule="Fichier Excel des données"
+                    precision="Facultatif — .xlsx, .xls ou .csv, 20 Mo maximum"
+                    accept=".xlsx,.xls,.csv"
+                    depose={aUnExcel}
+                  />
+                </div>
+              )}
+            </section>
 
-          {/* ----------------------------------------------------- valeurs */}
-          {ligne.indicateursASaisir.length > 0 && (
-            <>
-              <Separator />
+            {/* --------------------------------------------------- valeurs */}
+            {ligne.indicateursASaisir.length > 0 && (
+              <>
+                <Separator />
 
-              <section className="space-y-3">
-                <h3 className="font-medium">
-                  {ligne.elementType === 'PUBLICATION'
-                    ? 'Valeurs des indicateurs rattachés'
-                    : 'Valeur de l’indicateur'}
-                </h3>
-
-                {etatValeurs.messagesCompletude &&
-                  etatValeurs.messagesCompletude.length > 0 && (
-                    <Alert variant="destructive">
-                      <CircleAlert aria-hidden />
-                      <AlertDescription>
-                        <ul className="space-y-0.5">
-                          {etatValeurs.messagesCompletude.map((message) => (
-                            <li key={message}>· {message}</li>
-                          ))}
-                        </ul>
-                      </AlertDescription>
-                    </Alert>
-                  )}
-
-                <form action={actionValeurs} className="space-y-4">
-                  <input type="hidden" name="ligneId" value={ligne.id} />
+                <section className="space-y-3">
+                  <h3 className="font-medium">
+                    {ligne.elementType === 'PUBLICATION'
+                      ? 'Valeurs des indicateurs rattachés'
+                      : 'Valeur de l’indicateur'}
+                  </h3>
 
                   {ligne.indicateursASaisir.map((indicateur) => {
                     const existante = valeurDe(indicateur.id);
@@ -432,31 +415,40 @@ export function DialogueLivrable({
                     );
                   })}
 
-                  {!dejaEnLigne && (
-                    <Button type="submit" variant="secondary" disabled={valeursEnCours}>
-                      {valeursEnCours && (
-                        <LoaderCircle className="animate-spin" aria-hidden />
-                      )}
-                      Enregistrer les valeurs
-                    </Button>
-                  )}
-                </form>
-              </section>
-            </>
-          )}
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => onOuvertChange(false)}>
-              Fermer
-            </Button>
-
-            {estAdmin && !dejaEnLigne && ligne.statut === 'TELEVERSE' && (
-              <Button onClick={ouvrirMiseEnLigne}>
-                <Globe aria-hidden />
-                Publier
-              </Button>
+                </section>
+              </>
             )}
-          </DialogFooter>
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOuvertChange(false)}
+              >
+                Fermer
+              </Button>
+
+              {estAdmin && !dejaEnLigne && ligne.statut === 'TELEVERSE' && (
+                <Button type="button" onClick={ouvrirMiseEnLigne}>
+                  <Globe aria-hidden />
+                  Publier
+                </Button>
+              )}
+
+              {/* L'unique bouton d'enregistrement de l'écran : il envoie les
+                  fichiers choisis et les valeurs saisies en une seule fois. */}
+              {!dejaEnLigne && (
+                <Button type="submit" disabled={enregistrementEnCours}>
+                  {enregistrementEnCours ? (
+                    <LoaderCircle className="animate-spin" aria-hidden />
+                  ) : (
+                    <Save aria-hidden />
+                  )}
+                  Enregistrer
+                </Button>
+              )}
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
