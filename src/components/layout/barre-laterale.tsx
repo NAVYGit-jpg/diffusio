@@ -11,6 +11,7 @@ import {
   PackageCheck,
   TriangleAlert,
   Users,
+  Users2,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -73,6 +74,12 @@ const ENTREES: Entree[] = [
     href: '/retards',
     libelle: 'Publications en retard',
     icone: TriangleAlert,
+    roles: ['SUPER_ADMIN', 'ADMIN', 'POINT_FOCAL'],
+  },
+  {
+    href: '/equipe',
+    libelle: 'Équipe',
+    icone: Users2,
     roles: ['SUPER_ADMIN', 'ADMIN', 'POINT_FOCAL'],
   },
   {

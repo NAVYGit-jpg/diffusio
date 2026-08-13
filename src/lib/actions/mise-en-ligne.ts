@@ -199,7 +199,14 @@ export async function mettreEnLigneAction(
   };
 }
 
-/** Pre-fills the address list from the previous period of the same element (§7). */
+/**
+ * Pre-fills the address list of a release (§7).
+ *
+ * Three sources, merged: the team of the publishing structure, the
+ * organisation-wide team, and whatever was actually sent for the previous
+ * period of the same element. The last one is kept because an administrator may
+ * have added a one-off recipient that belongs to no team.
+ */
 export async function listeDiffusionExistanteAction(
   ligneId: string,
 ): Promise<{ emails: string[] }> {
@@ -207,22 +214,44 @@ export async function listeDiffusionExistanteAction(
 
   const ligne = await prisma.ligneCalendrier.findFirst({
     where: { id: ligneId, calendrier: { organisationId: acteur.organisationId } },
-    select: { elementType: true, publicationId: true, indicateurId: true },
+    select: {
+      elementType: true,
+      publicationId: true,
+      indicateurId: true,
+      calendrier: { select: { structureId: true } },
+    },
   });
 
   if (!ligne) {
     return { emails: [] };
   }
 
-  const liste = await prisma.listeDiffusionEmail.findUnique({
-    where: {
-      elementType_elementId: {
-        elementType: ligne.elementType,
-        elementId: (ligne.publicationId ?? ligne.indicateurId)!,
+  const [liste, equipe] = await Promise.all([
+    prisma.listeDiffusionEmail.findUnique({
+      where: {
+        elementType_elementId: {
+          elementType: ligne.elementType,
+          elementId: (ligne.publicationId ?? ligne.indicateurId)!,
+        },
       },
-    },
-    select: { emails: true },
-  });
+      select: { emails: true },
+    }),
+    prisma.membreEquipe.findMany({
+      where: {
+        organisationId: acteur.organisationId,
+        deletedAt: null,
+        actif: true,
+        // `null` is the organisation-wide team: informed of every release.
+        OR: [{ structureId: ligne.calendrier.structureId }, { structureId: null }],
+      },
+      select: { email: true },
+    }),
+  ]);
 
-  return { emails: liste?.emails ?? [] };
+  const emails = [
+    ...equipe.map((membre) => membre.email),
+    ...(liste?.emails ?? []),
+  ].map((email) => email.trim().toLowerCase());
+
+  return { emails: [...new Set(emails)] };
 }

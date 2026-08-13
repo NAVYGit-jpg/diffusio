@@ -165,6 +165,7 @@ model Organisation {
   conversations  Conversation[]
   journauxAudit  JournalAudit[]
   modelesEmail   ModeleEmail[]
+  membresEquipe  MembreEquipe[]
 
   @@map("organisations")
 }
@@ -198,6 +199,7 @@ model Structure {
   indicateurs     Indicateur[]
   calendriers     Calendrier[]
   conversations   Conversation[]
+  membresEquipe   MembreEquipe[]
 
   @@unique([organisationId, code])
   @@index([organisationId, actif])
@@ -661,6 +663,37 @@ model ListeDiffusionEmail {
 
   @@unique([elementType, elementId])
   @@map("listes_diffusion_email")
+}
+
+// Equipe : personnes prevenues de la mise en ligne d'une publication (§7).
+//
+// `structureId` nul designe l'equipe de l'organisation, tenue par le super
+// admin : ses membres sont prevenus de toute mise en ligne, quelle que soit la
+// structure. Renseigne, il designe l'equipe d'une structure, tenue par ses
+// points focaux.
+model MembreEquipe {
+  id             String  @id @default(cuid())
+  organisationId String
+  structureId    String?
+
+  nom      String
+  fonction String
+  email    String
+
+  actif Boolean @default(true)
+
+  creePar String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  structure    Structure?   @relation(fields: [structureId], references: [id], onDelete: Cascade)
+
+  @@index([organisationId, structureId, actif])
+  @@index([email])
+  @@map("membres_equipe")
 }
 
 // Idempotence des envois automatiques (§8.4) : aucun doublon, jamais
