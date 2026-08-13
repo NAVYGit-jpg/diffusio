@@ -38,6 +38,7 @@ export default async function PageImminentes() {
         aujourdhui,
       ),
       incomplet: false,
+      publieeEnRetard: false,
     }));
 
   const structuresDistinctes = new Set(lignes.map((ligne) => ligne.structureId));

@@ -1,7 +1,13 @@
 'use client';
 
 import type { Role } from '@prisma/client';
-import { FileSpreadsheet, FileText, Pencil } from 'lucide-react';
+import {
+  ExternalLink,
+  FileSpreadsheet,
+  FileText,
+  Globe,
+  Pencil,
+} from 'lucide-react';
 import { useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
@@ -22,6 +28,10 @@ import {
 } from '@/lib/calendrier/statuts';
 import { libelleEcheance, urgence } from '@/lib/calendrier/selection';
 import { DialogueLivrable, type DetailLigne } from '../calendrier/dialogue-livrable';
+import {
+  DialoguePublication,
+  type MembreCoordination,
+} from './dialogue-publication';
 import { cn } from '@/lib/utils';
 
 /**
@@ -40,6 +50,10 @@ export type LigneListe = DetailLigne & {
   joursRestants: number;
   /** Something has been handed over, but not everything §6 requires. */
   incomplet: boolean;
+  /** ISO day of the confirmed release, `null` while nothing is public. */
+  dateDiffusionReelle: string | null;
+  /** Published, but after the announced date (§10). */
+  publieeEnRetard: boolean;
 };
 
 const COULEURS_URGENCE: Record<string, string> = {
@@ -54,14 +68,21 @@ export function ListeLivrables({
   role,
   colonneEcheance,
   afficherStructure,
+  membresCoordination = [],
 }: {
   lignes: LigneListe[];
   role: Role;
   /** "imminente" shows the countdown, "chargee" shows the files held. */
   colonneEcheance: 'imminente' | 'chargee';
   afficherStructure: boolean;
+  /** Organisation-wide team offered when publishing. */
+  membresCoordination?: MembreCoordination[];
 }) {
   const [ligneOuverte, setLigneOuverte] = useState<LigneListe | null>(null);
+  const [ligneAPublier, setLigneAPublier] = useState<LigneListe | null>(null);
+
+  const estAdmin = role === 'ADMIN' || role === 'SUPER_ADMIN';
+  const afficherPublication = colonneEcheance === 'chargee';
 
   return (
     <>
@@ -76,6 +97,8 @@ export function ListeLivrables({
               <TableHead>
                 {colonneEcheance === 'imminente' ? 'Échéance' : 'Fichiers'}
               </TableHead>
+              {afficherPublication && <TableHead>Publié le</TableHead>}
+              {afficherPublication && <TableHead>Lien</TableHead>}
               <TableHead>Statut</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -117,6 +140,34 @@ export function ListeLivrables({
                   )}
                 </TableCell>
 
+                {afficherPublication && (
+                  <TableCell className="text-sm tabular-nums">
+                    {ligne.dateDiffusionReelle ? (
+                      formaterJJMMAAAA(new Date(ligne.dateDiffusionReelle))
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                )}
+
+                {afficherPublication && (
+                  <TableCell className="max-w-40 text-sm">
+                    {ligne.lienPublication ? (
+                      <a
+                        href={ligne.lienPublication}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1 underline underline-offset-4"
+                      >
+                        <ExternalLink className="size-3.5 shrink-0" aria-hidden />
+                        <span className="truncate">Ouvrir</span>
+                      </a>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                )}
+
                 <TableCell>
                   {/* Même règle que le calendrier et le tableau de bord : le
                       retard se lit sur les dates, pas sur un statut écrit la
@@ -137,10 +188,30 @@ export function ListeLivrables({
                         Incomplet
                       </Badge>
                     )}
+                    {ligne.publieeEnRetard && (
+                      <Badge
+                        variant="outline"
+                        className="border-orange-300 bg-orange-50 text-orange-800 dark:border-orange-500/40 dark:bg-orange-500/10 dark:text-orange-300"
+                      >
+                        Publié en retard
+                      </Badge>
+                    )}
                   </span>
                 </TableCell>
 
-                <TableCell className="text-right">
+                <TableCell className="text-right whitespace-nowrap">
+                  {afficherPublication &&
+                    estAdmin &&
+                    ligne.statut !== 'MIS_EN_LIGNE' && (
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => setLigneAPublier(ligne)}
+                      >
+                        <Globe aria-hidden />
+                        Publier le produit
+                      </Button>
+                    )}
                   <Button
                     variant="ghost"
                     size="sm"
@@ -162,6 +233,15 @@ export function ListeLivrables({
           role={role}
           ouvert
           onOuvertChange={(ouvert) => !ouvert && setLigneOuverte(null)}
+        />
+      )}
+
+      {ligneAPublier && (
+        <DialoguePublication
+          ligne={ligneAPublier}
+          membresCoordination={membresCoordination}
+          ouvert
+          onOuvertChange={(ouvert) => !ouvert && setLigneAPublier(null)}
         />
       )}
     </>

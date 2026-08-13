@@ -4,7 +4,7 @@ import { formaterJJMMAAAA } from '@/lib/calendrier/dates';
 import { envoyerEmail } from '@/lib/email/envoyer';
 import { modeleRappel, modeleRelance } from '@/lib/email/modeles';
 import { LIBELLE_PERIODICITE } from '@/lib/catalogue/schemas';
-import { notifier } from '@/lib/notifications/destinataires';
+import { copieDeStructure } from '@/lib/notifications/destinataires';
 import { prisma } from '@/lib/prisma';
 import {
   decisionRelance,
@@ -103,9 +103,22 @@ export async function executerRelances(
       const destinataires = element.pointFocalId
         ? await prisma.utilisateur.findMany({
             where: { id: element.pointFocalId, actif: true, deletedAt: null },
-            select: { id: true, email: true },
+            select: { id: true, email: true, nom: true, prenoms: true },
           })
         : [];
+
+      // Systematiquement en copie : l equipe de la structure et ses admins.
+      const copie = await copieDeStructure(
+        organisation.id,
+        ligne.calendrier.structureId,
+      );
+
+      const nomPointFocal = destinataires[0]
+        ? `${destinataires[0].prenoms} ${destinataires[0].nom}`
+        : '';
+
+      const typeProduit =
+        ligne.elementType === 'PUBLICATION' ? 'PUBLICATION' : 'INDICATEUR';
 
       // ------------------------------------------------------ passage en retard
       if (
@@ -141,18 +154,29 @@ export async function executerRelances(
       if (rappel && destinataires.length > 0) {
         const modele = modeleRappel({
           organisation,
+          typeProduit,
           nomElement: element.nom,
-          periodicite,
+          nomPointFocal: nomPointFocal,
           periode: ligne.libellePeriode,
+          dateDebutCouverture: formaterJJMMAAAA(ligne.dateDebutCouverture),
+          dateFinCouverture: formaterJJMMAAAA(ligne.dateFinCouverture),
           dateDiffusionPrevue: formaterJJMMAAAA(ligne.dateDiffusionPrevue),
-          joursRestants: libelleJoursRestants(rappel.joursRestants),
+          joursRestants: rappel.joursRestants,
           lien,
         });
 
+        // The notification travels with the message: `envoyerEmail` creates one
+        // for every recipient who has an account, sender and copy alike.
         const envoi = await envoyerEmail({
           destinataires: destinataires.map((compte) => compte.email),
+          copie,
           typeEnvoi: rappel.type,
           ligneCalendrierId: ligne.id,
+          notification: {
+            titre: `Publication imminente : ${element.nom}`,
+            message: `${ligne.libellePeriode} — à diffuser ${libelleJoursRestants(rappel.joursRestants)}, le ${formaterJJMMAAAA(ligne.dateDiffusionPrevue)}.`,
+            lien: `/imminentes`,
+          },
           ...modele,
         }, aujourdhui);
 
@@ -160,16 +184,6 @@ export async function executerRelances(
           resultat.doublonsEvites += 1;
         } else {
           resultat.rappelsEnvoyes += 1;
-
-          await notifier(
-            destinataires.map((compte) => compte.id),
-            {
-              type: 'RAPPEL_ECHEANCE',
-              titre: `À diffuser ${libelleJoursRestants(rappel.joursRestants)}`,
-              message: `${element.nom} — ${ligne.libellePeriode}, attendu le ${formaterJJMMAAAA(ligne.dateDiffusionPrevue)}.`,
-              lien: `/calendrier?structure=${ligne.calendrier.structureId}&annee=${ligne.calendrier.annee}`,
-            },
-          );
         }
       }
 
@@ -191,18 +205,27 @@ export async function executerRelances(
       if (decision.relancer && destinataires.length > 0) {
         const modele = modeleRelance({
           organisation,
+          typeProduit,
           nomElement: element.nom,
-          periodicite,
+          nomPointFocal,
           periode: ligne.libellePeriode,
+          dateDebutCouverture: formaterJJMMAAAA(ligne.dateDebutCouverture),
+          dateFinCouverture: formaterJJMMAAAA(ligne.dateFinCouverture),
           dateNonRespectee: formaterJJMMAAAA(decision.dateDeReference),
-          retard: libelleRetard(decision.joursDeRetard),
+          joursDeRetard: decision.joursDeRetard,
           lien,
         });
 
         const envoi = await envoyerEmail({
           destinataires: destinataires.map((compte) => compte.email),
+          copie,
           typeEnvoi: 'RELANCE_RETARD',
           ligneCalendrierId: ligne.id,
+          notification: {
+            titre: `Publication en retard : ${element.nom}`,
+            message: `${ligne.libellePeriode} — en retard ${libelleRetard(decision.joursDeRetard)}, attendu le ${formaterJJMMAAAA(decision.dateDeReference)}.`,
+            lien: '/retards',
+          },
           ...modele,
         }, aujourdhui);
 
@@ -218,16 +241,6 @@ export async function executerRelances(
               derniereRelanceAt: aujourdhui,
             },
           });
-
-          await notifier(
-            destinataires.map((compte) => compte.id),
-            {
-              type: 'RELANCE_RETARD',
-              titre: 'Diffusion en retard',
-              message: `${element.nom} — ${ligne.libellePeriode} est en retard ${libelleRetard(decision.joursDeRetard)}.`,
-              lien: '/retards',
-            },
-          );
         }
       }
     }

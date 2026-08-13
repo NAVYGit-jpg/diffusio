@@ -12,7 +12,10 @@ import {
   analyserListeEmails,
   validerLienPublication,
 } from '@/lib/livrables/regles';
-import { notifier, pointsFocauxDe } from '@/lib/notifications/destinataires';
+import {
+  copieDeStructure,
+  pointsFocauxDe,
+} from '@/lib/notifications/destinataires';
 import { prisma } from '@/lib/prisma';
 
 export type EtatMiseEnLigne = {
@@ -86,7 +89,29 @@ export async function mettreEnLigneAction(
     };
   }
 
-  const maintenant = new Date();
+  // §7 — the release date is stated, not assumed. A publication put online on
+  // Friday and recorded on Monday must count as Friday's, otherwise the respect
+  // rate punishes a delay in the paperwork rather than in the publishing.
+  const dateSaisie = String(donnees.get('datePublication') ?? '').trim();
+  const datePublication = dateSaisie
+    ? new Date(`${dateSaisie}T12:00:00Z`)
+    : new Date();
+
+  if (Number.isNaN(datePublication.getTime())) {
+    return { erreur: 'La date de publication n’est pas une date valide.' };
+  }
+
+  const finDeJournee = new Date();
+  finDeJournee.setUTCHours(23, 59, 59, 999);
+
+  if (datePublication.getTime() > finDeJournee.getTime()) {
+    return {
+      erreur:
+        'La date de publication ne peut pas être dans le futur : elle constate une mise en ligne déjà faite.',
+    };
+  }
+
+  const maintenant = datePublication;
   const elementType = ligne.elementType;
   const elementId = (ligne.publicationId ?? ligne.indicateurId)!;
   const nomElement = ligne.publication?.nom ?? ligne.indicateur?.nom ?? 'Élément';
@@ -123,18 +148,38 @@ export async function mettreEnLigneAction(
     });
   }
 
-  const [organisation, pointsFocaux] = await Promise.all([
+  const [organisation, pointsFocaux, copieObligatoire] = await Promise.all([
     prisma.organisation.findUniqueOrThrow({
       where: { id: acteur.organisationId },
       select: { nom: true, sigle: true, couleurPrimaire: true, logoUrl: true },
     }),
     pointsFocauxDe(acteur.organisationId, ligne.calendrier.structureId),
+    // §7 — the structure's team and its administrators are always in copy; the
+    // super administrator's selection is added on top.
+    copieDeStructure(acteur.organisationId, ligne.calendrier.structureId),
   ]);
 
   const adressesPointsFocaux = await prisma.utilisateur.findMany({
     where: { id: { in: pointsFocaux } },
-    select: { email: true },
+    select: { email: true, nom: true, prenoms: true },
   });
+
+  const nomPointFocal = adressesPointsFocaux[0]
+    ? `${adressesPointsFocaux[0].prenoms} ${adressesPointsFocaux[0].nom}`
+    : 'Madame, Monsieur';
+
+  const enCopie = [
+    ...new Set(
+      [...copieObligatoire, ...valides].map((email) =>
+        email.trim().toLowerCase(),
+      ),
+    ),
+  ].filter(
+    (email) =>
+      !adressesPointsFocaux.some(
+        (compte) => compte.email.toLowerCase() === email,
+      ),
+  );
 
   const valeurPrincipale = ligne.valeurs[0];
   const valeurLisible = valeurPrincipale
@@ -143,7 +188,9 @@ export async function mettreEnLigneAction(
 
   const modele = modeleMiseEnLigne({
     organisation,
+    typeProduit: elementType === 'PUBLICATION' ? 'PUBLICATION' : 'INDICATEUR',
     nomElement,
+    nomPointFocal,
     periode: ligne.libellePeriode,
     dateDebutCouverture: formaterJJMMAAAA(ligne.dateDebutCouverture),
     dateFinCouverture: formaterJJMMAAAA(ligne.dateFinCouverture),
@@ -160,22 +207,17 @@ export async function mettreEnLigneAction(
   // publication announcement.
   await envoyerEmail({
     destinataires: adressesPointsFocaux.map((compte) => compte.email),
-    copie: valides,
+    copie: enCopie,
     typeEnvoi: 'MISE_EN_LIGNE',
     ligneCalendrierId: ligne.id,
+    notification: {
+      titre: `Mise en ligne : ${nomElement}`,
+      message: `${ligne.libellePeriode} — publié le ${formaterJJMMAAAA(maintenant)}.`,
+      lien: '/produits-charges',
+      auteurId: acteur.id,
+    },
     ...modele,
   });
-
-  await notifier(
-    pointsFocaux,
-    {
-      type: 'MISE_EN_LIGNE',
-      titre: 'Publication mise en ligne',
-      message: `${nomElement} — ${ligne.libellePeriode} a été signalé comme mis en ligne.`,
-      lien: `/calendrier?structure=${ligne.calendrier.structureId}&annee=${ligne.calendrier.annee}`,
-    },
-    acteur.id,
-  );
 
   await prisma.journalAudit.create({
     data: {

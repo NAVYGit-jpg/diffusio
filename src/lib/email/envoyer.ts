@@ -27,6 +27,22 @@ export type MessageEmail = {
   typeEnvoi: TypeEnvoiEmail;
   /** Set when the message relates to a calendar line, for the audit trail. */
   ligneCalendrierId?: string;
+  /**
+   * In-application notification mirroring the message.
+   *
+   * Every e-mail leaves a trace inside the application: an address can be
+   * mistyped, a message can land in a spam folder, and somebody who signs in
+   * must still find out what was sent to them. Recipients are matched by
+   * address among the accounts of the organisation — a team member who has no
+   * account gets the e-mail only, which is exactly what they signed up for.
+   */
+  notification?: {
+    titre: string;
+    message: string;
+    lien?: string;
+    /** Skipped: being told about one's own action is noise. */
+    auteurId?: string;
+  };
 };
 
 export type ResultatEnvoi = {
@@ -172,5 +188,58 @@ export async function envoyerEmail(
       .catch(() => undefined);
   }
 
+  if (message.notification) {
+    await notifierLesDestinataires(message);
+  }
+
   return resultat;
+}
+
+/**
+ * Mirrors the message as an in-application notification.
+ *
+ * Runs after the send and swallows its own failures: a notification must never
+ * roll back — nor mask — the delivery it accompanies.
+ */
+async function notifierLesDestinataires(message: MessageEmail): Promise<void> {
+  const notification = message.notification!;
+
+  const adresses = [...message.destinataires, ...(message.copie ?? [])].map(
+    (email) => email.trim().toLowerCase(),
+  );
+
+  if (adresses.length === 0) {
+    return;
+  }
+
+  try {
+    const comptes = await prisma.utilisateur.findMany({
+      where: {
+        email: { in: [...new Set(adresses)], mode: 'insensitive' },
+        actif: true,
+        deletedAt: null,
+      },
+      select: { id: true },
+    });
+
+    const cibles = comptes
+      .map((compte) => compte.id)
+      .filter((id) => id !== notification.auteurId);
+
+    if (cibles.length === 0) {
+      return;
+    }
+
+    await prisma.notification.createMany({
+      data: cibles.map((destinataireId) => ({
+        destinataireId,
+        type: message.typeEnvoi,
+        titre: notification.titre,
+        message: notification.message,
+        lien: notification.lien ?? null,
+      })),
+    });
+  } catch {
+    // Best effort.
+  }
 }

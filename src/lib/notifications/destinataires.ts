@@ -49,6 +49,57 @@ export async function pointsFocauxDe(
   return comptes.map((compte) => compte.id);
 }
 
+/**
+ * Addresses always put in copy of a message about a structure (§7, §8).
+ *
+ * The structure's team **and** the administrators supervising it. Both are
+ * mandatory: the team asked to be informed, and an administrator who chases a
+ * point focal has to see what was already sent in their name.
+ *
+ * The organisation-wide team is deliberately absent — it is only informed of a
+ * release, and only through the super administrator's explicit selection.
+ */
+export async function copieDeStructure(
+  organisationId: string,
+  structureId: string,
+): Promise<string[]> {
+  const [equipe, administrateurs] = await Promise.all([
+    prisma.membreEquipe.findMany({
+      where: { organisationId, structureId, actif: true, deletedAt: null },
+      select: { email: true },
+    }),
+    prisma.utilisateur.findMany({
+      where: {
+        organisationId,
+        actif: true,
+        deletedAt: null,
+        OR: [
+          { role: 'SUPER_ADMIN' },
+          { role: 'ADMIN', adminStructures: { some: { structureId } } },
+        ],
+      },
+      select: { email: true },
+    }),
+  ]);
+
+  const adresses = [...equipe, ...administrateurs].map((entree) =>
+    entree.email.trim().toLowerCase(),
+  );
+
+  return [...new Set(adresses)];
+}
+
+/** Members of the organisation-wide team, kept by the super administrator (§7). */
+export async function equipeOrganisation(
+  organisationId: string,
+): Promise<{ id: string; nom: string; fonction: string; email: string }[]> {
+  return prisma.membreEquipe.findMany({
+    where: { organisationId, structureId: null, actif: true, deletedAt: null },
+    select: { id: true, nom: true, fonction: true, email: true },
+    orderBy: { nom: 'asc' },
+  });
+}
+
 export type NouvelleNotification = {
   type: string;
   titre: string;

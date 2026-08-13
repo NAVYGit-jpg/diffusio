@@ -125,7 +125,7 @@ async function basculerSiComplet(
       type: 'LIVRABLE_TELEVERSE',
       titre: 'Livré — en attente de confirmation de publication',
       message: `${ligne.publication?.nom ?? ligne.indicateur?.nom} — ${ligne.libellePeriode} est prêt.`,
-      lien: `/calendrier?structure=${ligne.calendrier.structureId}&annee=${ligne.calendrier.annee}`,
+      lien: '/produits-charges',
     },
     acteur.id,
   );
@@ -407,7 +407,9 @@ async function prevenirDuDepot(
       titre:
         deposes.length === 1 ? 'Nouveau fichier déposé' : 'Nouveaux fichiers déposés',
       message: `${acteur.nomComplet} a déposé ${liste} pour ${nomElement} — ${ligne.libellePeriode}.`,
-      lien: `/calendrier?structure=${ligne.calendrier.structureId}&annee=${ligne.calendrier.annee}`,
+      // A deposit notification leads to the screen where the deposit can be
+      // reviewed and published, not to the calendar it came from.
+      lien: '/produits-charges',
     },
     acteur.id,
   );

@@ -226,28 +226,43 @@ export default async function PageTableauDeBord({
               icone={CheckCircle2}
               ton={tonDuTaux(respect.taux)}
             />
+            {/* §10 — deux natures de retard, comptées à part : celui qui dure
+                encore et celui qui est soldé. Les additionner masquerait la
+                seule question qui appelle une action aujourd'hui. */}
             <CarteIndicateur
-              libelle="Lignes en retard"
-              valeur={etat.total}
-              precision={`${etat.nonPubliees} non publiée(s), ${etat.publieesApresEcheance} publiée(s) hors délai`}
+              libelle="En retard, non publiées"
+              valeur={etat.nonPubliees}
+              precision={
+                etat.nonPubliees === 0
+                  ? 'Rien ne reste en attente'
+                  : 'Échéance passée, toujours rien en ligne'
+              }
               icone={AlertTriangle}
-              ton={etat.total > 0 ? 'alerte' : 'neutre'}
+              ton={etat.nonPubliees > 0 ? 'alerte' : 'positif'}
             />
             <CarteIndicateur
-              libelle="Retard moyen"
-              valeur={retards.moyen}
-              unite="j"
+              libelle="Publiées après échéance"
+              valeur={etat.publieesApresEcheance}
               precision={
-                retards.maximum === null
+                etat.total === 0
                   ? 'Aucun retard constaté'
-                  : `Retard maximum : ${retards.maximum} jour(s)`
+                  : `Sur ${etat.total} ligne(s) en retard au total`
               }
               icone={Clock}
+              ton={
+                etat.publieesApresEcheance > 0 && etat.nonPubliees === 0
+                  ? 'neutre'
+                  : 'neutre'
+              }
             />
             <CarteIndicateur
               libelle="Échéances à 30 jours"
               valeur={echeances.j30}
-              precision={`${echeances.j7} sous 7 jours, ${echeances.j15} sous 15 jours`}
+              precision={
+                retards.moyen === null
+                  ? `${echeances.j7} sous 7 jours, ${echeances.j15} sous 15 jours`
+                  : `${echeances.j15} sous 15 jours · retard moyen ${retards.moyen} j, max ${retards.maximum} j`
+              }
               icone={CalendarClock}
             />
           </section>

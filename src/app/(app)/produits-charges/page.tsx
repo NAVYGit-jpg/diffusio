@@ -11,11 +11,13 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { exigerActeur } from '@/lib/auth/session';
+import { normaliserJour } from '@/lib/calendrier/dates';
 import {
   estChargee,
   estChargeeIncompletement,
   joursAvantEcheance,
 } from '@/lib/calendrier/selection';
+import { equipeOrganisation } from '@/lib/notifications/destinataires';
 import { chargerLignesLivrables, critereSelection } from '@/lib/livrables/vues';
 import { ListeLivrables } from '../_livrables/liste-livrables';
 
@@ -46,6 +48,12 @@ export default async function PageProduitsCharges() {
         aujourdhui,
       ),
       incomplet: estChargeeIncompletement(critereSelection(ligne)),
+      // §10 — a publication that came out late is neither a success nor an
+      // ongoing delay; it deserves to be named for what it is.
+      publieeEnRetard:
+        ligne.dateDiffusionReelle !== null &&
+        normaliserJour(new Date(ligne.dateDiffusionReelle)).getTime() >
+          normaliserJour(new Date(ligne.dateDiffusionPrevue)).getTime(),
     }))
     // Most recent deadline first: what has just been handed over is what people
     // come here to check.
@@ -57,7 +65,12 @@ export default async function PageProduitsCharges() {
 
   const livrees = lignes.filter((ligne) => ligne.statut === 'TELEVERSE').length;
   const publiees = lignes.filter((ligne) => ligne.statut === 'MIS_EN_LIGNE').length;
+  const publieesEnRetard = lignes.filter((ligne) => ligne.publieeEnRetard).length;
   const structuresDistinctes = new Set(lignes.map((ligne) => ligne.structureId));
+
+  // Offered when publishing; only the super administrator's team is chosen from,
+  // the structure's own team being always in copy.
+  const membresCoordination = await equipeOrganisation(acteur.organisationId);
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -111,6 +124,11 @@ export default async function PageProduitsCharges() {
                 <CardTitle className="text-2xl tabular-nums text-emerald-700 dark:text-emerald-400">
                   {publiees}
                 </CardTitle>
+                {publieesEnRetard > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    dont {publieesEnRetard} après l&apos;échéance
+                  </p>
+                )}
               </CardHeader>
             </Card>
           </div>
@@ -129,6 +147,7 @@ export default async function PageProduitsCharges() {
             role={acteur.role}
             colonneEcheance="chargee"
             afficherStructure={structuresDistinctes.size > 1}
+            membresCoordination={membresCoordination}
           />
         </>
       )}

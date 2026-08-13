@@ -42,9 +42,12 @@ function adresseLogo(): string {
 function enveloppe(organisation: Organisation, contenu: string): string {
   const logoDiffusio = adresseLogo();
 
+  // Centred, as the message templates ask. `margin:0 auto` on a block image is
+  // the only centring every mail client honours — `text-align` alone fails in
+  // Outlook.
   const enTete = organisation.logoUrl
-    ? `<img src="${organisation.logoUrl}" alt="${organisation.nom}" style="max-height:44px;display:block">`
-    : `<img src="${logoDiffusio}" alt="DIFFUSIO" width="180" style="max-height:34px;width:auto;display:block">`;
+    ? `<img src="${organisation.logoUrl}" alt="${organisation.nom}" style="max-height:44px;display:block;margin:0 auto">`
+    : `<img src="${logoDiffusio}" alt="DIFFUSIO" width="180" style="max-height:34px;width:auto;display:block;margin:0 auto">`;
 
   return `<!doctype html>
 <html lang="fr">
@@ -56,7 +59,7 @@ function enveloppe(organisation: Organisation, contenu: string): string {
 <body style="margin:0;padding:24px;background:#f4f4f5;font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;color:#18181b">
   <table role="presentation" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:10px;border:1px solid #e4e4e7">
     <tr>
-      <td style="padding:20px 24px;border-bottom:3px solid ${organisation.couleurPrimaire}">
+      <td align="center" style="padding:20px 24px;border-bottom:3px solid ${organisation.couleurPrimaire};text-align:center">
         ${enTete}
       </td>
     </tr>
@@ -83,6 +86,35 @@ function enveloppe(organisation: Organisation, contenu: string): string {
 </html>`;
 }
 
+export type TypeProduit = 'PUBLICATION' | 'INDICATEUR';
+
+/**
+ * How to name the product, and how to agree what follows it.
+ *
+ * "La publication … a été mise en ligne" but "L'indicateur … a été mis en
+ * ligne". Writing the agreement out is worth the few lines: a message that goes
+ * to a director of cabinet with "publié(e)" in it reads as unfinished.
+ */
+function designation(type: TypeProduit) {
+  return type === 'PUBLICATION'
+    ? {
+        sujet: 'La publication',
+        accord: 'e',
+      }
+    : {
+        sujet: 'L’indicateur',
+        accord: '',
+      };
+}
+
+/** Salutation line shared by the three automatic messages. */
+function salutation(nomPointFocal: string): string {
+  return `Bonjour ${nomPointFocal},`;
+}
+
+const FORMULE_SANTE =
+  'Nous espérons que ce message vous trouve en bonne santé.';
+
 /**
  * Publication-is-online notice (§7).
  *
@@ -92,7 +124,9 @@ function enveloppe(organisation: Organisation, contenu: string): string {
  */
 export function modeleMiseEnLigne(params: {
   organisation: Organisation;
+  typeProduit: TypeProduit;
   nomElement: string;
+  nomPointFocal: string;
   periode: string;
   dateDebutCouverture: string;
   dateFinCouverture: string;
@@ -103,41 +137,45 @@ export function modeleMiseEnLigne(params: {
   valeur?: string | null;
   unite?: string | null;
 }): { sujet: string; corpsHtml: string; corpsTexte: string } {
-  const sujet = `Mise en ligne : ${params.nomElement} — ${params.periode}`;
+  const sujet = `Mise en ligne de : ${params.nomElement}`;
+  const { sujet: produit, accord } = designation(params.typeProduit);
+
+  const phrase = `${produit} ${params.nomElement}, couvrant la période du ${params.dateDebutCouverture} au ${params.dateFinCouverture}, a été mis${accord} en ligne à la date du ${params.dateDiffusionReelle}.`;
 
   const ligneValeur =
     params.valeur != null && params.valeur !== ''
-      ? `Valeur : ${params.valeur}${params.unite ? ` ${params.unite}` : ''}\n`
+      ? `\n  • Valeur : ${params.valeur}${params.unite ? ` ${params.unite}` : ''}`
       : '';
 
-  const corpsTexte = `${params.organisation.nom} informe de la mise en ligne de :
+  const corpsTexte = `${salutation(params.nomPointFocal)}
 
-${params.nomElement}
-Période couverte : du ${params.dateDebutCouverture} au ${params.dateFinCouverture}
-Date de diffusion prévue : ${params.dateDiffusionPrevue}
-Date de diffusion réelle : ${params.dateDiffusionReelle}
-${ligneValeur}
-Consulter la publication :
-${params.lien}`;
+${FORMULE_SANTE}
+
+${phrase}
+
+Informations complémentaires :
+  • Date de publication prévue : ${params.dateDiffusionPrevue}${ligneValeur}
+
+Lien de la publication : ${params.lien}
+
+Cordialement,`;
 
   const corpsHtml = enveloppe(
     params.organisation,
-    `<p>${params.organisation.nom} informe de la mise en ligne de :</p>
+    `<p>${salutation(params.nomPointFocal)}</p>
 
-     <h2 style="margin:16px 0 8px;font-size:18px">${params.nomElement}</h2>
+     <p>${FORMULE_SANTE}</p>
 
+     <p><strong>${produit} ${params.nomElement}</strong>, couvrant la période du
+        ${params.dateDebutCouverture} au ${params.dateFinCouverture}, a été
+        mis${accord} en ligne à la date du
+        <strong>${params.dateDiffusionReelle}</strong>.</p>
+
+     <p style="margin-top:20px;margin-bottom:4px">Informations complémentaires :</p>
      <table role="presentation" style="width:100%;border-collapse:collapse;font-size:14px">
        <tr>
-         <td style="padding:4px 0;color:#71717a">Période couverte</td>
-         <td style="padding:4px 0"><strong>du ${params.dateDebutCouverture} au ${params.dateFinCouverture}</strong></td>
-       </tr>
-       <tr>
-         <td style="padding:4px 0;color:#71717a">Diffusion prévue</td>
+         <td style="padding:4px 0;color:#71717a">Date de publication prévue</td>
          <td style="padding:4px 0">${params.dateDiffusionPrevue}</td>
-       </tr>
-       <tr>
-         <td style="padding:4px 0;color:#71717a">Diffusion réelle</td>
-         <td style="padding:4px 0"><strong>${params.dateDiffusionReelle}</strong></td>
        </tr>
        ${
          params.valeur != null && params.valeur !== ''
@@ -148,6 +186,10 @@ ${params.lien}`;
            : ''
        }
      </table>
+
+     <p style="margin-top:16px">Lien de la publication :
+       <a href="${params.lien}" style="word-break:break-all">${params.lien}</a>
+     </p>
 
      <p style="margin:24px 0">
        <a href="${params.lien}"
@@ -162,11 +204,12 @@ ${params.lien}`;
            <img src="${params.qrCodeDataUri}" alt="QR code vers la publication" width="128" height="128" style="display:block;border:1px solid #e4e4e7;border-radius:4px">
          </td>
          <td style="font-size:13px;color:#71717a;vertical-align:middle">
-           Scannez ce code pour ouvrir la publication<br>depuis un téléphone.<br><br>
-           <span style="word-break:break-all">${params.lien}</span>
+           Scannez ce code pour ouvrir la publication<br>depuis un téléphone.
          </td>
        </tr>
-     </table>`,
+     </table>
+
+     <p style="margin-top:24px">Cordialement,</p>`,
   );
 
   return { sujet, corpsHtml, corpsTexte };
@@ -222,73 +265,102 @@ ${params.lien}`;
   return { sujet, corpsHtml, corpsTexte };
 }
 
-/** Reminder before the deadline (§8.1). */
+/**
+ * Reminder before the deadline (§8.1).
+ *
+ * Sent 15, 10, 5, 3 and 1 day before the announced date.
+ */
 export function modeleRappel(params: {
   organisation: Organisation;
+  typeProduit: TypeProduit;
   nomElement: string;
-  periodicite: string;
+  nomPointFocal: string;
   periode: string;
+  dateDebutCouverture: string;
+  dateFinCouverture: string;
   dateDiffusionPrevue: string;
-  joursRestants: string;
+  joursRestants: number;
   lien: string;
 }): { sujet: string; corpsHtml: string; corpsTexte: string } {
-  const sujet = `Rappel : ${params.nomElement} à diffuser ${params.joursRestants}`;
+  const sujet = `Publication imminente : ${params.nomElement}`;
+  const { sujet: produit, accord } = designation(params.typeProduit);
 
-  const corpsTexte = `Bonjour,
+  const restant = `${params.joursRestants} jour${params.joursRestants > 1 ? 's' : ''}`;
 
-La diffusion suivante approche :
+  const phrase = `${produit} ${params.nomElement}, couvrant la période du ${params.dateDebutCouverture} au ${params.dateFinCouverture}, doit être publié${accord} le ${params.dateDiffusionPrevue} (dans ${restant}).`;
 
-${params.nomElement}
-Périodicité : ${params.periodicite}
-Période couverte : ${params.periode}
-Date de diffusion attendue : ${params.dateDiffusionPrevue} (${params.joursRestants})
+  const demande =
+    'Nous vous prions de nous faire parvenir la publication dans les temps, afin de faciliter la prise en charge du document avant diffusion à la date spécifiée.';
 
-Déposez le livrable depuis votre espace :
-${params.lien}`;
+  const corpsTexte = `${salutation(params.nomPointFocal)}
+
+${FORMULE_SANTE}
+
+${phrase}
+
+${demande}
+
+Cordialement.
+
+Déposer le livrable : ${params.lien}`;
 
   const corpsHtml = enveloppe(
     params.organisation,
-    `<p>Bonjour,</p>
-     <p>La diffusion suivante approche :</p>
-     <h2 style="margin:16px 0 8px;font-size:18px">${params.nomElement}</h2>
-     <table role="presentation" style="width:100%;border-collapse:collapse;font-size:14px">
-       <tr><td style="padding:4px 0;color:#71717a">Périodicité</td><td style="padding:4px 0">${params.periodicite}</td></tr>
-       <tr><td style="padding:4px 0;color:#71717a">Période couverte</td><td style="padding:4px 0">${params.periode}</td></tr>
-       <tr><td style="padding:4px 0;color:#71717a">Diffusion attendue</td><td style="padding:4px 0"><strong>${params.dateDiffusionPrevue}</strong> — ${params.joursRestants}</td></tr>
-     </table>
+    `<p>${salutation(params.nomPointFocal)}</p>
+
+     <p>${FORMULE_SANTE}</p>
+
+     <p><strong>${produit} ${params.nomElement}</strong>, couvrant la période du
+        ${params.dateDebutCouverture} au ${params.dateFinCouverture}, doit être
+        publié${accord} le <strong>${params.dateDiffusionPrevue}</strong>
+        (dans ${restant}).</p>
+
+     <p>${demande}</p>
+
      <p style="margin:24px 0">
        <a href="${params.lien}" style="display:inline-block;padding:12px 20px;background:${params.organisation.couleurPrimaire};color:#ffffff;text-decoration:none;border-radius:6px">
          Déposer le livrable
        </a>
-     </p>`,
+     </p>
+
+     <p>Cordialement.</p>`,
   );
 
   return { sujet, corpsHtml, corpsTexte };
 }
 
-/** Chase after a missed deadline (§8.2). */
+/** Chase after a missed deadline, sent every day until it is settled (§8.2). */
 export function modeleRelance(params: {
   organisation: Organisation;
+  typeProduit: TypeProduit;
   nomElement: string;
-  periodicite: string;
+  nomPointFocal: string;
   periode: string;
+  dateDebutCouverture: string;
+  dateFinCouverture: string;
   dateNonRespectee: string;
-  retard: string;
+  joursDeRetard: number;
   lien: string;
 }): { sujet: string; corpsHtml: string; corpsTexte: string } {
-  const sujet = `Retard : ${params.nomElement} — ${params.periode}`;
+  const sujet = `Publication en retard : ${params.nomElement}`;
+  const { sujet: produit, accord } = designation(params.typeProduit);
 
-  const corpsTexte = `Bonjour,
+  const retard = `${params.joursDeRetard} jour${params.joursDeRetard > 1 ? 's' : ''}`;
 
-La diffusion suivante n'a pas été effectuée à la date prévue :
+  const phrase = `${produit} ${params.nomElement}, couvrant la période du ${params.dateDebutCouverture} au ${params.dateFinCouverture}, devait être publié${accord} le ${params.dateNonRespectee} ; ${params.typeProduit === 'PUBLICATION' ? 'elle' : 'il'} accuse un retard de ${retard}.`;
 
-${params.nomElement}
-Périodicité : ${params.periodicite}
-Période couverte : ${params.periode}
-Date non respectée : ${params.dateNonRespectee}
-Retard : ${params.retard}
+  const demande =
+    'Nous vous prions de nous faire parvenir la publication au plus vite, afin de faciliter la prise en charge du document avant diffusion à la date spécifiée.';
 
-Merci de transmettre la publication ou l'information dans les meilleurs délais.
+  const corpsTexte = `${salutation(params.nomPointFocal)}
+
+${FORMULE_SANTE}
+
+${phrase}
+
+${demande}
+
+Cordialement.
 
 Si un report est nécessaire, indiquez l'état d'avancement, la justification et
 la prochaine date prévisionnelle depuis votre espace — les relances
@@ -297,25 +369,30 @@ ${params.lien}`;
 
   const corpsHtml = enveloppe(
     params.organisation,
-    `<p>Bonjour,</p>
-     <p>La diffusion suivante n'a pas été effectuée à la date prévue :</p>
-     <h2 style="margin:16px 0 8px;font-size:18px">${params.nomElement}</h2>
-     <table role="presentation" style="width:100%;border-collapse:collapse;font-size:14px">
-       <tr><td style="padding:4px 0;color:#71717a">Périodicité</td><td style="padding:4px 0">${params.periodicite}</td></tr>
-       <tr><td style="padding:4px 0;color:#71717a">Période couverte</td><td style="padding:4px 0">${params.periode}</td></tr>
-       <tr><td style="padding:4px 0;color:#71717a">Date non respectée</td><td style="padding:4px 0"><strong>${params.dateNonRespectee}</strong></td></tr>
-       <tr><td style="padding:4px 0;color:#71717a">Retard</td><td style="padding:4px 0"><strong>${params.retard}</strong></td></tr>
-     </table>
-     <p>Merci de transmettre la publication ou l'information dans les meilleurs délais.</p>
-     <p style="font-size:13px;color:#71717a">
-       Si un report est nécessaire, indiquez l'état d'avancement, la justification
-       et la prochaine date prévisionnelle depuis votre espace : les relances
-       automatiques cesseront alors.
-     </p>
+    `<p>${salutation(params.nomPointFocal)}</p>
+
+     <p>${FORMULE_SANTE}</p>
+
+     <p><strong>${produit} ${params.nomElement}</strong>, couvrant la période du
+        ${params.dateDebutCouverture} au ${params.dateFinCouverture}, devait être
+        publié${accord} le <strong>${params.dateNonRespectee}</strong> ;
+        ${params.typeProduit === 'PUBLICATION' ? 'elle' : 'il'} accuse un retard
+        de <strong>${retard}</strong>.</p>
+
+     <p>${demande}</p>
+
      <p style="margin:24px 0">
        <a href="${params.lien}" style="display:inline-block;padding:12px 20px;background:${params.organisation.couleurPrimaire};color:#ffffff;text-decoration:none;border-radius:6px">
          Ouvrir la ligne concernée
        </a>
+     </p>
+
+     <p>Cordialement.</p>
+
+     <p style="font-size:13px;color:#71717a">
+       Si un report est nécessaire, indiquez l'état d'avancement, la justification
+       et la prochaine date prévisionnelle depuis votre espace : les relances
+       automatiques cesseront alors.
      </p>`,
   );
 
