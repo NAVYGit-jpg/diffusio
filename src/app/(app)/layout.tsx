@@ -9,6 +9,7 @@ import {
 import { MenuUtilisateur } from '@/components/layout/menu-utilisateur';
 import { SelecteurLangue } from '@/components/layout/selecteur-langue';
 import { langueValide, traducteur } from '@/lib/langue/dictionnaire';
+import { chargerCompteursOnglets } from '@/lib/navigation/compteurs';
 import { exigerActeur } from '@/lib/auth/session';
 import { Toaster } from '@/components/ui/sonner';
 import { Badge } from '@/components/ui/badge';
@@ -25,7 +26,7 @@ export default async function LayoutApplication({
 
   // Unread counter for the bell (§9). Cheap enough to read on every render,
   // and always accurate — no cache to invalidate.
-  const [nonLues, compte, identite] = await Promise.all([
+  const [nonLues, compte, identite, compteurs] = await Promise.all([
     prisma.notification.count({
       where: { destinataireId: acteur.id, lu: false },
     }),
@@ -34,6 +35,7 @@ export default async function LayoutApplication({
       select: { langue: true },
     }),
     chargerIdentiteOrganisation(),
+    chargerCompteursOnglets(acteur),
   ]);
 
   const langue = langueValide(compte?.langue);
@@ -99,7 +101,11 @@ export default async function LayoutApplication({
             l'en-tête, lui-même collant. */}
         <aside className="hidden w-64 shrink-0 border-r md:block">
           <div className="sticky top-14 max-h-[calc(100svh-3.5rem)] overflow-y-auto">
-            <BarreLaterale role={acteur.role} langue={langue} />
+            <BarreLaterale
+              role={acteur.role}
+              langue={langue}
+              compteurs={compteurs}
+            />
           </div>
         </aside>
 

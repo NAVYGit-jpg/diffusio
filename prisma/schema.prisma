@@ -302,6 +302,7 @@ model Utilisateur {
   notifications       Notification[]
   messages            Message[]
   journauxAudit       JournalAudit[]
+  visitesOnglet       VisiteOnglet[]
 
   @@index([organisationId, role, actif])
   @@index([structureId])
@@ -628,6 +629,23 @@ model Retard {
 // =============================================================================
 // 4.9 COMMUNICATION
 // =============================================================================
+
+// Derniere fois qu'un utilisateur a ouvert un onglet (§9.5).
+//
+// Sert a compter ce qui s'est ajoute depuis, comme la cloche compte les
+// notifications non lues. Une ligne par utilisateur et par onglet ; son absence
+// signifie « jamais ouvert », donc tout y est nouveau.
+model VisiteOnglet {
+  id            String   @id @default(cuid())
+  utilisateurId String
+  onglet        String
+  vuAt          DateTime @default(now())
+
+  utilisateur Utilisateur @relation(fields: [utilisateurId], references: [id], onDelete: Cascade)
+
+  @@unique([utilisateurId, onglet])
+  @@map("visites_onglet")
+}
 
 model Notification {
   id             String    @id @default(cuid())

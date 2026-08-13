@@ -15,13 +15,23 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import type { Role } from '@prisma/client';
 
+import { Badge } from '@/components/ui/badge';
+import { marquerOngletVuAction } from '@/lib/actions/navigation';
 import {
   type CleTraduction,
   type CodeLangue,
   traducteur,
 } from '@/lib/langue/dictionnaire';
+import type { CompteursOnglets } from '@/lib/navigation/compteurs';
+import {
+  type OngletCompte,
+  formaterCompteur,
+  libelleCompteur,
+  porteUnCompteur,
+} from '@/lib/navigation/compteurs-regles';
 import { cn } from '@/lib/utils';
 
 type Entree = {
@@ -105,13 +115,42 @@ const ENTREES: Entree[] = [
 export function BarreLaterale({
   role,
   langue,
+  compteurs = {},
 }: {
   role: Role;
   langue: CodeLangue;
+  /** New items per tab, computed on the server for this reader. */
+  compteurs?: CompteursOnglets;
 }) {
   const chemin = usePathname();
   const t = traducteur(langue);
   const entrees = ENTREES.filter((entree) => entree.roles.includes(role));
+
+  /**
+   * Tabs opened during this visit.
+   *
+   * The badge disappears the instant the tab is clicked rather than waiting for
+   * the server: the reader is looking at what the badge was counting, so
+   * leaving it lit for a round trip would be plainly wrong.
+   */
+  const [ouverts, setOuverts] = useState<string[]>([]);
+
+  useEffect(() => {
+    const onglet = ENTREES.find(
+      (entree) =>
+        chemin === entree.href || chemin.startsWith(`${entree.href}/`),
+    )?.href;
+
+    if (!onglet || !porteUnCompteur(onglet)) {
+      return;
+    }
+
+    setOuverts((precedents) =>
+      precedents.includes(onglet) ? precedents : [...precedents, onglet],
+    );
+
+    void marquerOngletVuAction(onglet);
+  }, [chemin]);
 
   return (
     <nav aria-label={t('nav.principale')} className="p-3">
@@ -119,6 +158,11 @@ export function BarreLaterale({
         {entrees.map((entree) => {
           const actif = chemin === entree.href || chemin.startsWith(`${entree.href}/`);
           const Icone = entree.icone;
+
+          const nombre = ouverts.includes(entree.href)
+            ? 0
+            : (compteurs[entree.href as OngletCompte] ?? 0);
+          const badge = formaterCompteur(nombre);
 
           return (
             <li key={entree.href}>
@@ -134,6 +178,22 @@ export function BarreLaterale({
               >
                 <Icone className="size-4 shrink-0" aria-hidden />
                 <span className="truncate">{t(entree.cle)}</span>
+
+                {badge && (
+                  <>
+                    <Badge
+                      className="ml-auto h-5 min-w-5 justify-center px-1 tabular-nums"
+                      aria-hidden
+                    >
+                      {badge}
+                    </Badge>
+                    {/* Le badge est décoratif ; le nombre est dit au lecteur
+                        d'écran dans la même phrase que le nom de l'onglet. */}
+                    <span className="sr-only">
+                      , {libelleCompteur(nombre)}
+                    </span>
+                  </>
+                )}
               </Link>
             </li>
           );
