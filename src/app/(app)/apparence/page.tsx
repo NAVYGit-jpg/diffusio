@@ -7,7 +7,7 @@ import { prisma } from '@/lib/prisma';
 import { FormulaireApparence } from './formulaire-apparence';
 
 export const metadata: Metadata = {
-  title: 'Apparence — DIFFUSIO',
+  title: 'Logo et slogan — DIFFUSIO',
 };
 
 export default async function PageApparence() {
@@ -41,11 +41,12 @@ export default async function PageApparence() {
   return (
     <div className="mx-auto max-w-4xl">
       <header className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Apparence</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">
+          Logo et slogan
+        </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Adaptez l&apos;application à la charte graphique de {organisation.nom}.
-          Les changements s&apos;appliquent à tous les utilisateurs dès
-          l&apos;enregistrement.
+          L&apos;identité visuelle de {organisation.nom}. Les changements
+          s&apos;appliquent à tous les utilisateurs dès l&apos;enregistrement.
         </p>
       </header>
 

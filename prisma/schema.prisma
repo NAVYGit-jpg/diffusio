@@ -66,6 +66,14 @@ enum DensiteInterface {
   CONFORTABLE
 }
 
+// Langue d'affichage choisie par chaque utilisateur. Le francais est la langue
+// par defaut : c'est celle de l'administration ivoirienne.
+enum Langue {
+  FR
+  EN
+  PT
+}
+
 // Parti pris visuel d'ensemble (§9.4) : il agit sur les ombres, les bordures et
 // l'intensite des aplats, pas sur la disposition des ecrans.
 enum StyleInterface {
@@ -254,6 +262,9 @@ model Utilisateur {
 
   fonction  String?
   avatarUrl String?
+
+  // Langue de l'interface, propre a chaque utilisateur (§9.5).
+  langue Langue @default(FR)
 
   mustChangePassword Boolean   @default(true)
   actif              Boolean   @default(true)

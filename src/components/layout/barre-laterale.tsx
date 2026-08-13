@@ -17,11 +17,17 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { Role } from '@prisma/client';
 
+import {
+  type CleTraduction,
+  type CodeLangue,
+  traducteur,
+} from '@/lib/langue/dictionnaire';
 import { cn } from '@/lib/utils';
 
 type Entree = {
   href: string;
-  libelle: string;
+  /** Cle de traduction : le libelle depend de la langue du lecteur. */
+  cle: CleTraduction;
   icone: typeof LayoutDashboard;
   /** Roles allowed to see the link. The server still checks on every request. */
   roles: Role[];
@@ -30,78 +36,85 @@ type Entree = {
 const ENTREES: Entree[] = [
   {
     href: '/tableau-de-bord',
-    libelle: 'Tableau de bord',
+    cle: 'nav.tableauDeBord',
     icone: LayoutDashboard,
     roles: ['SUPER_ADMIN', 'ADMIN', 'POINT_FOCAL'],
   },
   {
     href: '/structures',
-    libelle: 'Structures',
+    cle: 'nav.structures',
     icone: Building2,
     roles: ['SUPER_ADMIN'],
   },
   {
     href: '/utilisateurs',
-    libelle: 'Utilisateurs',
+    cle: 'nav.utilisateurs',
     icone: Users,
     roles: ['SUPER_ADMIN'],
   },
   {
     href: '/catalogue',
-    libelle: 'Publications & indicateurs',
+    cle: 'nav.catalogue',
     icone: ClipboardList,
     roles: ['SUPER_ADMIN', 'ADMIN', 'POINT_FOCAL'],
   },
   {
     href: '/calendrier',
-    libelle: 'Calendrier de diffusion',
+    cle: 'nav.calendrier',
     icone: CalendarDays,
     roles: ['SUPER_ADMIN', 'ADMIN', 'POINT_FOCAL'],
   },
   {
     href: '/imminentes',
-    libelle: 'Publications imminentes',
+    cle: 'nav.imminentes',
     icone: CalendarClock,
     roles: ['SUPER_ADMIN', 'ADMIN', 'POINT_FOCAL'],
   },
   {
     href: '/produits-charges',
-    libelle: 'Produits chargés',
+    cle: 'nav.produitsCharges',
     icone: PackageCheck,
     roles: ['SUPER_ADMIN', 'ADMIN', 'POINT_FOCAL'],
   },
   {
     href: '/retards',
-    libelle: 'Publications en retard',
+    cle: 'nav.retards',
     icone: TriangleAlert,
     roles: ['SUPER_ADMIN', 'ADMIN', 'POINT_FOCAL'],
   },
   {
     href: '/equipe',
-    libelle: 'Équipe',
+    cle: 'nav.equipe',
     icone: Users2,
     roles: ['SUPER_ADMIN', 'ADMIN', 'POINT_FOCAL'],
   },
   {
     href: '/notifications',
-    libelle: 'Notifications',
+    cle: 'nav.notifications',
     icone: Bell,
     roles: ['SUPER_ADMIN', 'ADMIN', 'POINT_FOCAL'],
   },
   {
     href: '/discussion',
-    libelle: 'Discussion',
+    cle: 'nav.discussion',
     icone: MessageSquare,
     roles: ['SUPER_ADMIN', 'ADMIN', 'POINT_FOCAL'],
   },
 ];
 
-export function BarreLaterale({ role }: { role: Role }) {
+export function BarreLaterale({
+  role,
+  langue,
+}: {
+  role: Role;
+  langue: CodeLangue;
+}) {
   const chemin = usePathname();
+  const t = traducteur(langue);
   const entrees = ENTREES.filter((entree) => entree.roles.includes(role));
 
   return (
-    <nav aria-label="Navigation principale" className="p-3">
+    <nav aria-label={t('nav.principale')} className="p-3">
       <ul className="space-y-1">
         {entrees.map((entree) => {
           const actif = chemin === entree.href || chemin.startsWith(`${entree.href}/`);
@@ -120,7 +133,7 @@ export function BarreLaterale({ role }: { role: Role }) {
                 )}
               >
                 <Icone className="size-4 shrink-0" aria-hidden />
-                <span className="truncate">{entree.libelle}</span>
+                <span className="truncate">{t(entree.cle)}</span>
               </Link>
             </li>
           );

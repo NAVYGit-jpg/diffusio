@@ -23,12 +23,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { deconnexionAction } from '@/lib/actions/auth';
-
-const LIBELLE_ROLE: Record<Role, string> = {
-  SUPER_ADMIN: 'Super administrateur',
-  ADMIN: 'Administrateur',
-  POINT_FOCAL: 'Point focal',
-};
+import { type CodeLangue, traducteur } from '@/lib/langue/dictionnaire';
 
 /** Initials for the avatar: "Elie N'DOUBA" gives "EN". */
 function initiales(nomComplet: string): string {
@@ -44,22 +39,25 @@ export function MenuUtilisateur({
   nomComplet,
   email,
   role,
+  langue,
 }: {
   nomComplet: string;
   email: string;
   role: Role;
+  langue: CodeLangue;
 }) {
   const { theme, setTheme } = useTheme();
+  const t = traducteur(langue);
 
   // The server does not know the browser's theme, so rendering the current
   // choice before mounting would produce a mismatch React complains about.
   const [monte, setMonte] = useState(false);
   useEffect(() => setMonte(true), []);
 
-  const themes: { valeur: string; libelle: string; icone: typeof Sun }[] = [
-    { valeur: 'light', libelle: 'Clair', icone: Sun },
-    { valeur: 'dark', libelle: 'Sombre', icone: Moon },
-    { valeur: 'system', libelle: 'Selon mon système', icone: Monitor },
+  const themes = [
+    { valeur: 'light', libelle: t('compte.themeClair'), icone: Sun },
+    { valeur: 'dark', libelle: t('compte.themeSombre'), icone: Moon },
+    { valeur: 'system', libelle: t('compte.themeSysteme'), icone: Monitor },
   ];
 
   return (
@@ -76,7 +74,7 @@ export function MenuUtilisateur({
           <span className="hidden text-left sm:block">
             <span className="block text-sm leading-tight">{nomComplet}</span>
             <span className="block text-xs leading-tight text-muted-foreground">
-              {LIBELLE_ROLE[role]}
+              {t(`role.${role}`)}
             </span>
           </span>
         </Button>
@@ -95,7 +93,7 @@ export function MenuUtilisateur({
         <DropdownMenuItem asChild>
           <Link href="/profil">
             <UserRound aria-hidden />
-            Mon profil et mot de passe
+            {t('compte.profil')}
           </Link>
         </DropdownMenuItem>
 
@@ -103,7 +101,7 @@ export function MenuUtilisateur({
           <DropdownMenuItem asChild>
             <Link href="/apparence">
               <Palette aria-hidden />
-              Logo et couleurs
+              {t('compte.apparence')}
             </Link>
           </DropdownMenuItem>
         )}
@@ -111,7 +109,7 @@ export function MenuUtilisateur({
         <DropdownMenuSeparator />
 
         <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
-          Apparence de l&apos;écran
+          {t('compte.theme')}
         </DropdownMenuLabel>
 
         {themes.map((choix) => {
@@ -139,7 +137,7 @@ export function MenuUtilisateur({
             className="flex w-full cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-secondary"
           >
             <LogOut className="size-4" aria-hidden />
-            Se déconnecter
+            {t('compte.deconnexion')}
           </button>
         </form>
       </DropdownMenuContent>
