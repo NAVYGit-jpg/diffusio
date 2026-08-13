@@ -128,3 +128,65 @@
     @apply font-sans;
   }
 }
+/* ---------------------------------------------------------------------------
+   Impression et export PDF du tableau de bord (cahier des charges §10).
+
+   Le PDF passe par l'impression du navigateur : les graphiques sont deja des
+   SVG a l'ecran, ils sortent donc en vectoriel net, sans qu'aucun navigateur
+   sans interface n'ait a etre installe puis maintenu en production pour les
+   redessiner.
+
+   Tout ce qui sert a naviguer disparait ; il ne reste que le rapport.
+--------------------------------------------------------------------------- */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 14mm 12mm;
+  }
+
+  /* La barre laterale, l'en-tete applicative et les boutons ne veulent rien
+     dire sur du papier. */
+  aside,
+  nav,
+  header[data-application],
+  .print\:hidden {
+    display: none !important;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+  }
+
+  /* Les fonds de cartes s'impriment mal et consomment de l'encre ; un simple
+     filet suffit a delimiter chaque bloc. */
+  [data-slot='card'] {
+    border: 1px solid #d4d4d8 !important;
+    box-shadow: none !important;
+    background: #fff !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Un graphique coupe en deux par un saut de page est illisible. */
+  .recharts-wrapper,
+  section,
+  table {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Sans cela, les navigateurs suppriment les aplats de couleur : les barres
+     des graphiques sortiraient blanches. */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}

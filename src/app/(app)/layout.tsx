@@ -33,7 +33,12 @@ export default async function LayoutApplication({
 
   return (
     <div className="flex min-h-svh flex-col">
-      <header className="sticky top-0 z-10 flex h-14 items-center justify-between gap-4 border-b bg-background px-4">
+      {/* `data-application` distinguishes the navigation bar from the <header>
+          each page carries: printing hides this one and keeps the other. */}
+      <header
+        data-application
+        className="sticky top-0 z-10 flex h-14 items-center justify-between gap-4 border-b bg-background px-4"
+      >
         <div className="flex items-center gap-3">
           <LogoDiffusio hauteur={26} priorite />
           <span className="hidden border-l pl-3 text-sm text-muted-foreground lg:inline">

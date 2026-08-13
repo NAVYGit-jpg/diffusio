@@ -30,25 +30,12 @@ import {
 } from '@/components/ui/table';
 import { formaterJJMMAAAA } from '@/lib/calendrier/dates';
 import { exigerActeur } from '@/lib/auth/session';
-import { LIBELLE_PERIODICITE } from '@/lib/catalogue/schemas';
-import {
-  chargerActiviteRecente,
-  chargerTableauDeBord,
-} from '@/lib/tableau-bord/donnees';
+import { chargerActiviteRecente } from '@/lib/tableau-bord/donnees';
 import { anneesProposees, lireFiltres } from '@/lib/tableau-bord/filtres-url';
-import {
-  avancementAnnee,
-  classementStructures,
-  compteurs,
-  etatRetards,
-  evolutionMensuelle,
-  lignesComparables,
-  prochainesEcheances,
-  repartition,
-  statistiquesRetard,
-  tauxRespect,
-} from '@/lib/tableau-bord/indicateurs';
+import { assemblerRapport } from '@/lib/tableau-bord/rapport';
+import { BoutonsRapport } from './boutons-rapport';
 import { BarreAvancement, CarteIndicateur } from './cartes';
+import { CommentaireAffiche } from './commentaire-affiche';
 import { FiltresTableauDeBord } from './filtres';
 import { BarresRepartition, BarresStatut, CourbeRespect } from './graphiques';
 
@@ -84,30 +71,27 @@ export default async function PageTableauDeBord({
   const filtres = lireFiltres(parametres);
   const annee = filtres.annee;
 
-  const contexte = await chargerTableauDeBord(acteur, filtres);
+  const aujourdhui = new Date();
+
+  // Same assembly as the Excel and PDF exports, so the three never disagree.
+  const rapport = await assemblerRapport(acteur, filtres, aujourdhui);
   const activite = await chargerActiviteRecente(acteur.organisationId);
 
-  const aujourdhui = new Date();
-  const lignes = lignesComparables(contexte.lignes);
-
-  const respect = tauxRespect(lignes, aujourdhui);
-  const retards = statistiquesRetard(lignes, aujourdhui);
-  const echeances = prochainesEcheances(lignes, aujourdhui);
-  const etat = etatRetards(lignes, aujourdhui);
-  const nombres = compteurs(contexte.lignes, aujourdhui);
-  const avancement = avancementAnnee(contexte.lignes);
-  const courbe = evolutionMensuelle(lignes, annee, aujourdhui);
-  const classement = classementStructures(lignes, aujourdhui);
-
-  const parDomaine = repartition(lignes, (ligne) => ligne.domaine ?? 'Sans domaine');
-  const parPeriodicite = repartition(
+  const {
+    contexte,
     lignes,
-    (ligne) =>
-      LIBELLE_PERIODICITE[
-        ligne.periodicite as keyof typeof LIBELLE_PERIODICITE
-      ] ?? 'Non renseignée',
-  );
-  const parStructure = repartition(lignes, (ligne) => ligne.structureNom);
+    respect,
+    retards,
+    echeances,
+    etat,
+    nombres,
+    avancement,
+    courbe,
+    classement,
+    parDomaine,
+    parPeriodicite,
+    parStructure,
+  } = rapport;
 
   const partsStatut = [
     { libelle: 'Planifiées', nombre: nombres.planifiees },
@@ -142,20 +126,37 @@ export default async function PageTableauDeBord({
 
   return (
     <div className="mx-auto max-w-6xl">
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Tableau de bord</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Bonjour {acteur.nomComplet}. Les chiffres ci-dessous portent
-          uniquement sur les structures qui vous sont rattachées.
-        </p>
+      <header className="mb-6 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            Tableau de bord
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground print:hidden">
+            Bonjour {acteur.nomComplet}. Les chiffres ci-dessous portent
+            uniquement sur les structures qui vous sont rattachées.
+          </p>
+          {/* Replaces the greeting on paper: a printed report has to say what
+              it covers and when it was produced, without anyone to explain. */}
+          <p className="mt-1 hidden text-sm print:block">
+            {rapport.perimetre} — calendrier {annee}, édité le{' '}
+            {formaterJJMMAAAA(rapport.genereLe)}
+            {rapport.filtresLisibles.length > 0
+              ? ` — ${rapport.filtresLisibles.join(' ; ')}`
+              : ''}
+          </p>
+        </div>
+
+        {!vide && <BoutonsRapport />}
       </header>
 
-      <FiltresTableauDeBord
-        etat={filtres}
-        annees={anneesProposees(contexte.anneesDisponibles, annee)}
-        structures={contexte.structures}
-        domaines={contexte.domaines}
-      />
+      <div className="print:hidden">
+        <FiltresTableauDeBord
+          etat={filtres}
+          annees={anneesProposees(contexte.anneesDisponibles, annee)}
+          structures={contexte.structures}
+          domaines={contexte.domaines}
+        />
+      </div>
 
       {vide && filtresActifs > 0 ? (
         <Card>
@@ -278,6 +279,9 @@ export default async function PageTableauDeBord({
               ton={nombres.misesEnLigne > 0 ? 'positif' : 'neutre'}
             />
           </section>
+
+          {/* ------------------------------------------------- commentaire */}
+          <CommentaireAffiche observations={rapport.commentaire} />
 
           {/* -------------------------------------------------- avancement */}
           <Card>
