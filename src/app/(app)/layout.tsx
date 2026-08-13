@@ -4,6 +4,7 @@ import { BarreLaterale } from '@/components/layout/barre-laterale';
 import {
   LogoOrganisation,
   SloganOrganisation,
+  chargerIdentiteOrganisation,
 } from '@/components/layout/logo-organisation';
 import { MenuUtilisateur } from '@/components/layout/menu-utilisateur';
 import { SelecteurLangue } from '@/components/layout/selecteur-langue';
@@ -24,7 +25,7 @@ export default async function LayoutApplication({
 
   // Unread counter for the bell (§9). Cheap enough to read on every render,
   // and always accurate — no cache to invalidate.
-  const [nonLues, compte] = await Promise.all([
+  const [nonLues, compte, identite] = await Promise.all([
     prisma.notification.count({
       where: { destinataireId: acteur.id, lu: false },
     }),
@@ -32,6 +33,7 @@ export default async function LayoutApplication({
       where: { id: acteur.id },
       select: { langue: true },
     }),
+    chargerIdentiteOrganisation(),
   ]);
 
   const langue = langueValide(compte?.langue);
@@ -46,11 +48,14 @@ export default async function LayoutApplication({
         className="sticky top-0 z-10 flex h-14 items-center justify-between gap-4 border-b bg-background px-4"
       >
         <div className="flex min-w-0 items-center gap-3">
-          <LogoOrganisation hauteur={26} priorite />
+          <LogoOrganisation identite={identite} hauteur={26} priorite />
           {/* Le slogan accompagne le logo dès que la place le permet ; il ne
               disparaît que sur les écrans les plus étroits, où le logo seul
               doit rester lisible. */}
-          <SloganOrganisation className="hidden truncate border-l pl-3 text-sm text-muted-foreground sm:inline" />
+          <SloganOrganisation
+            identite={identite}
+            className="hidden truncate border-l pl-3 text-sm text-muted-foreground sm:inline"
+          />
         </div>
 
         <div className="flex items-center gap-2">

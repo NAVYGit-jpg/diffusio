@@ -321,6 +321,8 @@ export async function previsualiserCalendrierAction(
     elementType: ligne.elementType,
     elementId: (ligne.publicationId ?? ligne.indicateurId)!,
     libellePeriode: ligne.libellePeriode,
+    dateDebutCouverture: ligne.dateDebutCouverture,
+    dateFinCouverture: ligne.dateFinCouverture,
     dateDiffusionPrevue: ligne.dateDiffusionPrevue,
     statut: ligne.statut,
     modifieManuellement: ligne.modifieManuellement,
@@ -430,6 +432,8 @@ export async function genererCalendrierAction(
     elementType: ligne.elementType,
     elementId: (ligne.publicationId ?? ligne.indicateurId)!,
     libellePeriode: ligne.libellePeriode,
+    dateDebutCouverture: ligne.dateDebutCouverture,
+    dateFinCouverture: ligne.dateFinCouverture,
     dateDiffusionPrevue: ligne.dateDiffusionPrevue,
     statut: ligne.statut,
     modifieManuellement: ligne.modifieManuellement,
@@ -446,21 +450,17 @@ export async function genererCalendrierAction(
 
   const aEcrire = [...rapport.aModifier, ...(ecraserManuelles ? rapport.aConfirmer : [])];
 
+  // Aucune suppression : régénérer met à jour les lignes reconnues et ajoute
+  // les nouvelles. Vider le calendrier pour le remplir emporterait au passage
+  // les corrections faites à la main, les fichiers déposés et les liens publiés.
   await prisma.$transaction([
-    ...(rapport.aSupprimer.length > 0
-      ? [
-          prisma.ligneCalendrier.deleteMany({
-            where: { id: { in: rapport.aSupprimer.map((ligne) => ligne.id) } },
-          }),
-        ]
-      : []),
-
     ...aEcrire.map((paire) =>
       prisma.ligneCalendrier.update({
         where: { id: paire.existante.id },
         data: {
-          dateDebutCouverture: paire.calculee.dateDebutCouverture,
-          dateFinCouverture: paire.calculee.dateFinCouverture,
+          // La période couverte identifie la ligne : elle ne change pas ici.
+          // Seuls le libellé et la date de diffusion sont recalculés.
+          libellePeriode: paire.calculee.libellePeriode,
           dateDiffusionPrevue: paire.calculee.dateDiffusionPrevue,
           modifieManuellement: false,
         },
@@ -501,8 +501,8 @@ export async function genererCalendrierAction(
         annee: selection.annee,
         ajoutees: rapport.aAjouter.length,
         modifiees: aEcrire.length,
-        supprimees: rapport.aSupprimer.length,
         conservees: rapport.conservees.length,
+        orphelines: rapport.orphelines.length,
       },
     },
   });

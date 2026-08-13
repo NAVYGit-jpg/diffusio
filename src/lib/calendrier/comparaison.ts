@@ -6,7 +6,11 @@ import { formaterISO } from './dates';
  * Difference report between an existing calendar and a freshly computed one
  * (cahier des charges §5.5).
  *
- * Two rules dominate everything else here:
+ * Three rules dominate everything else here:
+ *   - **regenerating never deletes.** Existing lines are kept; the computation
+ *     updates those it recognises and adds those it does not. Emptying a
+ *     calendar to refill it would throw away every hand-made correction, every
+ *     uploaded file and every published link along the way.
  *   - a line already `TELEVERSE` or `MIS_EN_LIGNE` is **never** touched. The
  *     specification forbids it (§14) and it would destroy work already done.
  *   - a line edited by hand is not overwritten silently; it is listed so the
@@ -21,6 +25,8 @@ export type LigneExistante = {
   elementType: TypeElement;
   elementId: string;
   libellePeriode: string;
+  dateDebutCouverture: Date;
+  dateFinCouverture: Date;
   dateDiffusionPrevue: Date;
   statut: StatutLigne;
   modifieManuellement: boolean;
@@ -48,7 +54,13 @@ export type RapportComparaison = {
   /** Already delivered or published: kept as they are, whatever happens. */
   conservees: LigneExistante[];
   inchangees: LigneExistante[];
-  aSupprimer: LigneExistante[];
+  /**
+   * Lines the new computation no longer produces — a periodicity that changed,
+   * an element unticked. They are **kept**, not deleted, and merely reported:
+   * the calendar belongs to the point focal, and only an explicit deletion on
+   * the line itself removes it.
+   */
+  orphelines: LigneExistante[];
 };
 
 /** Statuses that mark work already done; those lines are untouchable. */
@@ -59,17 +71,31 @@ export function estIntouchable(statut: StatutLigne): boolean {
 }
 
 /**
- * Identity of a calendar line.
+ * Identity of a calendar line: the element, plus the period it covers.
  *
- * An element plus a period, not the date: the whole point of an update is that
- * the date may have moved while still designating the same line.
+ * The **coverage dates**, not the period label and not the release date.
+ *
+ * Not the release date, because the whole point of an update is that the date
+ * may have moved while still designating the same line. Not the label either:
+ * "Janvier 2026" is text derived from the dates, and rewording it — or fixing
+ * an accent — would make every line look new and duplicate the whole calendar.
+ * The covered period is the fact; the label only describes it.
+ *
+ * The element is matched by identifier rather than by name, so renaming a
+ * publication keeps its calendar attached to it.
  */
 function cle(ligne: {
   elementType: TypeElement;
   elementId: string;
-  libellePeriode: string;
+  dateDebutCouverture: Date;
+  dateFinCouverture: Date;
 }): string {
-  return `${ligne.elementType}::${ligne.elementId}::${ligne.libellePeriode}`;
+  return [
+    ligne.elementType,
+    ligne.elementId,
+    formaterISO(ligne.dateDebutCouverture),
+    formaterISO(ligne.dateFinCouverture),
+  ].join('::');
 }
 
 export function comparerCalendrier(
@@ -88,7 +114,7 @@ export function comparerCalendrier(
     aConfirmer: [],
     conservees: [],
     inchangees: [],
-    aSupprimer: [],
+    orphelines: [],
   };
 
   const clesVues = new Set<string>();
@@ -109,11 +135,14 @@ export function comparerCalendrier(
       continue;
     }
 
-    const memeDate =
+    // The label is compared too: it is stored, so a line whose wording changed
+    // has to be rewritten even when its date has not moved.
+    const identique =
       formaterISO(existante.dateDiffusionPrevue) ===
-      formaterISO(calculee.dateDiffusionPrevue);
+        formaterISO(calculee.dateDiffusionPrevue) &&
+      existante.libellePeriode === calculee.libellePeriode;
 
-    if (memeDate) {
+    if (identique) {
       rapport.inchangees.push(existante);
       continue;
     }
@@ -130,12 +159,13 @@ export function comparerCalendrier(
       continue;
     }
 
-    // A line no longer produced by the element — periodicity changed, for
-    // instance. Already-delivered ones are kept rather than deleted.
+    // A line the new computation no longer produces. It is kept whatever its
+    // status: regenerating a calendar must never make work disappear, and a
+    // point focal who really wants a line gone deletes it from the line itself.
     if (estIntouchable(existante.statut)) {
       rapport.conservees.push(existante);
     } else {
-      rapport.aSupprimer.push(existante);
+      rapport.orphelines.push(existante);
     }
   }
 
@@ -166,8 +196,10 @@ export function resumerComparaison(rapport: RapportComparaison): string[] {
     );
   }
 
-  if (rapport.aSupprimer.length > 0) {
-    lignes.push(`${rapport.aSupprimer.length} ligne(s) supprimée(s)`);
+  if (rapport.orphelines.length > 0) {
+    lignes.push(
+      `${rapport.orphelines.length} ligne(s) conservée(s) hors de ce calcul`,
+    );
   }
 
   if (rapport.inchangees.length > 0) {

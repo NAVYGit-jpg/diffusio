@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import {
   LogoOrganisation,
   SloganOrganisation,
+  chargerIdentiteOrganisation,
 } from '@/components/layout/logo-organisation';
 import { redirect } from 'next/navigation';
 
@@ -32,12 +33,17 @@ export default async function PageConnexion({
   const emailIndicatif =
     process.env.EMAIL_ADMIN_PAR_DEFAUT ?? 'super.admin@diffusio.local';
 
+  const identite = await chargerIdentiteOrganisation();
+
   return (
     <main className="flex min-h-svh items-center justify-center bg-muted/40 p-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center text-center">
-          <LogoOrganisation hauteur={40} priorite />
-          <SloganOrganisation className="mt-3 text-sm text-muted-foreground" />
+          <LogoOrganisation identite={identite} hauteur={40} priorite />
+          <SloganOrganisation
+            identite={identite}
+            className="mt-3 text-sm text-muted-foreground"
+          />
         </div>
 
         <FormulaireConnexion
