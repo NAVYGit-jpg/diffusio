@@ -228,6 +228,181 @@
 
 }
 
+/* ---------------------------------------------------------------------------
+   Profondeur : separer les blocs du fond (§9.4, §9.5).
+
+   Le probleme corrige ici : le fond de page et le fond des cartes etaient tous
+   deux blancs. Sans difference de valeur, une carte ne peut pas flotter — elle
+   n'est qu'un rectangle borde. La separation vient d'abord de la teinte, pas de
+   l'ombre : le fond recoit un voile de la couleur de l'organisation, la carte
+   reste franche.
+
+   Tout est derive de `--couleur-primaire`, jamais d'une couleur ecrite en dur :
+   la charte appartient au super admin, et une refonte qui imposerait son propre
+   bleu annulerait l'ecran « Logo et slogan ».
+--------------------------------------------------------------------------- */
+:root {
+  /* Voile colore du fond. `color-mix` teinte sans toucher a la luminosite du
+     texte, donc sans casser les contrastes deja verifies. */
+  --background: color-mix(in oklab, var(--couleur-primaire) 3%, oklch(0.985 0 0));
+  --card: oklch(1 0 0);
+  --popover: oklch(1 0 0);
+  --muted: color-mix(in oklab, var(--couleur-primaire) 5%, oklch(0.968 0 0));
+  --border: color-mix(in oklab, var(--couleur-primaire) 9%, oklch(0.916 0 0));
+
+  /* Echelle d'elevation a quatre niveaux plutot qu'une ombre unique. Chaque
+     niveau superpose une ombre de contact courte et une ombre portee longue :
+     c'est ce qui distingue une surface posee d'un rectangle grise. */
+  --elevation-1:
+    0 1px 2px -1px rgb(0 0 0 / 0.06),
+    0 1px 3px 0 rgb(0 0 0 / 0.05);
+  --elevation-2:
+    0 1px 2px -1px rgb(0 0 0 / 0.07),
+    0 4px 12px -2px rgb(0 0 0 / 0.07);
+  --elevation-3:
+    0 2px 4px -2px rgb(0 0 0 / 0.08),
+    0 12px 28px -6px rgb(0 0 0 / 0.10);
+  --elevation-4:
+    0 4px 8px -4px rgb(0 0 0 / 0.10),
+    0 24px 48px -12px rgb(0 0 0 / 0.14);
+
+  /* Liseré clair sur l'arête haute : le repere que l'oeil lit comme « cette
+     surface est soulevee ». Invisible consciemment, decisif en pratique. */
+  --liseré-surface: inset 0 1px 0 0 rgb(255 255 255 / 0.7);
+
+  --gradient-primaire: linear-gradient(
+    135deg,
+    var(--couleur-primaire) 0%,
+    color-mix(in oklab, var(--couleur-primaire) 78%, var(--couleur-accent)) 100%
+  );
+}
+
+.dark {
+  --background: color-mix(in oklab, var(--couleur-primaire) 6%, oklch(0.135 0 0));
+  --card: color-mix(in oklab, var(--couleur-primaire) 5%, oklch(0.205 0 0));
+  --popover: color-mix(in oklab, var(--couleur-primaire) 5%, oklch(0.205 0 0));
+  --muted: color-mix(in oklab, var(--couleur-primaire) 8%, oklch(0.262 0 0));
+  --border: color-mix(in oklab, var(--couleur-primaire) 14%, oklch(1 0 0 / 12%));
+
+  /* Sur fond sombre une ombre noire ne se voit pas : la profondeur vient du
+     contraste de surface et d'un liseré clair, l'ombre n'est la que pour
+     asseoir les couches hautes. */
+  --elevation-1: 0 1px 2px 0 rgb(0 0 0 / 0.5);
+  --elevation-2: 0 2px 10px -2px rgb(0 0 0 / 0.55);
+  --elevation-3: 0 8px 24px -6px rgb(0 0 0 / 0.6);
+  --elevation-4: 0 16px 44px -12px rgb(0 0 0 / 0.7);
+  --liseré-surface: inset 0 1px 0 0 rgb(255 255 255 / 0.06);
+}
+
+/* --------------------------------------------------------- fond dynamique */
+/*
+   Deux nappes radiales derivees de la charte, posees derriere toute
+   l'application. Elles derivent tres lentement : le mouvement doit se
+   remarquer quand on quitte l'ecran des yeux, jamais pendant qu'on lit.
+
+   `position: fixed` : la nappe ne defile pas avec le contenu, donc aucun
+   repaint pendant le scroll. `pointer-events: none` : elle ne capte jamais un
+   clic destine a l'interface.
+*/
+.fond-dynamique {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  /*
+     Les trois foyers sont pousses hors champ ou vers les bords : seule leur
+     frange entre dans l'ecran. La colonne de lecture centrale reste donc
+     presque neutre, et le texte pose directement sur le fond garde son
+     contraste. Une nappe centree serait plus spectaculaire et rendrait les
+     titres illisibles.
+  */
+  background-image:
+    radial-gradient(
+      70rem 38rem at 14% -6%,
+      color-mix(in oklab, var(--couleur-primaire) 62%, transparent),
+      transparent 60%
+    ),
+    radial-gradient(
+      52rem 36rem at 100% 6%,
+      color-mix(in oklab, var(--couleur-accent) 52%, transparent),
+      transparent 58%
+    ),
+    /* Troisieme foyer tire de la couleur principale eclaircie, et non de la
+       couleur secondaire : celle-ci sert aux textes et peut etre une teinte
+       tres eloignee — un vert acide melange a un orange donne une nappe sale.
+       Rester sur une seule famille garde la nappe harmonieuse quelle que soit
+       la charte choisie. */
+    radial-gradient(
+      58rem 36rem at 66% 104%,
+      color-mix(in oklab, var(--couleur-primaire) 34%, transparent),
+      transparent 60%
+    );
+  opacity: 0.5;
+  animation: derive-nappe 26s ease-in-out infinite alternate;
+}
+
+.dark .fond-dynamique {
+  /* Sur fond sombre une teinte se voit a intensite bien moindre : la meme
+     valeur qu'en clair delaverait le fond. On attenue plutot que de
+     recolorer, pour garder la charte identique dans les deux themes. */
+  opacity: 0.22;
+}
+
+@keyframes derive-nappe {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    transform: translate3d(-2%, 1.5%, 0) scale(1.06);
+  }
+}
+
+/* --------------------------------------------------------------- surfaces */
+/*
+   Les cartes portent l'elevation choisie par le style d'interface, plus le
+   liseré. Regle hors couche : les utilitaires Tailwind battraient une regle
+   posee dans @layer base.
+*/
+[data-slot='card'] {
+  background-color: var(--card);
+  background-image: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--couleur-primaire) 2%, transparent) 0%,
+    transparent 40%
+  );
+  transition:
+    box-shadow 200ms ease-out,
+    transform 200ms ease-out;
+}
+
+/* Le survol souleve la carte d'un cran. Le deplacement reste sous le pixel :
+   un mouvement plus ample ferait sautiller la grille entiere. */
+[data-slot='card']:hover {
+  box-shadow: var(--elevation-3), var(--liseré-surface);
+}
+
+/* --------------------------------------------------------------- accents */
+/*
+   Le bouton principal, l'onglet actif et la barre d'avancement portent le
+   degrade de la charte. Ils sont les seuls : un degrade partout ne separe plus
+   rien, il devient le fond.
+*/
+[data-slot='button'][data-variant='default'],
+[data-slot='dropdown-menu-trigger'][data-variant='default'] {
+  background-image: var(--gradient-primaire);
+}
+
+/* ----------------------------------------------------- mouvement raisonne */
+@media (prefers-reduced-motion: reduce) {
+  .fond-dynamique {
+    animation: none;
+  }
+
+  [data-slot='card'] {
+    transition: none;
+  }
+}
+
 /* Le style d'interface agit sur la texture, jamais sur la disposition :
    changer de style ne doit pas deplacer ce que l'utilisateur a appris.
 

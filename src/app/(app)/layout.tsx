@@ -43,11 +43,17 @@ export default async function LayoutApplication({
 
   return (
     <div className="flex min-h-svh flex-col">
+      {/* Nappe coloree derivee de la charte, derriere toute l'application.
+          Purement decorative : masquee aux lecteurs d'ecran. */}
+      <div className="fond-dynamique" aria-hidden />
       {/* `data-application` distinguishes the navigation bar from the <header>
           each page carries: printing hides this one and keeps the other. */}
       <header
         data-application
-        className="sticky top-0 z-10 flex h-14 items-center justify-between gap-4 border-b bg-background px-4"
+        // Translucide sur la nappe plutôt qu'opaque : le dégradé traverse
+        // l'en-tête, ce qui rattache la barre à la page au lieu de la poser
+        // dessus comme un bandeau étranger.
+        className="sticky top-0 z-20 flex h-14 items-center justify-between gap-4 border-b bg-background/75 px-4 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60"
       >
         <div className="flex min-w-0 items-center gap-3">
           <LogoOrganisation identite={identite} hauteur={26} priorite />
@@ -99,7 +105,7 @@ export default async function LayoutApplication({
             long calendrier, une barre qui remonte avec la page oblige à
             revenir en haut pour changer d'écran. `top-14` la cale sous
             l'en-tête, lui-même collant. */}
-        <aside className="hidden w-64 shrink-0 border-r md:block">
+        <aside className="hidden w-64 shrink-0 border-r bg-background/50 backdrop-blur-xl md:block">
           <div className="sticky top-14 max-h-[calc(100svh-3.5rem)] overflow-y-auto">
             <BarreLaterale
               role={acteur.role}

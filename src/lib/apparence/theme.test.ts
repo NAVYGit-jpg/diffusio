@@ -92,6 +92,25 @@ describe('variablesCss', () => {
     expect(variables['--epaisseur-bordure']).toBe('0px');
   });
 
+  it('gradue l’élévation du plus discret au plus marqué', () => {
+    // Classique pose la surface, moderne la souleve : les deux styles doivent
+    // rester distinguables a l'oeil, sinon le choix ne sert a rien.
+    const classique = variablesCss({
+      ...REGLAGES_PAR_DEFAUT,
+      styleInterface: 'CLASSIQUE',
+    });
+    const moderne = variablesCss({
+      ...REGLAGES_PAR_DEFAUT,
+      styleInterface: 'MODERNE',
+    });
+
+    expect(classique['--ombre-carte']).toContain('--elevation-1');
+    expect(moderne['--ombre-carte']).toContain('--elevation-2');
+    // Seul le style moderne porte le liseré qui fait décoller la surface.
+    expect(moderne['--ombre-carte']).toContain('liseré-surface');
+    expect(classique['--ombre-carte']).not.toContain('liseré-surface');
+  });
+
   it('resserre les espacements en densité compacte', () => {
     const confortable = variablesCss(REGLAGES_PAR_DEFAUT);
     const compacte = variablesCss({

@@ -113,13 +113,16 @@ const TOKENS_STYLE: Record<
   StyleInterface,
   { ombre: string; epaisseurBordure: string; facteurArrondi: number }
 > = {
+  // L'élévation est reprise de l'échelle définie dans la feuille de style, et
+  // complétée du liseré : c'est la combinaison des deux qui fait décoller la
+  // surface du fond, pas l'ombre seule.
   MODERNE: {
-    ombre: '0 1px 2px 0 rgb(0 0 0 / 0.05), 0 1px 3px 0 rgb(0 0 0 / 0.06)',
+    ombre: 'var(--elevation-2), var(--liseré-surface)',
     epaisseurBordure: '1px',
     facteurArrondi: 1,
   },
   CLASSIQUE: {
-    ombre: 'none',
+    ombre: 'var(--elevation-1)',
     epaisseurBordure: '1px',
     facteurArrondi: 0.4,
   },
