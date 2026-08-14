@@ -25,9 +25,29 @@ export type LigneVue = DetailLigne & {
   nombreValeurs: number;
 };
 
+/**
+ * Structures actually readable, once the requested ones are intersected with
+ * the perimeter.
+ *
+ * The intersection is the whole point: asking for a structure outside one's
+ * perimeter must narrow the view, never widen it.
+ */
+function structuresLisibles(
+  perimetre: string[] | null,
+  demandees: readonly string[],
+): string[] | null {
+  if (demandees.length === 0) {
+    return perimetre;
+  }
+
+  return perimetre === null
+    ? [...demandees]
+    : perimetre.filter((id) => demandees.includes(id));
+}
+
 export async function chargerLignesLivrables(
   acteur: ActeurSession & { organisationId: string },
-  filtre: { annee?: number },
+  filtre: { annee?: number; structureIds?: readonly string[] },
 ): Promise<LigneVue[]> {
   const perimetre = perimetreStructures(acteur);
 
@@ -36,12 +56,18 @@ export async function chargerLignesLivrables(
     return [];
   }
 
+  const lisibles = structuresLisibles(perimetre, filtre.structureIds ?? []);
+
+  if (lisibles !== null && lisibles.length === 0) {
+    return [];
+  }
+
   const lignes = await prisma.ligneCalendrier.findMany({
     where: {
       calendrier: {
         organisationId: acteur.organisationId,
         ...(filtre.annee ? { annee: filtre.annee } : {}),
-        ...(perimetre === null ? {} : { structureId: { in: perimetre } }),
+        ...(lisibles === null ? {} : { structureId: { in: lisibles } }),
       },
     },
     include: {
@@ -107,6 +133,53 @@ export async function chargerLignesLivrables(
     nombreFichiers: ligne.fichiers.length,
     nombreValeurs: ligne.valeurs.length,
   }));
+}
+
+/**
+ * Choices offered by the filter bar.
+ *
+ * Read from the whole perimeter, never from the current selection: narrowing
+ * the list to what is already picked would make a second choice impossible.
+ * Years come from the calendars that actually exist — offering 2031 when
+ * nothing was ever planned for it is an invitation to an empty screen.
+ */
+export async function chargerChoixFiltres(
+  acteur: ActeurSession & { organisationId: string },
+): Promise<{
+  annees: number[];
+  structures: { id: string; nom: string; sigle: string }[];
+}> {
+  const perimetre = perimetreStructures(acteur);
+
+  if (perimetre !== null && perimetre.length === 0) {
+    return { annees: [], structures: [] };
+  }
+
+  const filtreStructure =
+    perimetre === null ? {} : { structureId: { in: perimetre } };
+
+  const [calendriers, structures] = await Promise.all([
+    prisma.calendrier.findMany({
+      where: { organisationId: acteur.organisationId, ...filtreStructure },
+      select: { annee: true },
+      distinct: ['annee'],
+      orderBy: { annee: 'desc' },
+    }),
+    prisma.structure.findMany({
+      where: {
+        organisationId: acteur.organisationId,
+        deletedAt: null,
+        ...(perimetre === null ? {} : { id: { in: perimetre } }),
+      },
+      select: { id: true, nom: true, sigle: true },
+      orderBy: { nom: 'asc' },
+    }),
+  ]);
+
+  return {
+    annees: calendriers.map((calendrier) => calendrier.annee),
+    structures,
+  };
 }
 
 /** Raw values needed by the pure selection rules. */

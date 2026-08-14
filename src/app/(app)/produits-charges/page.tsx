@@ -18,7 +18,16 @@ import {
   joursAvantEcheance,
 } from '@/lib/calendrier/selection';
 import { equipeOrganisation } from '@/lib/notifications/destinataires';
-import { chargerLignesLivrables, critereSelection } from '@/lib/livrables/vues';
+import {
+  chargerChoixFiltres,
+  chargerLignesLivrables,
+  critereSelection,
+} from '@/lib/livrables/vues';
+import {
+  lireParametre,
+  lireParametres,
+} from '@/lib/tableau-bord/filtres-url';
+import { FiltresLivrables } from '../_livrables/filtres-livrables';
 import { ListeLivrables } from '../_livrables/liste-livrables';
 
 export const metadata: Metadata = {
@@ -33,11 +42,33 @@ export const metadata: Metadata = {
  * whose figures are missing is precisely the one somebody has to come back to;
  * hiding it until it is finished would hide the work in progress.
  */
-export default async function PageProduitsCharges() {
+export default async function PageProduitsCharges({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const acteur = await exigerActeur();
   const aujourdhui = new Date();
+  const parametres = await searchParams;
 
-  const toutes = await chargerLignesLivrables(acteur, {});
+  const anneeBrute = lireParametre(parametres, 'annee');
+  const anneeDemandee = anneeBrute === null ? null : Number(anneeBrute);
+  // Une année illisible dans l'adresse n'est pas une erreur : on retombe sur
+  // « toutes les années » plutôt que d'afficher un écran vide.
+  const annee =
+    anneeDemandee !== null && Number.isInteger(anneeDemandee)
+      ? anneeDemandee
+      : null;
+
+  const structureIds = lireParametres(parametres, 'structure');
+
+  const [toutes, choix] = await Promise.all([
+    chargerLignesLivrables(acteur, {
+      ...(annee === null ? {} : { annee }),
+      structureIds,
+    }),
+    chargerChoixFiltres(acteur),
+  ]);
 
   const lignes = toutes
     .filter((ligne) => estChargee(critereSelection(ligne)))
@@ -67,6 +98,7 @@ export default async function PageProduitsCharges() {
   const publiees = lignes.filter((ligne) => ligne.statut === 'MIS_EN_LIGNE').length;
   const publieesEnRetard = lignes.filter((ligne) => ligne.publieeEnRetard).length;
   const structuresDistinctes = new Set(lignes.map((ligne) => ligne.structureId));
+  const filtreActif = annee !== null || structureIds.length > 0;
 
   // Offered when publishing; only the super administrator's team is chosen from,
   // the structure's own team being always in copy.
@@ -83,7 +115,32 @@ export default async function PageProduitsCharges() {
         </p>
       </header>
 
-      {lignes.length === 0 ? (
+      <FiltresLivrables
+        chemin="/produits-charges"
+        annee={annee}
+        structureIds={structureIds}
+        annees={choix.annees}
+        structures={choix.structures}
+      />
+
+      {lignes.length === 0 && filtreActif ? (
+        <div className="rounded-lg border border-dashed p-10 text-center">
+          <PackageCheck
+            className="mx-auto size-8 text-muted-foreground"
+            aria-hidden
+          />
+          <h2 className="mt-4 font-medium">
+            Aucun produit chargé pour ce filtre
+          </h2>
+          <p className="mx-auto mt-2 max-w-lg text-sm text-muted-foreground">
+            Des produits ont été chargés ailleurs, mais aucun ne correspond à
+            l&apos;année ou aux structures que vous avez choisies.
+          </p>
+          <Button asChild variant="outline" className="mt-6">
+            <Link href="/produits-charges">Retirer les filtres</Link>
+          </Button>
+        </div>
+      ) : lignes.length === 0 ? (
         <div className="rounded-lg border border-dashed p-10 text-center">
           <PackageCheck
             className="mx-auto size-8 text-muted-foreground"
