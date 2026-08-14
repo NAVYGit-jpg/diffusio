@@ -20,6 +20,12 @@ export type LigneVue = DetailLigne & {
   annee: number;
   /** ISO instant of the confirmed release, `null` while nothing is public. */
   dateDiffusionReelle: string | null;
+  /** Whoever answers for this element, so a screen can offer to contact them. */
+  pointFocal: {
+    nomComplet: string;
+    email: string | null;
+    telephone: string | null;
+  } | null;
   /** Lets the caller tell a full delivery from one merely started. */
   nombreFichiers: number;
   nombreValeurs: number;
@@ -43,6 +49,32 @@ function structuresLisibles(
   return perimetre === null
     ? [...demandees]
     : perimetre.filter((id) => demandees.includes(id));
+}
+
+/**
+ * Contact details of a point focal, ready for the interface.
+ *
+ * An element without a point focal returns `null` rather than an empty record:
+ * the screen must be able to say "no contact" instead of offering a menu that
+ * leads nowhere.
+ */
+export function contactPointFocal(
+  compte: {
+    nom: string;
+    prenoms: string;
+    email: string;
+    telephone: string | null;
+  } | null,
+): LigneVue['pointFocal'] {
+  if (!compte) {
+    return null;
+  }
+
+  return {
+    nomComplet: `${compte.prenoms} ${compte.nom}`.trim(),
+    email: compte.email || null,
+    telephone: compte.telephone,
+  };
 }
 
 export async function chargerLignesLivrables(
@@ -81,13 +113,25 @@ export async function chargerLignesLivrables(
       publication: {
         select: {
           nom: true,
+          pointFocal: {
+            select: { nom: true, prenoms: true, email: true, telephone: true },
+          },
           indicateursAffilies: {
             where: { deletedAt: null, actif: true },
             select: { id: true, nom: true, unite: true },
           },
         },
       },
-      indicateur: { select: { id: true, nom: true, unite: true } },
+      indicateur: {
+        select: {
+          id: true,
+          nom: true,
+          unite: true,
+          pointFocal: {
+            select: { nom: true, prenoms: true, email: true, telephone: true },
+          },
+        },
+      },
       fichiers: {
         where: { deletedAt: null },
         orderBy: [{ type: 'asc' }, { version: 'desc' }],
@@ -130,6 +174,9 @@ export async function chargerLignesLivrables(
     structureSigle: ligne.calendrier.structure.sigle,
     annee: ligne.calendrier.annee,
     dateDiffusionReelle: ligne.dateDiffusionReelle?.toISOString() ?? null,
+    pointFocal: contactPointFocal(
+      ligne.publication?.pointFocal ?? ligne.indicateur?.pointFocal ?? null,
+    ),
     nombreFichiers: ligne.fichiers.length,
     nombreValeurs: ligne.valeurs.length,
   }));

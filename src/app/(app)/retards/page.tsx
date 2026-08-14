@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { perimetreStructures } from '@/lib/auth/permissions';
 import { exigerActeur } from '@/lib/auth/session';
 import { prisma } from '@/lib/prisma';
+import { contactPointFocal } from '@/lib/livrables/vues';
 import { joursEntre } from '@/lib/relances/planification';
 import { VueRetards } from './vue-retards';
 
@@ -40,8 +41,22 @@ export default async function PageRetards() {
     },
     include: {
       calendrier: { select: { annee: true, structure: { select: { sigle: true } } } },
-      publication: { select: { nom: true } },
-      indicateur: { select: { nom: true } },
+      publication: {
+        select: {
+          nom: true,
+          pointFocal: {
+            select: { nom: true, prenoms: true, email: true, telephone: true },
+          },
+        },
+      },
+      indicateur: {
+        select: {
+          nom: true,
+          pointFocal: {
+            select: { nom: true, prenoms: true, email: true, telephone: true },
+          },
+        },
+      },
       retard: true,
     },
     orderBy: { dateDiffusionPrevue: 'asc' },
@@ -68,6 +83,9 @@ export default async function PageRetards() {
           structure: ligne.calendrier.structure.sigle,
           annee: ligne.calendrier.annee,
           libellePeriode: ligne.libellePeriode,
+          pointFocal: contactPointFocal(
+            ligne.publication?.pointFocal ?? ligne.indicateur?.pointFocal ?? null,
+          ),
           dateDiffusionPrevue: ligne.dateDiffusionPrevue.toISOString(),
           joursDeRetard: joursEntre(
             ligne.retard?.prochaineDateDiffusion ?? ligne.dateDiffusionPrevue,

@@ -13,6 +13,10 @@ import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
+  ContacterPointFocal,
+  type PointFocalContact,
+} from '@/components/layout/contacter-point-focal';
+import {
   Table,
   TableBody,
   TableCell,
@@ -52,6 +56,8 @@ export type LigneListe = DetailLigne & {
   incomplet: boolean;
   /** ISO day of the confirmed release, `null` while nothing is public. */
   dateDiffusionReelle: string | null;
+  /** Whoever answers for this element; `null` when none is assigned. */
+  pointFocal: PointFocalContact | null;
   /** Published, but after the announced date (§10). */
   publieeEnRetard: boolean;
 };
@@ -200,6 +206,20 @@ export function ListeLivrables({
                 </TableCell>
 
                 <TableCell className="text-right whitespace-nowrap">
+                  {/* Sur les échéances à venir, la question naturelle est
+                      « où en est-on ? » : le contact prime sur la modification. */}
+                  {colonneEcheance === 'imminente' && (
+                    <ContacterPointFocal
+                      pointFocal={ligne.pointFocal}
+                      nomElement={ligne.nomElement}
+                      libellePeriode={ligne.libellePeriode}
+                      dateDiffusionPrevue={formaterJJMMAAAA(
+                        new Date(ligne.dateDiffusionPrevue),
+                      )}
+                      motif="imminente"
+                    />
+                  )}
+
                   {afficherPublication &&
                     estAdmin &&
                     ligne.statut !== 'MIS_EN_LIGNE' && (

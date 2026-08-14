@@ -35,6 +35,10 @@ import {
 } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import {
+  ContacterPointFocal,
+  type PointFocalContact,
+} from '@/components/layout/contacter-point-focal';
+import {
   type EtatRetard,
   envoyerAlerteAction,
   justifierRetardAction,
@@ -46,6 +50,7 @@ type LigneRetard = {
   structure: string;
   annee: number;
   libellePeriode: string;
+  pointFocal: PointFocalContact | null;
   dateDiffusionPrevue: string;
   joursDeRetard: number;
   statutAvancement: string | null;
@@ -188,6 +193,17 @@ export function VueRetards({
                   >
                     {ligne.justification ? 'Reporter' : 'Justifier'}
                   </Button>
+                  {/* Contacter directement plutôt qu'envoyer une alerte : la
+                      relance automatique est déjà partie, ce qui manque à ce
+                      stade est une conversation. */}
+                  <ContacterPointFocal
+                    pointFocal={ligne.pointFocal}
+                    nomElement={ligne.nomElement}
+                    libellePeriode={ligne.libellePeriode}
+                    dateDiffusionPrevue={formaterDate(ligne.dateDiffusionPrevue)}
+                    motif="retard"
+                  />
+
                   {estAdmin && (
                     <Button
                       variant="ghost"
