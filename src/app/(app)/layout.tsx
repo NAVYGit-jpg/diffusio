@@ -52,13 +52,12 @@ export default async function LayoutApplication({
           revenir en haut pour changer d'écran. */}
       <aside className="hidden w-64 shrink-0 md:block">
         <div className="sticky top-4 flex max-h-[calc(100svh-2rem)] flex-col overflow-hidden rounded-panneau bg-card shadow-[var(--elevation-2)]">
-          <div className="flex min-w-0 items-center gap-2 px-5 pb-2 pt-5">
-            <LogoOrganisation identite={identite} hauteur={26} priorite />
+          {/* Le logo seul, et plus grand : le slogan qui l'accompagnait le
+              tassait contre le haut du panneau. Il a rejoint l'en-tête, où il
+              tient sur une ligne sans rien serrer. */}
+          <div className="flex min-w-0 items-center px-5 pb-5 pt-6">
+            <LogoOrganisation identite={identite} hauteur={34} priorite />
           </div>
-          <SloganOrganisation
-            identite={identite}
-            className="truncate px-5 pb-4 text-xs text-muted-foreground"
-          />
 
           <div className="min-h-0 flex-1 overflow-y-auto">
             <BarreLaterale
@@ -77,11 +76,13 @@ export default async function LayoutApplication({
           data-application
           className="sticky top-4 z-20 flex h-16 items-center justify-between gap-4 rounded-panneau bg-card/85 px-4 shadow-[var(--elevation-2)] backdrop-blur-xl"
         >
-          {/* Le logo ayant rejoint la colonne, l'en-tête n'a plus à le répéter :
-              il porte le nom de l'organisation, qui situe la page. */}
-          <span className="truncate text-sm font-medium sm:text-base">
-            {identite.nom}
-          </span>
+          {/* Le logo ayant rejoint la colonne, l'en-tête n'a plus à le
+              répéter : il porte le slogan, qui dit ce que fait l'application
+              là où le nom de l'organisation ne faisait que redire le logo. */}
+          <SloganOrganisation
+            identite={identite}
+            className="truncate text-sm font-medium sm:text-base"
+          />
 
           <div className="flex items-center gap-2">
             {/* À gauche de la cloche : le choix de langue précède la lecture des
