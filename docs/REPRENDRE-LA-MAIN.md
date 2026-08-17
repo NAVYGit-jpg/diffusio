@@ -36,6 +36,8 @@ code à toucher.
 | `EMAIL_EXPEDITEUR_NOM` | Nom affiché à côté de l'adresse | Cosmétique |
 | `EMAIL_MODE` | `test` = rien ne part, `prod` = envoi réel | Des e-mails partent (ou ne partent pas) sans qu'on s'y attende |
 | `EMAIL_TEST_DESTINATAIRE` | Adresse de repli en mode test | Les essais n'arrivent nulle part |
+| `SEED_SUPER_ADMIN_EMAIL` | Adresse du compte administrateur créé sur une base neuve (§3.1) | Le compte est créé avec l'adresse par défaut |
+| `EMAIL_ADMIN_PAR_DEFAUT` | Indication grisée dans le champ e-mail de la page de connexion (§3.3) | La page annonce inutilement l'adresse de l'administrateur |
 | `CRON_SECRET` | Mot de passe de la tâche automatique de nuit | Les relances automatiques ne tournent plus |
 | `UPLOAD_TAILLE_MAX_OCTETS` | Taille maximale d'un fichier déposé | Les gros fichiers sont refusés |
 
@@ -361,7 +363,73 @@ laquelle vous voulez et je la fais.
 
 ---
 
-## 3. Liste de contrôle après tout changement
+## 3. L'adresse du compte administrateur initial
+
+Trois choses différentes portent ce nom. Confondre les deux premières est
+l'erreur classique : elles ne se règlent pas au même endroit et n'ont pas le
+même effet.
+
+### 3.1 L'adresse du compte créé sur une base neuve
+
+C'est celle qu'utilise `npx prisma db seed` pour fabriquer le compte
+super administrateur. Elle se règle **avant** de lancer la commande, dans
+`.env` :
+
+```
+SEED_SUPER_ADMIN_EMAIL="admin@stat.plan.gouv.ci"
+```
+
+Sans cette ligne, le compte est créé avec `super.admin@diffusio.local`.
+
+Attention : **cela n'a d'effet que sur une base où le compte n'existe pas
+encore.** Le script d'initialisation est volontairement prudent — s'il trouve
+déjà un compte, il s'arrête et affiche « Mot de passe inchangé ». Il ne
+réécrira jamais une adresse existante. Modifier cette variable puis relancer le
+script sur une base déjà peuplée ne fera donc rien du tout.
+
+### 3.2 L'adresse d'un compte qui existe déjà
+
+Là, la variable ne sert plus à rien : l'adresse est enregistrée dans la base.
+Deux chemins :
+
+- **Si la personne ne s'est jamais connectée** — l'application l'emmène
+  automatiquement sur l'écran de première connexion, qui demande justement de
+  changer l'adresse e-mail, le nom et le mot de passe avant d'aller plus loin.
+  C'est le chemin prévu, et le plus simple.
+- **Si le compte est déjà en service** — l'écran « Profil » affiche l'adresse
+  mais ne permet pas de la modifier, par sécurité. Il faut passer par l'outil
+  d'administration de la base :
+  ```bash
+  npx prisma studio
+  ```
+  Une page s'ouvre dans le navigateur. Table `Utilisateur` → la ligne
+  concernée → colonne `email` → corriger → **Save 1 change**. La personne se
+  connectera avec la nouvelle adresse dès la prochaine ouverture de session.
+
+### 3.3 L'adresse affichée en gris sur la page de connexion
+
+Ce n'est ni un compte ni une valeur pré-remplie : juste une indication grisée
+dans le champ, pour guider la toute première connexion. Le champ reste vide et
+rien n'est envoyé si l'on ne tape rien.
+
+```
+EMAIL_ADMIN_PAR_DEFAUT="admin@stat.plan.gouv.ci"
+```
+
+**En production, mettre une chaîne vide :**
+
+```
+EMAIL_ADMIN_PAR_DEFAUT=""
+```
+
+L'indication disparaît alors complètement. C'est important : tant qu'elle est
+là, elle annonce à n'importe quel visiteur de la page de connexion quelle
+adresse administre le site — c'est-à-dire la moitié de ce qu'il faut pour
+tenter d'y entrer.
+
+---
+
+## 4. Liste de contrôle après tout changement
 
 Dans l'ordre, sans en sauter :
 
@@ -387,7 +455,7 @@ suite quoi corriger.
 
 ---
 
-## 4. Les secrets : ce qu'il faut changer, et quand
+## 5. Les secrets : ce qu'il faut changer, et quand
 
 Le fichier `.env` contient des mots de passe. Quatre règles :
 
@@ -419,7 +487,7 @@ Le fichier `.env` contient des mots de passe. Quatre règles :
 
 ---
 
-## 5. En cas de doute
+## 6. En cas de doute
 
 Les deux scripts de contrôle sont conçus pour être lancés autant de fois que
 nécessaire : ils ne modifient rien, ils lisent et rapportent. Ils masquent
