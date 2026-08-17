@@ -7,7 +7,9 @@ import { perimetreStructures } from '@/lib/auth/permissions';
 import { exigerActeur } from '@/lib/auth/session';
 import { nombreDeLignes } from '@/lib/calendrier/moteur';
 import { prisma } from '@/lib/prisma';
+import { TOUTES, estConsolide } from '@/lib/calendrier/consolidation';
 import { VueCalendrier } from './vue-calendrier';
+import { VueConsolidee } from './vue-consolidee';
 
 export const metadata: Metadata = {
   title: 'Calendrier de diffusion — DIFFUSIO',
@@ -35,8 +37,17 @@ export default async function PageCalendrier({
     orderBy: { nom: 'asc' },
   });
 
-  const structureId = parametres.structure ?? structures[0]?.id ?? '';
-  const annee = Number(parametres.annee) || ANNEE_PAR_DEFAUT;
+  // `TOUTES` sur l'une ou l'autre bascule vers la vue consolidee : un
+  // calendrier appartient a une structure et a une annee, donc des qu'on en
+  // couvre plusieurs, il n'y a plus un calendrier a generer ni a valider.
+  const structureChoisie = parametres.structure ?? structures[0]?.id ?? '';
+  const anneeChoisie = parametres.annee ?? String(ANNEE_PAR_DEFAUT);
+  const consolide = estConsolide(structureChoisie, anneeChoisie);
+
+  const structureId = consolide ? '' : structureChoisie;
+  const annee = consolide
+    ? ANNEE_PAR_DEFAUT
+    : Number(anneeChoisie) || ANNEE_PAR_DEFAUT;
 
   if (structures.length === 0) {
     // The message has to match who is reading it: telling a super admin to
@@ -72,6 +83,75 @@ export default async function PageCalendrier({
             </Button>
           )}
         </div>
+      </div>
+    );
+  }
+
+  if (consolide) {
+    const perimetreIds = structures.map((structure) => structure.id);
+
+    const lignes = await prisma.ligneCalendrier.findMany({
+      where: {
+        calendrier: {
+          organisationId: acteur.organisationId,
+          structureId:
+            structureChoisie === TOUTES
+              ? { in: perimetreIds }
+              : structureChoisie,
+          ...(anneeChoisie === TOUTES ? {} : { annee: Number(anneeChoisie) }),
+        },
+      },
+      include: {
+        calendrier: {
+          select: {
+            annee: true,
+            structure: { select: { nom: true, sigle: true } },
+          },
+        },
+        publication: { select: { nom: true } },
+        indicateur: { select: { nom: true } },
+      },
+      orderBy: [{ dateDiffusionPrevue: 'asc' }],
+    });
+
+    const annees = [
+      ...new Set(lignes.map((ligne) => ligne.calendrier.annee)),
+    ].sort((a, b) => b - a);
+
+    return (
+      <div className="mx-auto max-w-6xl">
+        <header className="mb-6">
+          <h1 className="text-2xl font-semibold tracking-tight">
+            Calendrier de diffusion
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Vue consolidée de plusieurs structures ou de plusieurs années.
+          </p>
+        </header>
+
+        <VueConsolidee
+          structures={structures}
+          annees={annees.length > 0 ? annees : [ANNEE_PAR_DEFAUT]}
+          structureChoisie={structureChoisie}
+          anneeChoisie={anneeChoisie}
+          role={acteur.role}
+          lignes={lignes.map((ligne) => ({
+            id: ligne.id,
+            structureNom: ligne.calendrier.structure.nom,
+            structureSigle: ligne.calendrier.structure.sigle,
+            annee: ligne.calendrier.annee,
+            nomElement:
+              ligne.publication?.nom ?? ligne.indicateur?.nom ?? 'Élément',
+            elementType: ligne.elementType,
+            libellePeriode: ligne.libellePeriode,
+            dateDebutCouverture: ligne.dateDebutCouverture.toISOString(),
+            dateFinCouverture: ligne.dateFinCouverture.toISOString(),
+            dateDiffusionPrevue: ligne.dateDiffusionPrevue.toISOString(),
+            dateDiffusionReelle:
+              ligne.dateDiffusionReelle?.toISOString() ?? null,
+            statut: ligne.statut,
+          }))}
+        />
       </div>
     );
   }

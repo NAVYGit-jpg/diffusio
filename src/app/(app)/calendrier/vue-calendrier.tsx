@@ -47,6 +47,7 @@ import { peutModifierLignes } from '@/lib/calendrier/workflow';
 import { BandeauWorkflow } from './bandeau-workflow';
 import { DialogueLivrable, type DetailLigne } from './dialogue-livrable';
 import { ActionsLigne } from './actions-ligne';
+import { TOUTES } from '@/lib/calendrier/consolidation';
 import { BoutonsExport } from './boutons-export';
 import type { Role, StatutCalendrier } from '@prisma/client';
 
@@ -214,7 +215,10 @@ export function VueCalendrier({
     ? peutModifierLignes(calendrier.statut, role)
     : false;
 
-  const naviguer = (nouvelleStructure: string, nouvelleAnnee: number) => {
+  const naviguer = (
+    nouvelleStructure: string,
+    nouvelleAnnee: number | string,
+  ) => {
     router.push(
       `/calendrier?structure=${nouvelleStructure}&annee=${nouvelleAnnee}`,
     );
@@ -281,6 +285,10 @@ export function VueCalendrier({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
+                {/* Bascule vers la vue consolidee : la generation et la
+                    validation portent sur un seul calendrier, elles y sont
+                    donc masquees. */}
+                <SelectItem value={TOUTES}>Toutes les structures</SelectItem>
                 {structures.map((structure) => (
                   <SelectItem key={structure.id} value={structure.id}>
                     {structure.nom} ({structure.sigle})
@@ -295,12 +303,15 @@ export function VueCalendrier({
           <Label htmlFor="choixAnnee">Année</Label>
           <Select
             value={String(annee)}
-            onValueChange={(valeur) => naviguer(structureId, Number(valeur))}
+            onValueChange={(valeur) =>
+              naviguer(structureId, valeur === TOUTES ? TOUTES : Number(valeur))
+            }
           >
             <SelectTrigger id="choixAnnee" className="w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="max-h-72">
+              <SelectItem value={TOUTES}>Toutes les années</SelectItem>
               {ANNEES_DISPONIBLES.map((valeur) => (
                 <SelectItem key={valeur} value={String(valeur)}>
                   {valeur}
