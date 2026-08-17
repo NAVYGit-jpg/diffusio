@@ -47,10 +47,6 @@ export default async function LayoutApplication({
     // colonnes collées par une bordure. C'est ce qui donne à l'écran sa
     // respiration.
     <div className="flex min-h-svh gap-3 p-3 sm:gap-4 sm:p-4">
-      {/* Nappe coloree derivee de la charte, derriere toute l'application.
-          Purement decorative : masquee aux lecteurs d'ecran. */}
-      <div className="fond-dynamique" aria-hidden />
-
       {/* La navigation porte le logo et reste en place pendant que le contenu
           défile : sur un long calendrier, une barre qui remonte oblige à
           revenir en haut pour changer d'écran. */}
