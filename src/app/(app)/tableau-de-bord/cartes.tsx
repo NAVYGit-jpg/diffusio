@@ -38,6 +38,11 @@ export function CarteIndicateur({
 
   return (
     <Card
+      // Repris par la feuille de style à l'impression : sur papier, toutes les
+      // cartes sont repeintes en blanc pour épargner l'encre, et le texte blanc
+      // de cette tuile-ci disparaissait avec le fond. Un attribut plutôt qu'une
+      // classe : c'est un état de la carte, pas une décoration de plus.
+      data-mis-en-avant={misEnAvant ? '' : undefined}
       className={cn(
         'overflow-hidden',
         misEnAvant && 'border-transparent text-white',
@@ -61,6 +66,7 @@ export function CarteIndicateur({
 
           {Icone && (
             <span
+              data-pastille-icone
               className={cn(
                 'flex size-8 shrink-0 items-center justify-center rounded-full',
                 misEnAvant

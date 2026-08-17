@@ -175,6 +175,30 @@
     page-break-inside: avoid;
   }
 
+  /* La tuile mise en avant est, a l'ecran, un aplat de la couleur de
+     l'organisation portant du texte blanc. La regle ci-dessus repeint toutes
+     les cartes en blanc : le texte blanc disparaissait alors sur fond blanc, et
+     la premiere valeur du rapport — le taux de respect des delais, celle qui
+     repond a « ou en est-on » — sortait invisible du PDF.
+
+     Elle garde une mise en avant sur le papier, mais par un gris tres clair :
+     un aplat de couleur pleine coute cher en encre et se photocopie mal. */
+  [data-slot='card'][data-mis-en-avant] {
+    background: #f4f4f5 !important;
+    background-image: none !important;
+    border-color: #d4d4d8 !important;
+  }
+
+  [data-mis-en-avant],
+  [data-mis-en-avant] * {
+    color: #000 !important;
+  }
+
+  /* La pastille de l'icone etait un blanc translucide : invisible sur clair. */
+  [data-mis-en-avant] [data-pastille-icone] {
+    background: #e4e4e7 !important;
+  }
+
   /* Un graphique coupe en deux par un saut de page est illisible. */
   .recharts-wrapper,
   section,
