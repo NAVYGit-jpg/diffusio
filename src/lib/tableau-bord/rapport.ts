@@ -8,7 +8,11 @@ import {
   type FiltresTableauDeBord,
   chargerTableauDeBord,
 } from './donnees';
-import { LIBELLE_TYPE_ELEMENT, type TypeElement } from './filtres-url';
+import {
+  LIBELLE_MOIS,
+  LIBELLE_TYPE_ELEMENT,
+  type TypeElement,
+} from './filtres-url';
 import {
   type Compteurs,
   type Echeances,
@@ -89,6 +93,17 @@ function decrireFiltres(
   filtres: FiltresTableauDeBord,
 ): string[] {
   const lignes: string[] = [];
+
+  // First, because it is the one filter that changes what the year-wide titles
+  // around it mean: a printed sheet headed "calendrier 2026" showing eleven
+  // lines has to say on its own why.
+  if (filtres.mois.length > 0) {
+    lignes.push(
+      `Mois : ${filtres.mois
+        .map((mois) => LIBELLE_MOIS[mois] ?? String(mois))
+        .join(', ')}`,
+    );
+  }
 
   if (filtres.typesElement.length > 0) {
     lignes.push(

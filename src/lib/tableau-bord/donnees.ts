@@ -2,6 +2,7 @@ import 'server-only';
 
 import type { ActeurSession } from '@/lib/auth/permissions';
 import { perimetreStructures } from '@/lib/auth/permissions';
+import { normaliserJour } from '@/lib/calendrier/dates';
 import { prisma } from '@/lib/prisma';
 import type { LigneIndicateur } from './indicateurs';
 
@@ -17,6 +18,8 @@ import type { LigneIndicateur } from './indicateurs';
 /** Empty lists mean "no restriction", never "nothing". */
 export type FiltresTableauDeBord = {
   annee: number;
+  /** 1-based, several at a time. Empty means every month. */
+  mois: number[];
   structureIds: string[];
   domaineIds: string[];
   periodicites: string[];
@@ -162,6 +165,11 @@ export async function chargerTableauDeBord(
 
   // Catalogue counts follow the perimeter and the filters, but not the calendar:
   // an element declared and never scheduled still belongs to the catalogue.
+  //
+  // The month is the one filter that cannot reach them. A publication sits in
+  // the catalogue without a date — it is the calendar that gives it one, twelve
+  // times a year for a monthly. Narrowing the catalogue to March would mean
+  // inventing a rule; the tile keeps counting what is declared.
   const compterPublications =
     filtres.typesElement.length === 0 || filtres.typesElement.includes('PUBLICATION');
   const compterIndicateurs =
@@ -205,6 +213,10 @@ export async function chargerTableauDeBord(
 
   // Domain and periodicity live on the catalogue element, not on the calendar
   // line, so those two filters are applied after the join rather than in SQL.
+  // The month joins them, for a different reason: it is read from the date the
+  // same way the twelve-month curve reads it — the calendar day in UTC — and
+  // expressing that as a range in SQL would be a second definition of "March",
+  // free to drift from the first.
   const converties: LigneIndicateur[] = [];
 
   for (const ligne of lignes) {
@@ -221,6 +233,17 @@ export async function chargerTableauDeBord(
     if (
       filtres.periodicites.length > 0 &&
       !filtres.periodicites.includes(periodicite)
+    ) {
+      continue;
+    }
+    // The month a line was **due**, never the month it came out: the dashboard
+    // answers "what was promised for March", and a line promised for March and
+    // released in April belongs to March in every figure on this screen.
+    if (
+      filtres.mois.length > 0 &&
+      !filtres.mois.includes(
+        normaliserJour(ligne.dateDiffusionPrevue).getUTCMonth() + 1,
+      )
     ) {
       continue;
     }

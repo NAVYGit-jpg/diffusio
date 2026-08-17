@@ -14,7 +14,9 @@ import {
 } from '@/components/ui/select';
 import { LIBELLE_PERIODICITE, PERIODICITES } from '@/lib/catalogue/schemas';
 import {
+  LIBELLE_MOIS,
   LIBELLE_TYPE_ELEMENT,
+  MOIS,
   TYPES_ELEMENT,
   type FiltresLus,
   adresseTableauDeBord,
@@ -29,7 +31,9 @@ import { type Option, SelecteurMultiple } from './selecteur-multiple';
  *
  * Every categorical filter accepts several values at once. The year stays
  * single-valued because the screens indexed on it — the twelve-month curve, the
- * progress bar, the calendar title — are each defined for one year.
+ * progress bar, the calendar title — are each defined for one year. The month
+ * does not: a quarter, a semester, the two months a survey straddles are all
+ * ordinary questions, and each is a handful of ticks.
  */
 
 export function FiltresTableauDeBord({
@@ -69,7 +73,15 @@ export function FiltresTableauDeBord({
     libelle: LIBELLE_TYPE_ELEMENT[type],
   }));
 
+  // Chronological, not alphabetical: nobody looks for April between August and
+  // December.
+  const optionsMois: Option[] = MOIS.map((mois) => ({
+    valeur: String(mois),
+    libelle: LIBELLE_MOIS[mois],
+  }));
+
   const nombreFiltres =
+    etat.mois.length +
     etat.structureIds.length +
     etat.domaineIds.length +
     etat.periodicites.length +
@@ -77,7 +89,10 @@ export function FiltresTableauDeBord({
 
   return (
     <div className="mb-6 space-y-3">
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      {/* Three per row rather than five. A sixth control squeezed onto one line
+          left each summary too narrow for « Toutes les périodicités », which
+          then truncated into something unreadable. */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <div className="space-y-2">
           <Label htmlFor="filtreAnnee">Année</Label>
           <Select
@@ -95,6 +110,20 @@ export function FiltresTableauDeBord({
               ))}
             </SelectContent>
           </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="filtreMois">Mois</Label>
+          <SelecteurMultiple
+            identifiant="filtreMois"
+            libelleVide="Toute l'année"
+            nomPluriel="mois"
+            options={optionsMois}
+            selection={etat.mois.map(String)}
+            onChange={(selection) =>
+              naviguer({ mois: selection.map(Number) })
+            }
+          />
         </div>
 
         <div className="space-y-2">
@@ -161,6 +190,7 @@ export function FiltresTableauDeBord({
 
           <JetonsActifs
             etat={etat}
+            optionsMois={optionsMois}
             optionsStructures={optionsStructures}
             optionsDomaines={optionsDomaines}
             optionsPeriodicites={optionsPeriodicites}
@@ -174,6 +204,7 @@ export function FiltresTableauDeBord({
             className="h-6 px-2 text-xs"
             onClick={() =>
               naviguer({
+                mois: [],
                 structureIds: [],
                 domaineIds: [],
                 periodicites: [],
@@ -199,6 +230,7 @@ export function FiltresTableauDeBord({
  */
 function JetonsActifs({
   etat,
+  optionsMois,
   optionsStructures,
   optionsDomaines,
   optionsPeriodicites,
@@ -206,13 +238,29 @@ function JetonsActifs({
   naviguer,
 }: {
   etat: FiltresLus;
+  optionsMois: Option[];
   optionsStructures: Option[];
   optionsDomaines: Option[];
   optionsPeriodicites: Option[];
   optionsTypes: Option[];
   naviguer: (modifications: Partial<FiltresLus>) => void;
 }) {
-  const groupes = [
+  // Chips carry strings, because that is what a URL carries. Months are the one
+  // filter whose state is numeric, so the group says how to convert back —
+  // without it, removing « Mars » would write the string "3" into a number[]
+  // and TypeScript would be the only one to notice.
+  const groupes: {
+    cle: keyof FiltresLus;
+    options: Option[];
+    valeurs: string[];
+    reconstruire?: (restantes: string[]) => number[];
+  }[] = [
+    {
+      cle: 'mois',
+      options: optionsMois,
+      valeurs: etat.mois.map(String),
+      reconstruire: (restantes) => restantes.map(Number),
+    },
     {
       cle: 'typesElement' as const,
       options: optionsTypes,
@@ -247,13 +295,17 @@ function JetonsActifs({
             <button
               key={`${groupe.cle}-${valeur}`}
               type="button"
-              onClick={() =>
+              onClick={() => {
+                const restantes = groupe.valeurs.filter(
+                  (element) => element !== valeur,
+                );
+
                 naviguer({
-                  [groupe.cle]: groupe.valeurs.filter(
-                    (element) => element !== valeur,
-                  ),
-                } as Partial<FiltresLus>)
-              }
+                  [groupe.cle]: groupe.reconstruire
+                    ? groupe.reconstruire(restantes)
+                    : restantes,
+                } as Partial<FiltresLus>);
+              }}
               className="inline-flex items-center gap-1 rounded-full border bg-muted/50 px-2 py-0.5 text-xs transition-colors hover:bg-muted"
             >
               <span className="max-w-40 truncate">

@@ -23,6 +23,31 @@ export const LIBELLE_TYPE_ELEMENT: Record<TypeElement, string> = {
   INDICATEUR: 'Indicateur',
 };
 
+/** The twelve months, 1-based, as people write and say them. */
+export const MOIS: readonly number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+
+/**
+ * Full month names.
+ *
+ * The curve on the same screen abbreviates them for want of room under a tick;
+ * a dropdown has the room, and « Juin » next to « Juil » is a hesitation the
+ * reader should not have to resolve.
+ */
+export const LIBELLE_MOIS: Record<number, string> = {
+  1: 'Janvier',
+  2: 'Février',
+  3: 'Mars',
+  4: 'Avril',
+  5: 'Mai',
+  6: 'Juin',
+  7: 'Juillet',
+  8: 'Août',
+  9: 'Septembre',
+  10: 'Octobre',
+  11: 'Novembre',
+  12: 'Décembre',
+};
+
 /**
  * Every categorical filter holds a list. An **empty list means "everything"**,
  * never "nothing": a filter starts out open, and treating the empty case as an
@@ -31,6 +56,7 @@ export const LIBELLE_TYPE_ELEMENT: Record<TypeElement, string> = {
  */
 export type FiltresLus = {
   annee: number;
+  mois: number[];
   structureIds: string[];
   domaineIds: string[];
   periodicites: string[];
@@ -108,6 +134,26 @@ export function lireAnnee(
   return valeur;
 }
 
+/**
+ * Months of the dashboard.
+ *
+ * Unlike the year, several months can be looked at at once — a quarter, a
+ * campaign, the two months a survey straddles. Anything that is not a whole
+ * number between 1 and 12 is dropped rather than clamped: `?mois=0` and
+ * `?mois=13` are typing mistakes, and quietly turning them into January or
+ * December would answer a question nobody asked.
+ *
+ * The result is sorted, so the chips and the URL read January to December
+ * whatever order the boxes were ticked in.
+ */
+export function lireMois(parametres: ParametresBruts): number[] {
+  const valeurs = lireParametres(parametres, 'mois')
+    .map((brut) => Number(brut))
+    .filter((valeur) => Number.isInteger(valeur) && valeur >= 1 && valeur <= 12);
+
+  return [...new Set(valeurs)].sort((a, b) => a - b);
+}
+
 /** The default year: the current one, brought back inside the offered range. */
 export function anneeParDefaut(maintenant: Date = new Date()): number {
   const courante = maintenant.getUTCFullYear();
@@ -121,6 +167,7 @@ export function lireFiltres(
 ): FiltresLus {
   return {
     annee: lireAnnee(parametres, anneeParDefaut(maintenant)),
+    mois: lireMois(parametres),
     structureIds: lireParametres(parametres, 'structure'),
     domaineIds: lireParametres(parametres, 'domaine'),
     periodicites: lireParametres(parametres, 'periodicite'),
@@ -145,6 +192,7 @@ export function adresseTableauDeBord(filtres: FiltresLus): string {
     }
   };
 
+  ajouter('mois', filtres.mois.map(String));
   ajouter('structure', filtres.structureIds);
   ajouter('domaine', filtres.domaineIds);
   ajouter('periodicite', filtres.periodicites);

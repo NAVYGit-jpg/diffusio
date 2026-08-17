@@ -122,6 +122,7 @@ export default async function PageTableauDeBord({
   // exists and their filters simply exclude everything sends them off to redo
   // work that is already done.
   const filtresActifs =
+    filtres.mois.length +
     filtres.structureIds.length +
     filtres.domaineIds.length +
     filtres.periodicites.length +

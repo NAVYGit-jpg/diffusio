@@ -7,6 +7,7 @@ import {
   anneesProposees,
   lireAnnee,
   lireFiltres,
+  lireMois,
   lireParametre,
   lireParametres,
 } from './filtres-url';
@@ -89,12 +90,43 @@ describe('lireParametres', () => {
   });
 });
 
+describe('lireMois', () => {
+  it('accepte plusieurs mois, en clés répétées ou en liste', () => {
+    expect(lireMois({ mois: ['3', '5'] })).toEqual([3, 5]);
+    expect(lireMois({ mois: '3,5' })).toEqual([3, 5]);
+  });
+
+  it('classe par ordre chronologique quel que soit l’ordre des clics', () => {
+    // Les jetons et l'adresse doivent se lire de janvier à décembre.
+    expect(lireMois({ mois: ['11', '2', '7'] })).toEqual([2, 7, 11]);
+  });
+
+  it('ne garde qu’une fois un mois coché deux fois', () => {
+    expect(lireMois({ mois: ['4', '4'] })).toEqual([4]);
+  });
+
+  it('écarte ce qui n’est pas un mois plutôt que de le ramener dans l’année', () => {
+    // 0 et 13 sont des fautes de frappe : les transformer en janvier ou en
+    // decembre repondrait a une question que personne n'a posee.
+    expect(lireMois({ mois: ['0', '13', '-1', '2.5', 'mars', ''] })).toEqual([]);
+  });
+
+  it('garde les mois valides d’une liste partiellement fautive', () => {
+    expect(lireMois({ mois: ['3', '13', '6'] })).toEqual([3, 6]);
+  });
+
+  it('ne pose aucun filtre en l’absence de la clé', () => {
+    expect(lireMois({})).toEqual([]);
+  });
+});
+
 describe('lireFiltres', () => {
-  it('lit les cinq filtres ensemble', () => {
+  it('lit les six filtres ensemble', () => {
     expect(
       lireFiltres(
         {
           annee: '2027',
+          mois: ['1', '2', '3'],
           structure: ['str-1', 'str-2'],
           domaine: 'dom-1',
           periodicite: ['MENSUELLE', 'ANNUELLE'],
@@ -104,6 +136,7 @@ describe('lireFiltres', () => {
       ),
     ).toEqual({
       annee: 2027,
+      mois: [1, 2, 3],
       structureIds: ['str-1', 'str-2'],
       domaineIds: ['dom-1'],
       periodicites: ['MENSUELLE', 'ANNUELLE'],
@@ -115,6 +148,7 @@ describe('lireFiltres', () => {
     // Listes vides : « tout », jamais « rien ».
     expect(lireFiltres({}, jour(2026, 3, 1))).toEqual({
       annee: 2026,
+      mois: [],
       structureIds: [],
       domaineIds: [],
       periodicites: [],
@@ -137,6 +171,7 @@ describe('adresseTableauDeBord', () => {
   it('répète la clé pour chaque valeur choisie', () => {
     const adresse = adresseTableauDeBord({
       annee: 2026,
+      mois: [],
       structureIds: ['a', 'b'],
       domaineIds: [],
       periodicites: [],
@@ -148,9 +183,23 @@ describe('adresseTableauDeBord', () => {
     );
   });
 
+  it('écrit les mois en clés répétées', () => {
+    expect(
+      adresseTableauDeBord({
+        annee: 2026,
+        mois: [1, 2, 3],
+        structureIds: [],
+        domaineIds: [],
+        periodicites: [],
+        typesElement: [],
+      }),
+    ).toBe('/tableau-de-bord?annee=2026&mois=1&mois=2&mois=3');
+  });
+
   it('fait l’aller-retour sans rien perdre', () => {
     const depart = {
       annee: 2027,
+      mois: [4, 9],
       structureIds: ['s1', 's2'],
       domaineIds: ['d1'],
       periodicites: ['MENSUELLE'],
