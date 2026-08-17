@@ -5,6 +5,7 @@ import { formaterJJMMAAAA } from '@/lib/calendrier/dates';
 import { LIBELLE_STATUT_PLURIEL } from '@/lib/calendrier/statuts';
 import { prisma } from '@/lib/prisma';
 import { lireFiltres } from '@/lib/tableau-bord/filtres-url';
+import { nomFichierPeriode } from '@/lib/tableau-bord/periode';
 import {
   type Rapport,
   assemblerRapport,
@@ -44,8 +45,10 @@ function enTeteFeuille(
   feuille.getCell('A2').value = `${organisation} — ${rapport.perimetre}`;
   feuille.getCell('A2').font = { color: { argb: GRIS_TEXTE } };
 
+  // The period, not just the year: a sheet filtered on January that announces
+  // "Calendrier 2026" is a file nobody can check a month later.
   feuille.mergeCells('A3:D3');
-  feuille.getCell('A3').value = `Calendrier ${rapport.annee} — édité le ${formaterJJMMAAAA(
+  feuille.getCell('A3').value = `${rapport.periode} — édité le ${formaterJJMMAAAA(
     rapport.genereLe,
   )}`;
   feuille.getCell('A3').font = { color: { argb: GRIS_TEXTE } };
@@ -366,7 +369,10 @@ export async function GET(requete: Request): Promise<Response> {
 
   const tampon = await classeur.xlsx.writeBuffer();
 
-  const nomFichier = `tableau-de-bord-${rapport.annee}.xlsx`;
+  const nomFichier = `tableau-de-bord-${nomFichierPeriode(
+    filtres.annee,
+    filtres.mois,
+  )}.xlsx`;
 
   return new Response(tampon as ArrayBuffer, {
     headers: {

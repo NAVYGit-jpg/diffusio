@@ -13,6 +13,7 @@ import {
   LIBELLE_TYPE_ELEMENT,
   type TypeElement,
 } from './filtres-url';
+import { libellePeriode } from './periode';
 import {
   type Compteurs,
   type Echeances,
@@ -45,6 +46,8 @@ import {
 
 export type Rapport = {
   annee: number;
+  /** « Janvier 2026 », « De janvier à mars 2026 », « Année 2026 ». */
+  periode: string;
   perimetre: string;
   filtresLisibles: string[];
   contexte: ContexteTableauDeBord;
@@ -155,7 +158,12 @@ export async function assemblerRapport(
     (ligne) => ligne.domaine ?? 'Sans domaine',
   );
 
-  const courbe = evolutionMensuelle(lignes, filtres.annee, maintenant);
+  const courbe = evolutionMensuelle(
+    lignes,
+    filtres.annee,
+    maintenant,
+    filtres.mois,
+  );
   const classement = classementStructures(lignes, maintenant);
   const respect = tauxRespect(lignes, maintenant);
   const etat = etatRetards(lignes, maintenant);
@@ -165,6 +173,7 @@ export async function assemblerRapport(
 
   return {
     annee: filtres.annee,
+    periode: libellePeriode(filtres.annee, filtres.mois),
     perimetre,
     filtresLisibles: decrireFiltres(contexte, filtres),
     contexte,

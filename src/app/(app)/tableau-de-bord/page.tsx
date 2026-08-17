@@ -33,9 +33,14 @@ import {
   COULEUR_STATUT,
   LIBELLE_STATUT_PLURIEL,
 } from '@/lib/calendrier/statuts';
+import {
+  LogoOrganisation,
+  chargerIdentiteOrganisation,
+} from '@/components/layout/logo-organisation';
 import { exigerActeur } from '@/lib/auth/session';
 import { chargerActiviteRecente } from '@/lib/tableau-bord/donnees';
 import { anneesProposees, lireFiltres } from '@/lib/tableau-bord/filtres-url';
+import { libellePeriode } from '@/lib/tableau-bord/periode';
 import { assemblerRapport } from '@/lib/tableau-bord/rapport';
 import { BoutonsRapport } from './boutons-rapport';
 import { BarreAvancement, CarteIndicateur } from './cartes';
@@ -43,9 +48,25 @@ import { CommentaireAffiche } from './commentaire-affiche';
 import { FiltresTableauDeBord } from './filtres';
 import { BarresRepartition, BarresStatut, CourbeRespect } from './graphiques';
 
-export const metadata: Metadata = {
-  title: 'Tableau de bord — DIFFUSIO',
-};
+/**
+ * The tab title, and with it the name the browser proposes when printing to
+ * PDF. Carrying the period means a folder of downloaded reports can be told
+ * apart without opening a single one.
+ */
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}): Promise<Metadata> {
+  const filtres = lireFiltres(await searchParams);
+
+  return {
+    title: `Tableau de bord — ${libellePeriode(
+      filtres.annee,
+      filtres.mois,
+    )} — DIFFUSIO`,
+  };
+}
 
 function tonDuTaux(taux: number | null): 'neutre' | 'positif' | 'alerte' {
   if (taux === null) {
@@ -71,6 +92,7 @@ export default async function PageTableauDeBord({
   // Same assembly as the Excel and PDF exports, so the three never disagree.
   const rapport = await assemblerRapport(acteur, filtres, aujourdhui);
   const activite = await chargerActiviteRecente(acteur.organisationId);
+  const identite = await chargerIdentiteOrganisation();
 
   const {
     contexte,
@@ -130,23 +152,108 @@ export default async function PageTableauDeBord({
 
   return (
     <div className="mx-auto max-w-6xl">
+      {/* ------------------------------------------------- page de garde (PDF)
+          Sur papier seulement. Un rapport quitte l'application : il circule par
+          messagerie, il est imprimé, il est archivé. Il doit donc porter sur sa
+          première page ce que l'écran n'a pas besoin de dire, parce que
+          l'écran, lui, a toujours ses filtres sous les yeux : ce qu'il couvre,
+          sur quel périmètre, et à quelle date il a été arrêté. */}
+      {!vide && (
+        <section className="hidden print:flex print:min-h-[240mm] print:break-after-page print:flex-col print:justify-between">
+          <div className="flex items-center justify-between gap-4 border-b border-zinc-300 pb-6">
+            <LogoOrganisation identite={identite} hauteur={44} />
+            <span className="text-right text-sm text-zinc-600">
+              {identite.nom}
+            </span>
+          </div>
+
+          <div className="py-10">
+            <p className="text-sm uppercase tracking-[0.2em] text-zinc-500">
+              Rapport de diffusion
+            </p>
+            {/* Un <p>, pas un <h1> : le seul titre de niveau 1 du document est
+                celui de l'écran, et deux h1 dans le DOM pour n'en montrer qu'un
+                à la fois se paierait sur tous les outils qui lisent la page. */}
+            <p className="mt-4 text-4xl font-semibold leading-tight tracking-tight">
+              Tableau de bord du calendrier de diffusion
+            </p>
+
+            {/* La période est l'information la plus grande de la page après le
+                titre : c'est elle qui distingue deux rapports par ailleurs
+                identiques, et c'est elle qu'on cherche des semaines plus tard
+                dans une pile de PDF. */}
+            <p className="mt-8 text-2xl font-medium">{rapport.periode}</p>
+
+            <dl className="mt-10 space-y-3 text-sm">
+              <div className="flex gap-3">
+                <dt className="w-40 shrink-0 text-zinc-500">Périmètre</dt>
+                <dd className="font-medium">{rapport.perimetre}</dd>
+              </div>
+
+              {/* Énumérés un par un, jamais résumés en « 3 filtres actifs » :
+                  un lecteur qui reçoit le fichier n'a aucun moyen de deviner
+                  lesquels, et un chiffre inexpliqué ne se vérifie pas. */}
+              <div className="flex gap-3">
+                <dt className="w-40 shrink-0 text-zinc-500">Filtres</dt>
+                <dd>
+                  {rapport.filtresLisibles.length === 0 ? (
+                    <span className="text-zinc-500">
+                      Aucun — le rapport couvre tout le périmètre
+                    </span>
+                  ) : (
+                    <ul className="space-y-1">
+                      {rapport.filtresLisibles.map((filtre) => (
+                        <li key={filtre} className="font-medium">
+                          {filtre}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </dd>
+              </div>
+
+              <div className="flex gap-3">
+                <dt className="w-40 shrink-0 text-zinc-500">Lignes retenues</dt>
+                <dd className="font-medium">
+                  {nombres.total} ligne{nombres.total > 1 ? 's' : ''} du
+                  calendrier
+                </dd>
+              </div>
+
+              <div className="flex gap-3">
+                <dt className="w-40 shrink-0 text-zinc-500">Édité le</dt>
+                <dd className="font-medium">
+                  {formaterJJMMAAAA(rapport.genereLe)}
+                </dd>
+              </div>
+
+              <div className="flex gap-3">
+                <dt className="w-40 shrink-0 text-zinc-500">Édité par</dt>
+                <dd className="font-medium">{acteur.nomComplet}</dd>
+              </div>
+            </dl>
+          </div>
+
+          <p className="border-t border-zinc-300 pt-4 text-xs text-zinc-500">
+            Document produit par DIFFUSIO. Les chiffres portent sur les
+            structures rattachées au compte qui a édité le rapport.
+          </p>
+        </section>
+      )}
+
       <header className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
+          <h1 className="text-2xl font-semibold tracking-tight print:text-xl">
             Tableau de bord
           </h1>
           <p className="mt-1 text-sm text-muted-foreground print:hidden">
             Bonjour {acteur.nomComplet}. Les chiffres ci-dessous portent
             uniquement sur les structures qui vous sont rattachées.
           </p>
-          {/* Replaces the greeting on paper: a printed report has to say what
-              it covers and when it was produced, without anyone to explain. */}
-          <p className="mt-1 hidden text-sm print:block">
-            {rapport.perimetre} — calendrier {annee}, édité le{' '}
-            {formaterJJMMAAAA(rapport.genereLe)}
-            {rapport.filtresLisibles.length > 0
-              ? ` — ${rapport.filtresLisibles.join(' ; ')}`
-              : ''}
+          {/* Rappel court en tête des pages de chiffres : la page de garde est
+              restée deux pages en arrière quand on lit le classement. */}
+          <p className="mt-1 hidden text-sm text-zinc-600 print:block">
+            {rapport.periode} — {rapport.perimetre}
           </p>
         </div>
 
@@ -282,7 +389,7 @@ export default async function PageTableauDeBord({
             <CarteIndicateur
               libelle="Lignes prévues"
               valeur={nombres.total}
-              precision={`Calendrier ${annee}`}
+              precision={rapport.periode}
               icone={CalendarClock}
             />
             <CarteIndicateur
@@ -306,8 +413,11 @@ export default async function PageTableauDeBord({
           {/* -------------------------------------------------- avancement */}
           <Card>
             <CardHeader className="pb-3">
+              {/* La période, pas l'année : filtré sur janvier, « avancement de
+                  l'année 2026 » annoncerait un chiffre que la carte ne montre
+                  pas. */}
               <CardTitle className="text-base">
-                Avancement de l&apos;année {annee}
+                Avancement — {rapport.periode}
               </CardTitle>
               <CardDescription>
                 {nombres.misesEnLigne} ligne(s) mise(s) en ligne sur{' '}
@@ -317,7 +427,7 @@ export default async function PageTableauDeBord({
             <CardContent>
               <BarreAvancement
                 pourcentage={avancement}
-                libelle={`Avancement de l'année ${annee} : ${avancement} %`}
+                libelle={`Avancement — ${rapport.periode} : ${avancement} %`}
               />
               <p className="mt-2 text-right text-sm font-medium tabular-nums">
                 {avancement} %

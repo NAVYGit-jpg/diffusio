@@ -228,21 +228,30 @@ const MOIS_COURTS = [
 ];
 
 /**
- * Twelve-month curve of the respect rate (§10).
+ * Month-by-month curve of the respect rate (§10).
  *
  * A line belongs to the month it was **due**, not the month it was released:
  * the question the curve answers is "did what was promised for March arrive on
  * time?". Months with nothing due carry `null` rather than 0 — a flat zero
  * would draw a collapse where there was simply nothing to publish.
+ *
+ * `moisRetenus` narrows the axis to the months being looked at. Empty means the
+ * whole year. Drawing the other eleven months as empty next to a report filtered
+ * on January would suggest the year collapsed everywhere else, when in truth
+ * nothing else was asked for.
  */
 export function evolutionMensuelle(
   lignes: readonly LigneIndicateur[],
   annee: number,
   aujourdhui: Date,
+  moisRetenus: readonly number[] = [],
 ): PointMensuel[] {
-  return Array.from({ length: 12 }, (_, index) => {
-    const mois = index + 1;
+  const axe =
+    moisRetenus.length === 0
+      ? Array.from({ length: 12 }, (_, index) => index + 1)
+      : [...new Set(moisRetenus)].sort((a, b) => a - b);
 
+  return axe.map((mois) => {
     const duMois = lignes.filter((ligne) => {
       const prevue = normaliserJour(ligne.dateDiffusionPrevue);
 
@@ -253,7 +262,7 @@ export function evolutionMensuelle(
 
     const { base, taux } = tauxRespect(duMois, aujourdhui);
 
-    return { mois, libelle: MOIS_COURTS[index], base, taux };
+    return { mois, libelle: MOIS_COURTS[mois - 1], base, taux };
   });
 }
 
