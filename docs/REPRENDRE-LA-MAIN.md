@@ -177,7 +177,48 @@ si vous voulez aussi quitter Supabase pour cette partie-là.
 À noter : le logo de l'organisation n'est **pas** dans le stockage, il est dans
 la base. Il suit donc la base automatiquement.
 
-### 2.2 Vers un autre projet Supabase
+### 2.2 Qui construit les tables ? Le code, jamais vous
+
+Il ne faut **jamais** créer une table à la main dans l'interface de Supabase.
+La structure de la base est décrite dans le projet, et versionnée dans Git :
+
+- `prisma/schema.prisma` — la description des 22 tables, de leurs colonnes, de
+  leurs liens et de leurs contraintes ;
+- `prisma/migrations/` — l'historique ordonné des instructions SQL qui les
+  créent, de l'installation initiale jusqu'à la dernière évolution.
+
+Une seule commande rejoue cet historique sur n'importe quelle base PostgreSQL
+vide et reconstruit la structure à l'identique :
+
+```bash
+npx prisma migrate deploy
+```
+
+Elle ne détruit rien : elle regarde ce qui a déjà été appliqué et pose
+uniquement ce qui manque. On peut la relancer sans crainte.
+
+**Ne jamais taper `prisma migrate dev`.** Cette commande-là sert au
+développement, quand la structure elle-même change ; elle peut proposer de
+réinitialiser la base, c'est-à-dire de tout effacer. La commande d'exploitation
+est `migrate deploy`, qui applique et rien d'autre.
+
+Ce que Supabase fournit, au fond, c'est un serveur PostgreSQL vide et un espace
+de stockage. Dans son interface, il n'y a que deux gestes manuels à faire :
+créer le projet, et créer le bucket `livrables` en le laissant privé.
+
+#### Structure et contenu : deux choses différentes
+
+| | Où cela vit | Comment cela se reconstruit |
+|---|---|---|
+| **La structure** (les tables) | Dans le code, dans Git | Toute seule, par `npx prisma migrate deploy` |
+| **Le contenu** (vos données) | Uniquement dans la base | Ne se reconstruit pas : il faut soit repartir de zéro, soit transférer (§2.5) |
+
+C'est toute la différence entre une base neuve et un déménagement. Dans le
+premier cas, deux commandes suffisent. Dans le second, il faut emporter les
+données — et, séparément, les fichiers déposés, qui sont dans le bucket et non
+dans la base.
+
+### 2.3 Vers un autre projet Supabase
 
 1. Créer le nouveau projet sur [supabase.com](https://supabase.com). Choisir la
    région la plus proche (`eu-west-3`, Paris) et **noter le mot de passe de la
@@ -197,7 +238,7 @@ la base. Il suit donc la base automatiquement.
    npx prisma db seed
    ```
    Le mot de passe généré s'affiche une seule fois dans la fenêtre : le noter.
-   **Soit** reprendre les données existantes, voir §2.4.
+   **Soit** reprendre les données existantes, voir §2.5.
 6. Recréer le stockage : **Storage** → **New bucket** → nom `livrables` →
    **laisser « Public bucket » décoché**. Ce point n'est pas cosmétique : un
    bucket public rendrait chaque livrable téléchargeable par n'importe qui
@@ -216,7 +257,7 @@ la base. Il suit donc la base automatiquement.
     chemin de chaque fichier. S'il y en a beaucoup, dites-le-moi : cela
     s'automatise en un petit script.
 
-### 2.3 Vers un PostgreSQL hors Supabase
+### 2.4 Vers un PostgreSQL hors Supabase
 
 Fonctionnent tels quels : Neon, Railway, Render, Scaleway, OVH, Amazon RDS, ou
 un serveur PostgreSQL installé dans les locaux de l'organisation.
@@ -243,7 +284,7 @@ La marche à suivre :
 3. ```bash
    npx prisma db seed
    ```
-   (ou reprise des données, §2.4)
+   (ou reprise des données, §2.5)
 4. Redémarrer et se connecter.
 
 Le stockage des fichiers, lui, **continue de fonctionner avec Supabase** : les
@@ -251,9 +292,9 @@ deux sont indépendants. C'est d'ailleurs une configuration parfaitement viable 
 base chez l'hébergeur de votre choix, fichiers chez Supabase — et le stockage
 Supabase reste gratuit jusqu'à 1 Go.
 
-Si vous voulez malgré tout quitter Supabase entièrement, voir §2.6.
+Si vous voulez malgré tout quitter Supabase entièrement, voir §2.7.
 
-### 2.4 Emporter les données existantes
+### 2.5 Emporter les données existantes
 
 Pour transférer le contenu d'une base vers une autre, sans passer par
 l'application :
@@ -282,7 +323,7 @@ Alternative sans rien installer, si la base est encore petite : dans Supabase,
 **Database** → **Backups** → télécharger une sauvegarde, puis la restaurer dans
 le nouveau projet.
 
-### 2.5 Ce qu'il ne faut pas faire : MySQL ou SQL Server
+### 2.6 Ce qu'il ne faut pas faire : MySQL ou SQL Server
 
 La base doit rester du **PostgreSQL**. Le modèle de données utilise des
 colonnes qui contiennent une liste de valeurs (les adresses e-mail d'une équipe,
@@ -293,7 +334,7 @@ du modèle de données et de la moitié des requêtes, avec les tests à refaire
 Ce n'est pas une contrainte lourde : PostgreSQL est disponible gratuitement chez
 tous les hébergeurs et s'installe sur n'importe quel serveur Windows ou Linux.
 
-### 2.6 Remplacer aussi le stockage des fichiers
+### 2.7 Remplacer aussi le stockage des fichiers
 
 Le fichier `src/lib/livrables/stockage.ts` expose exactement trois fonctions :
 
