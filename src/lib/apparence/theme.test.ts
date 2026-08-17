@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { contrasteAvecBlanc } from './palette';
 import {
   POLICES,
   REGLAGES_PAR_DEFAUT,
@@ -56,13 +57,49 @@ describe('variablesCss', () => {
     expect(variables['--couleur-bouton']).toBe('#b91c1c');
   });
 
-  it('dérive une teinte douce de la couleur principale', () => {
+  it('assombrit la couleur des aplats jusqu’à porter du texte blanc', () => {
+    // Une charte jaune vif donnerait du blanc sur jaune a 1,7:1, illisible.
+    // La teinte reste celle de l'organisation, la lisibilite est garantie.
+    const variables = variablesCss({
+      ...REGLAGES_PAR_DEFAUT,
+      couleurPrimaire: '#d3cd27',
+    });
+
+    expect(variables['--couleur-primaire']).toBe('#d3cd27');
+    expect(
+      contrasteAvecBlanc(variables['--couleur-primaire-lisible']),
+    ).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('laisse intacte une couleur déjà lisible', () => {
+    const variables = variablesCss({
+      ...REGLAGES_PAR_DEFAUT,
+      couleurPrimaire: '#1e40af',
+    });
+
+    expect(variables['--couleur-primaire-lisible']).toBe('#1e40af');
+  });
+
+  it('construit le dégradé sur la couleur de l’organisation', () => {
+    // Declare ici et non dans la feuille de style : une propriete personnalisee
+    // contenant var(--couleur-primaire) est substituee la ou elle est
+    // declaree. Posee sur :root alors que les couleurs vivent sur <body>, elle
+    // restait figee sur la valeur de repli.
+    const variables = variablesCss({
+      ...REGLAGES_PAR_DEFAUT,
+      couleurPrimaire: '#b91c1c',
+    });
+
+    expect(variables['--gradient-primaire']).toContain('#b91c1c');
+    expect(variables['--gradient-primaire']).not.toContain('var(');
+  });
+
+  it('laisse la teinte douce à la feuille de style', () => {
+    // Calculee ici, elle resterait pale en theme sombre, ou le libelle pose
+    // dessus est presque blanc. La feuille de style la melange a la surface.
     const variables = variablesCss(REGLAGES_PAR_DEFAUT);
 
-    expect(variables['--couleur-primaire-douce']).toMatch(/^#[0-9a-f]{6}$/);
-    expect(variables['--couleur-primaire-douce']).not.toBe(
-      variables['--couleur-primaire'],
-    );
+    expect(variables['--couleur-primaire-douce']).toBeUndefined();
   });
 
   it('applique le facteur d’arrondi du style choisi', () => {

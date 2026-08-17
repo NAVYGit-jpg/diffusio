@@ -41,6 +41,14 @@ type Entree = {
   icone: typeof LayoutDashboard;
   /** Roles allowed to see the link. The server still checks on every request. */
   roles: Role[];
+  /**
+   * Groupe d'appartenance.
+   *
+   * « suivi » rassemble le travail quotidien, « general » l'administration et
+   * les échanges. Regrouper une dizaine d'entrées sous deux intitulés évite la
+   * liste indifférenciée où l'oeil ne se raccroche à rien.
+   */
+  groupe: 'suivi' | 'general';
 };
 
 const ENTREES: Entree[] = [
@@ -49,66 +57,77 @@ const ENTREES: Entree[] = [
     cle: 'nav.tableauDeBord',
     icone: LayoutDashboard,
     roles: ['SUPER_ADMIN', 'ADMIN', 'POINT_FOCAL'],
+    groupe: 'suivi',
   },
   {
     href: '/structures',
     cle: 'nav.structures',
     icone: Building2,
     roles: ['SUPER_ADMIN'],
+    groupe: 'general',
   },
   {
     href: '/utilisateurs',
     cle: 'nav.utilisateurs',
     icone: Users,
     roles: ['SUPER_ADMIN'],
+    groupe: 'general',
   },
   {
     href: '/catalogue',
     cle: 'nav.catalogue',
     icone: ClipboardList,
     roles: ['SUPER_ADMIN', 'ADMIN', 'POINT_FOCAL'],
+    groupe: 'suivi',
   },
   {
     href: '/calendrier',
     cle: 'nav.calendrier',
     icone: CalendarDays,
     roles: ['SUPER_ADMIN', 'ADMIN', 'POINT_FOCAL'],
+    groupe: 'suivi',
   },
   {
     href: '/imminentes',
     cle: 'nav.imminentes',
     icone: CalendarClock,
     roles: ['SUPER_ADMIN', 'ADMIN', 'POINT_FOCAL'],
+    groupe: 'suivi',
   },
   {
     href: '/produits-charges',
     cle: 'nav.produitsCharges',
     icone: PackageCheck,
     roles: ['SUPER_ADMIN', 'ADMIN', 'POINT_FOCAL'],
+    groupe: 'suivi',
   },
   {
     href: '/retards',
     cle: 'nav.retards',
     icone: TriangleAlert,
     roles: ['SUPER_ADMIN', 'ADMIN', 'POINT_FOCAL'],
+    groupe: 'suivi',
   },
   {
     href: '/equipe',
     cle: 'nav.equipe',
     icone: Users2,
     roles: ['SUPER_ADMIN', 'ADMIN', 'POINT_FOCAL'],
+    groupe: 'general',
   },
   {
     href: '/notifications',
     cle: 'nav.notifications',
     icone: Bell,
     roles: ['SUPER_ADMIN', 'ADMIN', 'POINT_FOCAL'],
+    groupe: 'general',
   },
   {
     href: '/discussion',
     cle: 'nav.discussion',
     icone: MessageSquare,
     roles: ['SUPER_ADMIN', 'ADMIN', 'POINT_FOCAL'],
+    groupe: 'general',
   },
 ];
 
@@ -152,53 +171,86 @@ export function BarreLaterale({
     void marquerOngletVuAction(onglet);
   }, [chemin]);
 
-  return (
-    <nav aria-label={t('nav.principale')} className="p-3">
-      <ul className="space-y-1">
-        {entrees.map((entree) => {
-          const actif = chemin === entree.href || chemin.startsWith(`${entree.href}/`);
-          const Icone = entree.icone;
+  const groupes: { cle: 'suivi' | 'general'; titre: string }[] = [
+    { cle: 'suivi', titre: 'Suivi' },
+    { cle: 'general', titre: 'Général' },
+  ];
 
-          const nombre = ouverts.includes(entree.href)
-            ? 0
-            : (compteurs[entree.href as OngletCompte] ?? 0);
-          const badge = formaterCompteur(nombre);
+  const rendreEntree = (entree: Entree) => {
+    const actif = chemin === entree.href || chemin.startsWith(`${entree.href}/`);
+    const Icone = entree.icone;
 
-          return (
-            <li key={entree.href}>
-              <Link
-                href={entree.href}
-                aria-current={actif ? 'page' : undefined}
-                className={cn(
-                  'flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors',
-                  actif
-                    ? 'bg-secondary font-medium text-secondary-foreground'
-                    : 'text-muted-foreground hover:bg-secondary/60 hover:text-foreground',
-                )}
+    const nombre = ouverts.includes(entree.href)
+      ? 0
+      : (compteurs[entree.href as OngletCompte] ?? 0);
+    const badge = formaterCompteur(nombre);
+
+    return (
+      <li key={entree.href} className="relative">
+        {/* Repère vertical sur l'onglet courant : le fond teinté seul se
+            confond avec un survol, le trait dit « vous êtes ici ». */}
+        {actif && (
+          <span
+            className="absolute inset-y-1.5 left-0 w-1 rounded-full bg-[var(--couleur-primaire-lisible)]"
+            aria-hidden
+          />
+        )}
+
+        <Link
+          href={entree.href}
+          aria-current={actif ? 'page' : undefined}
+          className={cn(
+            'flex items-center gap-3 rounded-full py-2.5 pl-4 pr-3 text-sm transition-colors',
+            actif
+              ? 'bg-[var(--couleur-primaire-douce)] font-medium text-foreground'
+              : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+          )}
+        >
+          <Icone
+            className={cn(
+              'size-[18px] shrink-0',
+              actif && 'text-[var(--couleur-primaire-lisible)]',
+            )}
+            aria-hidden
+          />
+          <span className="truncate">{t(entree.cle)}</span>
+
+          {badge && (
+            <>
+              <Badge
+                className="ml-auto h-5 min-w-5 justify-center px-1 tabular-nums"
+                aria-hidden
               >
-                <Icone className="size-4 shrink-0" aria-hidden />
-                <span className="truncate">{t(entree.cle)}</span>
+                {badge}
+              </Badge>
+              {/* Le badge est décoratif ; le nombre est dit au lecteur
+                  d'écran dans la même phrase que le nom de l'onglet. */}
+              <span className="sr-only">, {libelleCompteur(nombre)}</span>
+            </>
+          )}
+        </Link>
+      </li>
+    );
+  };
 
-                {badge && (
-                  <>
-                    <Badge
-                      className="ml-auto h-5 min-w-5 justify-center px-1 tabular-nums"
-                      aria-hidden
-                    >
-                      {badge}
-                    </Badge>
-                    {/* Le badge est décoratif ; le nombre est dit au lecteur
-                        d'écran dans la même phrase que le nom de l'onglet. */}
-                    <span className="sr-only">
-                      , {libelleCompteur(nombre)}
-                    </span>
-                  </>
-                )}
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
+  return (
+    <nav aria-label={t('nav.principale')} className="px-3 pb-4">
+      {groupes.map((groupe) => {
+        const duGroupe = entrees.filter((entree) => entree.groupe === groupe.cle);
+
+        if (duGroupe.length === 0) {
+          return null;
+        }
+
+        return (
+          <section key={groupe.cle} className="mb-4 last:mb-0">
+            <h2 className="px-4 pb-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">
+              {groupe.titre}
+            </h2>
+            <ul className="space-y-1">{duGroupe.map(rendreEntree)}</ul>
+          </section>
+        );
+      })}
     </nav>
   );
 }

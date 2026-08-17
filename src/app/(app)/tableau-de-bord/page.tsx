@@ -215,6 +215,7 @@ export default async function PageTableauDeBord({
             className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
           >
             <CarteIndicateur
+              misEnAvant
               libelle="Taux de respect des délais"
               valeur={respect.taux}
               unite="%"

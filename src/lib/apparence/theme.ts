@@ -1,4 +1,4 @@
-import { depuisHex, eclaircir, versHex } from './palette';
+import { assombrirJusquAuContraste, depuisHex, versHex } from './palette';
 
 /**
  * Turning the super admin's choices into CSS variables (cahier des charges §9.4).
@@ -157,16 +157,34 @@ export function variablesCss(
 
   const primaire = depuisHex(reglages.couleurPrimaire);
 
+  /**
+   * Darkened until white text sits on it.
+   *
+   * Every filled surface — the featured tile, the progress bar, the active
+   * icon — uses this rather than the raw colour. An institution whose charter
+   * is a bright yellow would otherwise get white on yellow at 1.7:1, which is
+   * unreadable. The hue is theirs, the legibility is ours to guarantee.
+   */
+  const lisible = primaire
+    ? versHex(assombrirJusquAuContraste(primaire))
+    : reglages.couleurPrimaire;
+
   return {
     '--couleur-primaire': reglages.couleurPrimaire,
+    '--couleur-primaire-lisible': lisible,
     '--couleur-secondaire': reglages.couleurSecondaire,
     '--couleur-accent': reglages.couleurAccent,
     '--couleur-fond': reglages.couleurFond,
     '--couleur-bouton': bouton,
-    // A translucent tint of the main colour, for hovers and selected rows.
-    '--couleur-primaire-douce': primaire
-      ? versHex(eclaircir(primaire, 0.88))
-      : '#eef2ff',
+    // Declared here rather than in the stylesheet: a custom property holding
+    // `var(--couleur-primaire)` is substituted where it is *declared*. Sitting
+    // on `:root` while the colours are written on `<body>`, it froze on the
+    // fallback and no organisation colour ever reached it.
+    '--gradient-primaire': `linear-gradient(135deg, ${lisible} 0%, color-mix(in oklab, ${lisible} 78%, ${reglages.couleurAccent}) 100%)`,
+    // `--couleur-primaire-douce` is deliberately absent: a fixed pale tint
+    // computed here would stay pale in dark mode, where the label sitting on it
+    // is near-white — an invisible menu entry. The stylesheet mixes the colour
+    // into `--card` instead, so the tint follows the surface it sits on.
     '--radius': `${reglages.radiusInterface * style.facteurArrondi}rem`,
     '--ombre-carte': style.ombre,
     '--epaisseur-bordure': style.epaisseurBordure,

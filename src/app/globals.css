@@ -205,10 +205,10 @@
 @layer base {
   :root {
     --couleur-primaire: #1e40af;
+    --couleur-primaire-lisible: #1e40af;
     --couleur-secondaire: #475569;
     --couleur-accent: #0891b2;
     --couleur-bouton: var(--couleur-primaire);
-    --couleur-primaire-douce: #eef2ff;
     --ombre-carte: 0 1px 2px 0 rgb(0 0 0 / 0.05), 0 1px 3px 0 rgb(0 0 0 / 0.06);
     --epaisseur-bordure: 1px;
     --facteur-espacement: 1;
@@ -217,6 +217,19 @@
 
   html {
     font-family: var(--police-interface), system-ui, sans-serif;
+  }
+
+  /* Teinte douce, declaree sur body : c est la que le serveur ecrit la couleur
+     de l organisation. Posee sur :root, elle se serait calculee a partir de la
+     valeur de repli. Melangee a --card, elle suit la surface : pale sur fond
+     clair, sourde sur fond sombre — sans quoi le libelle presque blanc du theme
+     sombre disparaitrait sur une pastille restee pale. */
+  body {
+    --couleur-primaire-douce: color-mix(
+      in oklab,
+      var(--couleur-primaire) 16%,
+      var(--card)
+    );
   }
 
   /* Le bouton principal et les accents suivent la charte choisie. */
@@ -270,11 +283,14 @@
      surface est soulevee ». Invisible consciemment, decisif en pratique. */
   --liseré-surface: inset 0 1px 0 0 rgb(255 255 255 / 0.7);
 
-  --gradient-primaire: linear-gradient(
-    135deg,
-    var(--couleur-primaire) 0%,
-    color-mix(in oklab, var(--couleur-primaire) 78%, var(--couleur-accent)) 100%
-  );
+  /* Rayon des grands panneaux — colonne, en-tête, cartes.
+     `max()` sur le rayon choisi par l'organisation : la maquette demande des
+     angles franchement arrondis, mais un super admin qui descend le curseur
+     doit garder la main. Le plancher assure la forme, son réglage la dépasse. */
+  --rayon-panneau: max(var(--radius, 0.5rem) * 2, 1.25rem);
+
+  /* Repli : le serveur reecrit ce degrade avec la couleur de l organisation. */
+  --gradient-primaire: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
 }
 
 .dark {
@@ -370,9 +386,23 @@
     color-mix(in oklab, var(--couleur-primaire) 2%, transparent) 0%,
     transparent 40%
   );
+  border-radius: var(--rayon-panneau);
   transition:
     box-shadow 200ms ease-out,
     transform 200ms ease-out;
+}
+
+/* Utilitaire de forme, pour les panneaux qui ne sont pas des cartes shadcn :
+   la colonne de navigation et l'en-tête. */
+.rounded-panneau {
+  border-radius: var(--rayon-panneau);
+}
+
+/* Le bouton principal prend la forme d'une pastille, comme sur la maquette :
+   c'est le seul repère qui distingue l'action première des autres sans ajouter
+   de couleur. */
+[data-slot='button'][data-variant='default'] {
+  border-radius: 9999px;
 }
 
 /* Le survol souleve la carte d'un cran. Le deplacement reste sous le pixel :

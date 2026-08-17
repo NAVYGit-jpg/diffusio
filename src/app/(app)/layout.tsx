@@ -42,80 +42,86 @@ export default async function LayoutApplication({
   const t = traducteur(langue);
 
   return (
-    <div className="flex min-h-svh flex-col">
+    // Coque en panneaux flottants : la navigation et le contenu sont deux
+    // surfaces posées sur le fond, séparées par une gouttière, plutôt que deux
+    // colonnes collées par une bordure. C'est ce qui donne à l'écran sa
+    // respiration.
+    <div className="flex min-h-svh gap-3 p-3 sm:gap-4 sm:p-4">
       {/* Nappe coloree derivee de la charte, derriere toute l'application.
           Purement decorative : masquee aux lecteurs d'ecran. */}
       <div className="fond-dynamique" aria-hidden />
-      {/* `data-application` distinguishes the navigation bar from the <header>
-          each page carries: printing hides this one and keeps the other. */}
-      <header
-        data-application
-        // Translucide sur la nappe plutôt qu'opaque : le dégradé traverse
-        // l'en-tête, ce qui rattache la barre à la page au lieu de la poser
-        // dessus comme un bandeau étranger.
-        className="sticky top-0 z-20 flex h-14 items-center justify-between gap-4 border-b bg-background/75 px-4 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60"
-      >
-        <div className="flex min-w-0 items-center gap-3">
-          <LogoOrganisation identite={identite} hauteur={26} priorite />
-          {/* Le slogan accompagne le logo dès que la place le permet ; il ne
-              disparaît que sur les écrans les plus étroits, où le logo seul
-              doit rester lisible. */}
+
+      {/* La navigation porte le logo et reste en place pendant que le contenu
+          défile : sur un long calendrier, une barre qui remonte oblige à
+          revenir en haut pour changer d'écran. */}
+      <aside className="hidden w-64 shrink-0 md:block">
+        <div className="sticky top-4 flex max-h-[calc(100svh-2rem)] flex-col overflow-hidden rounded-panneau bg-card shadow-[var(--elevation-2)]">
+          <div className="flex min-w-0 items-center gap-2 px-5 pb-2 pt-5">
+            <LogoOrganisation identite={identite} hauteur={26} priorite />
+          </div>
           <SloganOrganisation
             identite={identite}
-            className="hidden truncate border-l pl-3 text-sm text-muted-foreground sm:inline"
+            className="truncate px-5 pb-4 text-xs text-muted-foreground"
           />
-        </div>
 
-        <div className="flex items-center gap-2">
-          {/* À gauche de la cloche : le choix de langue précède la lecture des
-              messages qu'il habille. */}
-          <SelecteurLangue langue={langue} />
-
-          <Link
-            href="/notifications"
-            className="relative rounded-md p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-            aria-label={
-              nonLues > 0
-                ? `${t('entete.notifications')} — ${nonLues}`
-                : t('entete.notifications')
-            }
-          >
-            <Bell className="size-5" aria-hidden />
-            {nonLues > 0 && (
-              <Badge
-                className="absolute -right-1 -top-1 h-5 min-w-5 justify-center px-1 tabular-nums"
-                aria-hidden
-              >
-                {nonLues > 99 ? '99+' : nonLues}
-              </Badge>
-            )}
-          </Link>
-
-          <MenuUtilisateur
-            nomComplet={acteur.nomComplet}
-            email={acteur.email}
-            role={acteur.role}
-            langue={langue}
-          />
-        </div>
-      </header>
-
-      <div className="flex flex-1">
-        {/* La navigation reste en place pendant que le contenu défile : sur un
-            long calendrier, une barre qui remonte avec la page oblige à
-            revenir en haut pour changer d'écran. `top-14` la cale sous
-            l'en-tête, lui-même collant. */}
-        <aside className="hidden w-64 shrink-0 border-r bg-background/50 backdrop-blur-xl md:block">
-          <div className="sticky top-14 max-h-[calc(100svh-3.5rem)] overflow-y-auto">
+          <div className="min-h-0 flex-1 overflow-y-auto">
             <BarreLaterale
               role={acteur.role}
               langue={langue}
               compteurs={compteurs}
             />
           </div>
-        </aside>
+        </div>
+      </aside>
 
-        <main className="min-w-0 flex-1 p-4 sm:p-6">{children}</main>
+      <div className="flex min-w-0 flex-1 flex-col gap-3 sm:gap-4">
+        {/* `data-application` distinguishes the navigation bar from the <header>
+            each page carries: printing hides this one and keeps the other. */}
+        <header
+          data-application
+          className="sticky top-4 z-20 flex h-16 items-center justify-between gap-4 rounded-panneau bg-card/85 px-4 shadow-[var(--elevation-2)] backdrop-blur-xl"
+        >
+          {/* Le logo ayant rejoint la colonne, l'en-tête n'a plus à le répéter :
+              il porte le nom de l'organisation, qui situe la page. */}
+          <span className="truncate text-sm font-medium sm:text-base">
+            {identite.nom}
+          </span>
+
+          <div className="flex items-center gap-2">
+            {/* À gauche de la cloche : le choix de langue précède la lecture des
+                messages qu'il habille. */}
+            <SelecteurLangue langue={langue} />
+
+            <Link
+              href="/notifications"
+              className="relative rounded-full p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+              aria-label={
+                nonLues > 0
+                  ? `${t('entete.notifications')} — ${nonLues}`
+                  : t('entete.notifications')
+              }
+            >
+              <Bell className="size-5" aria-hidden />
+              {nonLues > 0 && (
+                <Badge
+                  className="absolute -right-1 -top-1 h-5 min-w-5 justify-center px-1 tabular-nums"
+                  aria-hidden
+                >
+                  {nonLues > 99 ? '99+' : nonLues}
+                </Badge>
+              )}
+            </Link>
+
+            <MenuUtilisateur
+              nomComplet={acteur.nomComplet}
+              email={acteur.email}
+              role={acteur.role}
+              langue={langue}
+            />
+          </div>
+        </header>
+
+        <main className="min-w-0 flex-1">{children}</main>
       </div>
 
       <Toaster position="top-right" />
