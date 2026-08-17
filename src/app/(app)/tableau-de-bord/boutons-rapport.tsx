@@ -19,7 +19,7 @@ export function BoutonsRapport() {
   const parametres = useSearchParams();
 
   return (
-    <div className="flex flex-wrap gap-2 print:hidden">
+    <div data-boutons-rapport className="flex flex-wrap gap-2 print:hidden">
       <Button asChild variant="outline" size="sm">
         <a
           href={`/api/export/tableau-de-bord?${parametres.toString()}`}

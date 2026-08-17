@@ -37,6 +37,11 @@ yarn-error.log*
 # un poste qui recupere le projet n'a aucun moyen de savoir quoi renseigner.
 !.env.example
 
+# Jeton de session des captures d'ecran (scripts/capturer-guide.mts).
+# Il ouvre l'application au nom de la personne qui s'est connectee : il ne doit
+# pas plus etre versionne qu'un mot de passe.
+.playwright
+
 # vercel
 .vercel
 

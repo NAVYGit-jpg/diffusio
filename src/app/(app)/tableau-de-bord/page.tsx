@@ -159,7 +159,10 @@ export default async function PageTableauDeBord({
           l'écran, lui, a toujours ses filtres sous les yeux : ce qu'il couvre,
           sur quel périmètre, et à quelle date il a été arrêté. */}
       {!vide && (
-        <section className="hidden print:flex print:min-h-[240mm] print:break-after-page print:flex-col print:justify-between">
+        <section
+          data-page-de-garde
+          className="hidden print:flex print:min-h-[240mm] print:break-after-page print:flex-col print:justify-between"
+        >
           <div className="flex items-center justify-between gap-4 border-b border-zinc-300 pb-6">
             <LogoOrganisation identite={identite} hauteur={44} />
             <span className="text-right text-sm text-zinc-600">

@@ -88,7 +88,7 @@ export function FiltresTableauDeBord({
     etat.typesElement.length;
 
   return (
-    <div className="mb-6 space-y-3">
+    <div data-filtres-tableau-de-bord className="mb-6 space-y-3">
       {/* Three per row rather than five. A sixth control squeezed onto one line
           left each summary too narrow for « Toutes les périodicités », which
           then truncated into something unreadable. */}

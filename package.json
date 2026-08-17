@@ -15,7 +15,8 @@
     "verifier:stockage": "tsx scripts/verifier-stockage.mts",
     "simuler:relances": "tsx scripts/simuler-relances.mts",
     "verifier:email": "tsx scripts/verifier-email.mts",
-    "preparer:logos": "tsx scripts/preparer-logos.mts"
+    "preparer:logos": "tsx scripts/preparer-logos.mts",
+    "capturer:guide": "tsx scripts/capturer-guide.mts"
   },
   "dependencies": {
     "@node-rs/argon2": "^2.0.2",
@@ -51,6 +52,7 @@
     "dotenv": "^17.4.2",
     "eslint": "^9",
     "eslint-config-next": "15.5.22",
+    "playwright": "^1.62.1",
     "prisma": "^7.9.1",
     "shadcn": "^4.16.2",
     "sharp": "^0.35.3",
