@@ -3,6 +3,8 @@
 import { revalidatePath } from 'next/cache';
 import QRCode from 'qrcode';
 
+import { adresseQrCode } from '@/lib/email/adresse';
+
 import { PermissionRefusee, assertPermission } from '@/lib/auth/permissions';
 import { exigerActeur } from '@/lib/auth/session';
 import { formaterJJMMAAAA } from '@/lib/calendrier/dates';
@@ -124,6 +126,9 @@ export async function mettreEnLigneAction(
     update: { emails: valides, majPar: acteur.id },
   });
 
+  // Conserve tel quel : c'est la trace de ce qui a ete emis, et elle survit a
+  // un changement d'adresse de l'application. Ce n'est pas ce que l'e-mail
+  // affiche — voir plus bas, un mail client refuse une image « data: ».
   const qrCodeDataUri = await QRCode.toDataURL(lien, {
     width: 256,
     margin: 1,
@@ -197,7 +202,9 @@ export async function mettreEnLigneAction(
     dateDiffusionPrevue: formaterJJMMAAAA(ligne.dateDiffusionPrevue),
     dateDiffusionReelle: formaterJJMMAAAA(maintenant),
     lien,
-    qrCodeDataUri,
+    // Adresse absolue : un client de messagerie va chercher les images sur
+    // internet, pas sur la machine qui a envoye le message.
+    qrCodeUrl: adresseQrCode(ligne.id),
     valeur: valeurLisible,
     unite: valeurPrincipale?.unite ?? ligne.indicateur?.unite ?? null,
   });

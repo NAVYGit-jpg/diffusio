@@ -30,7 +30,7 @@ describe('modeleMiseEnLigne', () => {
       dateDiffusionPrevue: '10/02/2026',
       dateDiffusionReelle: '12/02/2026',
       lien: 'https://ins.ci/ihpc-janvier',
-      qrCodeDataUri: 'data:image/png;base64,AAA',
+      qrCodeUrl: 'https://diffusio.example/api/qr/ligne-1',
     });
   }
 
@@ -59,11 +59,35 @@ describe('modeleMiseEnLigne', () => {
     expect(modele('INDICATEUR').corpsTexte).not.toContain('a été mise en ligne');
   });
 
-  it('rappelle la date prévue et le lien', () => {
+  it('rappelle la date prévue', () => {
     expect(modele().corpsTexte).toContain('Date de publication prévue : 10/02/2026');
+  });
+
+  it('ne repete pas l’adresse en clair au-dessus du bouton', () => {
+    // Le bouton la porte deja, et il reste cliquable quand les images sont
+    // bloquees : c'est un lien, pas une image.
+    const html = modele().corpsHtml;
+
+    expect(html).not.toContain('Lien de la publication');
+    expect(html).toContain('Consulter la publication');
+
+    // Une seule occurrence de l'adresse dans le corps HTML : celle du bouton.
+    expect(html.split('https://ins.ci/ihpc-janvier').length - 1).toBe(1);
+  });
+
+  it('garde l’adresse ecrite dans la version texte, faute de bouton', () => {
     expect(modele().corpsTexte).toContain(
       'Lien de la publication : https://ins.ci/ihpc-janvier',
     );
+  });
+
+  it('va chercher le QR code sur le web, jamais en « data: »', () => {
+    // Gmail supprime purement et simplement une image « data: » : le code
+    // s'affichait en cadre vide chez le destinataire.
+    const html = modele().corpsHtml;
+
+    expect(html).toContain('src="https://diffusio.example/api/qr/ligne-1"');
+    expect(html).not.toContain('src="data:');
   });
 
   it('signe « Cordialement »', () => {
@@ -160,7 +184,7 @@ describe('mise en forme commune', () => {
         dateDiffusionPrevue: '10/02/2026',
         dateDiffusionReelle: '12/02/2026',
         lien: 'https://ins.ci/x',
-        qrCodeDataUri: 'data:image/png;base64,AAA',
+        qrCodeUrl: 'https://diffusio.example/api/qr/ligne-1',
       }),
       modeleRappel({
         ...COMMUN,

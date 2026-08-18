@@ -1,5 +1,7 @@
 import 'server-only';
 
+import { adresseApplication } from './adresse';
+
 /**
  * E-mail bodies.
  *
@@ -15,18 +17,9 @@ type Organisation = {
   logoUrl: string | null;
 };
 
-/**
- * Absolute address of the DIFFUSIO wordmark.
- *
- * A mail client fetches images from the internet, not from the machine running
- * the application: a relative path would never resolve. On a development
- * machine `AUTH_URL` points at localhost and the image simply will not load —
- * which is why every message also carries the wordmark as text.
- */
+/** Absolute address of the DIFFUSIO wordmark. See `adresseApplication`. */
 function adresseLogo(): string {
-  const base = (process.env.AUTH_URL ?? 'http://localhost:3000').replace(/\/$/, '');
-
-  return `${base}/logo-diffusio.png`;
+  return `${adresseApplication()}/logo-diffusio.png`;
 }
 
 /**
@@ -118,9 +111,14 @@ const FORMULE_SANTE =
 /**
  * Publication-is-online notice (§7).
  *
- * The QR code is embedded as a base64 PNG, as the specification asks. Some mail
- * clients block `data:` images, so the clickable link always appears in full
- * text next to it — the message must stay usable without the picture.
+ * The QR code is fetched from the application rather than embedded as a base64
+ * `data:` URI. Gmail strips `data:` image sources outright, so the code showed
+ * as a broken frame — see `app/api/qr/[ligneId]`.
+ *
+ * The address is not repeated in running text: the button carries it, and it
+ * still works when a mail client refuses images, being a link and not a
+ * picture. The plain-text version keeps the address written out, having no
+ * button to offer.
  */
 export function modeleMiseEnLigne(params: {
   organisation: Organisation;
@@ -133,7 +131,7 @@ export function modeleMiseEnLigne(params: {
   dateDiffusionPrevue: string;
   dateDiffusionReelle: string;
   lien: string;
-  qrCodeDataUri: string;
+  qrCodeUrl: string;
   valeur?: string | null;
   unite?: string | null;
 }): { sujet: string; corpsHtml: string; corpsTexte: string } {
@@ -187,10 +185,6 @@ Cordialement,`;
        }
      </table>
 
-     <p style="margin-top:16px">Lien de la publication :
-       <a href="${params.lien}" style="word-break:break-all">${params.lien}</a>
-     </p>
-
      <p style="margin:24px 0">
        <a href="${params.lien}"
           style="display:inline-block;padding:12px 20px;background:${params.organisation.couleurPrimaire};color:#ffffff;text-decoration:none;border-radius:6px">
@@ -201,7 +195,7 @@ Cordialement,`;
      <table role="presentation" style="margin-top:8px">
        <tr>
          <td style="padding-right:16px">
-           <img src="${params.qrCodeDataUri}" alt="QR code vers la publication" width="128" height="128" style="display:block;border:1px solid #e4e4e7;border-radius:4px">
+           <img src="${params.qrCodeUrl}" alt="QR code vers la publication" width="128" height="128" style="display:block;border:1px solid #e4e4e7;border-radius:4px">
          </td>
          <td style="font-size:13px;color:#71717a;vertical-align:middle">
            Scannez ce code pour ouvrir la publication<br>depuis un téléphone.
