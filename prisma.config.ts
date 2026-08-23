@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import path from 'node:path';
-import { defineConfig, env } from 'prisma/config';
+import { defineConfig } from 'prisma/config';
 
 /**
  * Prisma 7 configuration.
@@ -13,13 +13,21 @@ import { defineConfig, env } from 'prisma/config';
  * Supabase exposes two endpoints. Migrations must use the DIRECT connection
  * (port 5432) because the transaction pooler (port 6543) does not support the
  * prepared statements and advisory locks that Prisma Migrate relies on.
+ *
+ * The datasource is declared **only when the variable is set**, rather than
+ * through `env('DIRECT_URL')`, which throws as the config file loads. Drawing
+ * the client needs no database at all — it reads the schema — but a build
+ * machine has no reason to hold a migration credential, and on Vercel that
+ * throw stopped the build before a single file was compiled. Declaring nothing
+ * lets `generate` proceed; the commands that genuinely need a connection still
+ * say so when the variable is missing.
  */
+const urlMigrations = process.env.DIRECT_URL;
+
 export default defineConfig({
   schema: path.join('prisma', 'schema.prisma'),
 
-  datasource: {
-    url: env('DIRECT_URL'),
-  },
+  ...(urlMigrations ? { datasource: { url: urlMigrations } } : {}),
 
   migrations: {
     path: path.join('prisma', 'migrations'),
