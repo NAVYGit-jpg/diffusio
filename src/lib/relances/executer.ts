@@ -3,7 +3,6 @@ import 'server-only';
 import { formaterJJMMAAAA } from '@/lib/calendrier/dates';
 import { envoyerEmail } from '@/lib/email/envoyer';
 import { modeleRappel, modeleRelance } from '@/lib/email/modeles';
-import { LIBELLE_PERIODICITE } from '@/lib/catalogue/schemas';
 import { copieDeStructure } from '@/lib/notifications/destinataires';
 import { prisma } from '@/lib/prisma';
 import {
@@ -93,11 +92,6 @@ export async function executerRelances(
       }
 
       const lien = `${base}/calendrier?structure=${ligne.calendrier.structureId}&annee=${ligne.calendrier.annee}`;
-      const periodicite =
-        LIBELLE_PERIODICITE[
-          element.periodicite as keyof typeof LIBELLE_PERIODICITE
-        ] ?? element.periodicite;
-
       // Reminders and chases go to the titular point focal; a deputy can file
       // the deliverable but does not carry the responsibility (DEC-107).
       const destinataires = element.pointFocalId
