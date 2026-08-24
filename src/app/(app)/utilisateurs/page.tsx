@@ -3,21 +3,53 @@ import { redirect } from 'next/navigation';
 
 import { peutRealiser } from '@/lib/auth/permissions';
 import { exigerActeur } from '@/lib/auth/session';
+import { lireParametres } from '@/lib/tableau-bord/filtres-url';
 import { prisma } from '@/lib/prisma';
 import { aplatir, construireArborescence } from '@/lib/structures/arborescence';
 import { libelleQuotaSuperAdmin } from '@/lib/utilisateurs/regles';
+import { FiltreStructure } from './filtre-structure';
 import { TableauUtilisateurs } from './tableau-utilisateurs';
 
 export const metadata: Metadata = {
   title: 'Utilisateurs — DIFFUSIO',
 };
 
-export default async function PageUtilisateurs() {
+export default async function PageUtilisateurs({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const acteur = await exigerActeur();
 
   if (!peutRealiser(acteur, 'pointFocal:gerer')) {
     redirect('/tableau-de-bord');
   }
+
+  const structuresFiltrees = lireParametres(await searchParams, 'structure');
+
+  /**
+   * « Appartenir » à une structure n'a pas le même sens selon le rôle : un
+   * point focal y est rattaché, un administrateur la supervise. Le filtre
+   * retient les deux, faute de quoi filtrer sur une structure ferait
+   * disparaître les administrateurs qui en répondent.
+   *
+   * Le super administrateur, rattaché à aucune, sort de la liste dès qu'une
+   * structure est choisie — c'est cohérent avec la question posée : « qui
+   * travaille sur celle-ci ».
+   */
+  const filtreStructure =
+    structuresFiltrees.length === 0
+      ? {}
+      : {
+          OR: [
+            { structureId: { in: structuresFiltrees } },
+            {
+              adminStructures: {
+                some: { structureId: { in: structuresFiltrees } },
+              },
+            },
+          ],
+        };
 
   /**
    * Périmètre de l'écran.
@@ -44,6 +76,7 @@ export default async function PageUtilisateurs() {
         organisationId: acteur.organisationId,
         deletedAt: null,
         ...restreintAuxPointsFocaux,
+        ...filtreStructure,
       },
       select: {
         id: true,
@@ -75,9 +108,17 @@ export default async function PageUtilisateurs() {
     }),
   ]);
 
-  const superAdminsActifs = utilisateurs.filter(
-    (utilisateur) => utilisateur.role === 'SUPER_ADMIN' && utilisateur.actif,
-  ).length;
+  // Compté à part, et non sur la liste affichée : celle-ci est filtrée, et un
+  // filtre sur une structure en écarte les super administrateurs. Le quota
+  // annoncerait alors « 0 sur 5 » alors que rien n'a changé.
+  const superAdminsActifs = await prisma.utilisateur.count({
+    where: {
+      organisationId: acteur.organisationId,
+      deletedAt: null,
+      role: 'SUPER_ADMIN',
+      actif: true,
+    },
+  });
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -88,6 +129,15 @@ export default async function PageUtilisateurs() {
           créé reçoit une invitation pour choisir son propre mot de passe.
         </p>
       </header>
+
+      {/* Affiché seulement s'il y a de quoi choisir : une organisation d'une
+          seule structure n'a rien à filtrer. */}
+      {structures.length > 1 && (
+        <FiltreStructure
+          structureIds={structuresFiltrees}
+          structures={structures}
+        />
+      )}
 
       <TableauUtilisateurs
         utilisateurs={utilisateurs.map((utilisateur) => ({
