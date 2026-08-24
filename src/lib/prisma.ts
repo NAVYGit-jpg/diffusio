@@ -33,7 +33,39 @@ function createPrismaClient(): PrismaClient {
     );
   }
 
-  const adapter = new PrismaPg({ connectionString });
+  // Sans machine serveur unique, chaque instance de fonction ouvre son propre
+  // groupe de connexions, et elles se multiplient sous la charge. Le pooler de
+  // Supabase en mode session n'accorde que quinze places : deux instances aux
+  // reglages par defaut de pg les epuisent, et le tableau de bord tombait sur
+  // « max clients reached in session mode ». Trois connexions par instance
+  // suffisent, le pooler se chargeant du reste.
+  //
+  // En developpement, une seule instance vit longtemps : le reglage par defaut
+  // convient, et le brider ferait patienter les requetes du tableau de bord les
+  // unes derriere les autres.
+  const sansServeurDedie = process.env.VERCEL === '1';
+
+  if (sansServeurDedie && connectionString.includes(':5432/')) {
+    console.warn(
+      "[base] DATABASE_URL utilise le port 5432, le pooler de session. En " +
+        'environnement sans serveur, il sature vite : le port 6543, en mode ' +
+        'transaction, est fait pour cet usage.',
+    );
+  }
+
+  const adapter = new PrismaPg({
+    connectionString,
+    ...(sansServeurDedie
+      ? {
+          max: 3,
+          // Une connexion inactive est rendue vite : une instance gelee ne doit
+          // pas garder une place dont une autre a besoin.
+          idleTimeoutMillis: 10_000,
+          // Echouer franchement plutot que de faire attendre la page.
+          connectionTimeoutMillis: 10_000,
+        }
+      : {}),
+  });
 
   return new PrismaClient({
     adapter,
