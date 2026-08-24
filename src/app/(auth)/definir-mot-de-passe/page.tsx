@@ -1,6 +1,10 @@
 import type { Metadata } from 'next';
 
-import { LogoDiffusio } from '@/components/layout/logo-diffusio';
+import {
+  LogoOrganisation,
+  SloganOrganisation,
+  chargerIdentiteOrganisation,
+} from '@/components/layout/logo-organisation';
 
 import { prisma } from '@/lib/prisma';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -16,6 +20,12 @@ export default async function PageDefinirMotDePasse({
   searchParams: Promise<{ jeton?: string }>;
 }) {
   const { jeton } = await searchParams;
+
+  // Chargée ici plutôt que dans un composant enfant : une identité récupérée
+  // par un composant asynchrone poserait une frontière Suspense au milieu de
+  // l'en-tête, et React numéroterait les `useId` du formulaire différemment sur
+  // le serveur et dans le navigateur.
+  const identite = await chargerIdentiteOrganisation();
 
   const utilisateur = jeton
     ? await prisma.utilisateur.findFirst({
@@ -33,10 +43,15 @@ export default async function PageDefinirMotDePasse({
     <main className="flex min-h-svh items-center justify-center bg-muted/40 p-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center text-center">
-          <LogoDiffusio hauteur={40} priorite />
-          <p className="mt-3 text-sm text-muted-foreground">
-            Activation de votre compte
-          </p>
+          {/* L'invitation est le tout premier contact de la personne avec
+              l'application : elle doit y reconnaître son institution, pas
+              l'outil. Le contexte — « activation » — est déjà porté par la
+              carte, qui souhaite la bienvenue et explique quoi faire. */}
+          <LogoOrganisation identite={identite} hauteur={40} priorite />
+          <SloganOrganisation
+            identite={identite}
+            className="mt-3 text-sm text-muted-foreground"
+          />
         </div>
 
         {utilisateur ? (
