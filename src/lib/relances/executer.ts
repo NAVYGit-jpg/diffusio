@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { formaterJJMMAAAA } from '@/lib/calendrier/dates';
+import { adresseApplication } from '@/lib/email/adresse';
 import { envoyerEmail } from '@/lib/email/envoyer';
 import { modeleRappel, modeleRelance } from '@/lib/email/modeles';
 import { copieDeStructure } from '@/lib/notifications/destinataires';
@@ -60,7 +61,7 @@ export async function executerRelances(
     },
   });
 
-  const base = process.env.AUTH_URL ?? 'http://localhost:3000';
+  const base = adresseApplication();
 
   for (const organisation of organisations) {
     // Only lines that still expect something. Delivered and published ones are

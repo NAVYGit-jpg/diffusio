@@ -52,7 +52,33 @@ export type ResultatEnvoi = {
   doublon?: boolean;
 };
 
-const MODE = process.env.EMAIL_MODE ?? 'test';
+/**
+ * Sending mode.
+ *
+ * `EMAIL_MODE` decides, and an explicit value always wins. What changed is the
+ * default when nobody set one.
+ *
+ * Falling back to `test` everywhere meant a production deployment that had not
+ * declared the variable swallowed every message in silence — invitations were
+ * written to a log nobody reads, while the journal recorded them as sent and
+ * the administrator waited for people to sign in. A default that quietly does
+ * nothing is worse than one that acts.
+ *
+ * So: production sends, everything else simulates. Preview deployments keep
+ * simulating, which is the point — a branch under test must never write to
+ * real inboxes, and §14 requires exactly that during development.
+ */
+function modeEnvoi(): string {
+  const declare = process.env.EMAIL_MODE?.trim();
+
+  if (declare) {
+    return declare;
+  }
+
+  return process.env.VERCEL_ENV === 'production' ? 'prod' : 'test';
+}
+
+const MODE = modeEnvoi();
 
 async function envoyerViaBrevo(message: MessageEmail): Promise<ResultatEnvoi> {
   const cle = process.env.BREVO_API_KEY;
@@ -116,7 +142,14 @@ ${message.corpsTexte
 └──────────────────────────────────────────────────────────────
 `);
 
-  return { envoye: true };
+  // `envoye: false`, et c'est le point de la correction : le message n'a atteint
+  // personne. Le journal enregistrait « ENVOYE » pour un message seulement
+  // affiché en console, si bien qu'une messagerie muette se lisait comme une
+  // messagerie qui fonctionne. Le motif est écrit noir sur blanc à côté.
+  return {
+    envoye: false,
+    erreur: `Mode simulation (EMAIL_MODE=${MODE}) : aucun envoi réel.`,
+  };
 }
 
 /**

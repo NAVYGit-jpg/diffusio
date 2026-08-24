@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache';
 
 import { assertPermission, PermissionRefusee } from '@/lib/auth/permissions';
 import { exigerActeur } from '@/lib/auth/session';
+import { adresseApplication } from '@/lib/email/adresse';
 import { envoyerEmail } from '@/lib/email/envoyer';
 import { modeleInvitation } from '@/lib/email/modeles';
 import { prisma } from '@/lib/prisma';
@@ -240,7 +241,7 @@ export async function enregistrerUtilisateurAction(
         : null,
     ]);
 
-    const base = process.env.AUTH_URL ?? 'http://localhost:3000';
+    const base = adresseApplication();
     const lien = `${base}/definir-mot-de-passe?jeton=${jeton}`;
     const modele = modeleInvitation({
       organisation,
@@ -450,7 +451,7 @@ export async function renvoyerInvitationAction(
     select: { nom: true, sigle: true, couleurPrimaire: true, logoUrl: true },
   });
 
-  const base = process.env.AUTH_URL ?? 'http://localhost:3000';
+  const base = adresseApplication();
   const lien = `${base}/definir-mot-de-passe?jeton=${jeton}`;
   const modele = modeleInvitation({
     organisation,

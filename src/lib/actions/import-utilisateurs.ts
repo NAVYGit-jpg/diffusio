@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache';
 
 import { assertPermission, PermissionRefusee } from '@/lib/auth/permissions';
 import { exigerActeur } from '@/lib/auth/session';
+import { adresseApplication } from '@/lib/email/adresse';
 import { envoyerEmail } from '@/lib/email/envoyer';
 import { modeleInvitation } from '@/lib/email/modeles';
 import { lireGrilleExcel } from '@/lib/import/lecture-excel';
@@ -111,7 +112,7 @@ export async function importerUtilisateursAction(
     select: { nom: true, sigle: true, couleurPrimaire: true, logoUrl: true },
   });
 
-  const base = process.env.AUTH_URL ?? 'http://localhost:3000';
+  const base = adresseApplication();
 
   let nombreCrees = 0;
   let nombreInvitations = 0;

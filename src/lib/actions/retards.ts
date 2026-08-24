@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { PermissionRefusee, assertPermission } from '@/lib/auth/permissions';
 import { exigerActeur } from '@/lib/auth/session';
 import { normaliserJour } from '@/lib/calendrier/dates';
+import { adresseApplication } from '@/lib/email/adresse';
 import { envoyerEmail } from '@/lib/email/envoyer';
 import { modeleAlerte } from '@/lib/email/modeles';
 import { notifier, pointsFocauxDe } from '@/lib/notifications/destinataires';
@@ -226,7 +227,7 @@ export async function envoyerAlerteAction(
     select: { nom: true, sigle: true, couleurPrimaire: true, logoUrl: true },
   });
 
-  const base = process.env.AUTH_URL ?? 'http://localhost:3000';
+  const base = adresseApplication();
   const modele = modeleAlerte({
     organisation,
     nomElement,
