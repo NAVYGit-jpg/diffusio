@@ -487,7 +487,64 @@ Le fichier `.env` contient des mots de passe. Quatre règles :
 
 ---
 
-## 6. En cas de doute
+## 6. Les avertissements de construction
+
+Chaque déploiement Vercel affiche deux familles d'avertissements. Elles sont
+inoffensives **dans cette application**, et ce chapitre dit pourquoi — pour
+éviter qu'on refasse l'enquête tous les six mois.
+
+### 6.1 « allow-scripts » : cinq scripts d'installation bloqués
+
+npm n'exécute plus les scripts d'installation des dépendances sans
+autorisation. Cinq sont concernés, et aucun ne manque :
+
+| Paquet | Ce que son script fait | Conséquence ici |
+|---|---|---|
+| `@prisma/engines` | télécharge les moteurs Prisma | **aucune** — voir ci-dessous |
+| `sharp` | installe la bibliothèque d'images | aucune — Vercel optimise les images sur sa propre infrastructure |
+| `esbuild` | télécharge son binaire | aucune — la construction passe par Turbopack |
+| `unrs-resolver` | binding natif d'ESLint | aucune — l'analyse s'exécute normalement |
+| `prisma` | script d'entrée | aucune |
+
+Le cas de Prisma mérite un mot, parce qu'il a fait perdre du temps. On croit
+volontiers que le moteur manquant explique une panne de base : c'est faux.
+**Aucun binaire de moteur de requêtes n'existe nulle part dans ce projet**, y
+compris sur un poste où tout fonctionne. Prisma 7 avec l'adaptateur `pg`
+compile ses requêtes en JavaScript. Ce paquet ne fournit ici que le moteur de
+*schéma*, celui des migrations, que l'application déployée n'exécute jamais.
+
+### 6.2 « deprecated » : six paquets obsolètes
+
+Ils viennent tous d'une seule dépendance, `exceljs`, qui produit les exports
+Excel :
+
+```
+exceljs ─┬─ archiver ── archiver-utils ── glob@7 ── inflight
+         ├─ fast-csv ── @fast-csv/format ── lodash.isequal
+         ├─ unzipper ── fstream ── rimraf@2
+         └─ uuid@8
+```
+
+Obsolète ne veut pas dire vulnérable. `npm audit` signale deux failles côté
+production, et ni l'une ni l'autre n'est atteignable ici :
+
+**`uuid` (modérée)** — dépassement de tampon dans les versions 3, 5 et 6,
+uniquement quand on passe l'argument `buf`. `exceljs` ne s'en sert pas ainsi.
+
+**`sharp` (haute)** — failles de libvips sur le traitement d'images. Le paquet
+vulnérable est celui qu'embarque Next.js. Or **`sharp` n'est importé nulle part
+dans `src/`** : seul le script `preparer-logos.mts` l'utilise, en local. Et le
+logo téléversé par le super administrateur est **enregistré tel quel**, sans
+aucun traitement d'image côté serveur. Rien de fourni par un utilisateur
+n'atteint donc libvips.
+
+Ce raisonnement tomberait le jour où l'application redimensionnerait,
+convertirait ou recompresserait une image reçue. Si cette fonction arrive, il
+faudra reprendre l'analyse : `npm audit` cessera d'être du bruit.
+
+---
+
+## 7. En cas de doute
 
 Les deux scripts de contrôle sont conçus pour être lancés autant de fois que
 nécessaire : ils ne modifient rien, ils lisent et rapportent. Ils masquent
