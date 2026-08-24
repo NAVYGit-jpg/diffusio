@@ -70,7 +70,9 @@ const ENTREES: Entree[] = [
     href: '/utilisateurs',
     cle: 'nav.utilisateurs',
     icone: Users,
-    roles: ['SUPER_ADMIN'],
+    // L'administrateur y voit uniquement les points focaux des structures
+    // qu'il supervise ; le filtrage est fait par le serveur, pas ici.
+    roles: ['SUPER_ADMIN', 'ADMIN'],
     groupe: 'general',
   },
   {

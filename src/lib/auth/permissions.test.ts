@@ -69,7 +69,7 @@ describe('matrice de la section 2.3', () => {
   const attendu: Array<[Action, boolean, boolean, boolean]> = [
     // action, SUPER_ADMIN, ADMIN, POINT_FOCAL
     ['structure:gerer', true, false, false],
-    ['pointFocal:gerer', true, false, false],
+    ['pointFocal:gerer', true, true, false],
     ['admin:gerer', true, false, false],
     ['superAdmin:gerer', true, false, false],
     ['apparence:gerer', true, false, false],

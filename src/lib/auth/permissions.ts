@@ -55,7 +55,7 @@ const CENTRAL: readonly Role[] = ['SUPER_ADMIN'];
  */
 const MATRICE: Record<Action, readonly Role[]> = {
   'structure:gerer': CENTRAL,
-  'pointFocal:gerer': CENTRAL,
+  'pointFocal:gerer': ENCADREMENT,
   'admin:gerer': CENTRAL,
   'superAdmin:gerer': CENTRAL,
   'apparence:gerer': CENTRAL,
@@ -158,4 +158,56 @@ export function perimetreStructures(acteur: ActeurSession): string[] | null {
     default:
       return [];
   }
+}
+
+/**
+ * Accounts an acteur may see and modify on the « Utilisateurs » screen.
+ *
+ * A super administrator manages the whole organisation. An administrator only
+ * manages **the points focaux of the structures they supervise** — not their
+ * peers, not the super administrator, and nobody outside their perimeter.
+ *
+ * Written as a pure function rather than inline conditions because the same
+ * rule has to hold in four places at once: the list the screen renders, the
+ * creation, the edit, and the activation toggle. Four copies of a rule are
+ * four chances for one of them to drift and open a door.
+ */
+export function peutGererCeCompte(
+  acteur: ActeurSession,
+  cible: { role: Role; structureId: string | null },
+): boolean {
+  if (acteur.role === 'SUPER_ADMIN') {
+    return true;
+  }
+
+  if (acteur.role !== 'ADMIN') {
+    return false;
+  }
+
+  // Un administrateur ne touche qu'a des points focaux : lui laisser modifier
+  // un pair, ou le super administrateur, reviendrait a lui donner les moyens de
+  // s elever lui-meme.
+  if (cible.role !== 'POINT_FOCAL') {
+    return false;
+  }
+
+  return (
+    cible.structureId !== null &&
+    acteur.structuresAdmin.includes(cible.structureId)
+  );
+}
+
+/**
+ * Roles an acteur may hand out.
+ *
+ * The screen builds its dropdown from this, and the server action checks the
+ * submitted value against it — a list narrowed only in the browser is not a
+ * restriction.
+ */
+export function rolesAttribuables(acteur: ActeurSession): Role[] {
+  if (acteur.role === 'SUPER_ADMIN') {
+    return ['SUPER_ADMIN', 'ADMIN', 'POINT_FOCAL'];
+  }
+
+  return acteur.role === 'ADMIN' ? ['POINT_FOCAL'] : [];
 }

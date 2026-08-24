@@ -19,9 +19,32 @@ export default async function PageUtilisateurs() {
     redirect('/tableau-de-bord');
   }
 
+  /**
+   * Périmètre de l'écran.
+   *
+   * Un super administrateur voit toute l'organisation. Un administrateur ne
+   * voit que les points focaux des structures qu'il supervise — le filtre est
+   * posé dans la clause WHERE, jamais après coup : une liste chargée puis
+   * masquée à l'affichage reste lisible dans la réponse du serveur.
+   */
+  const restreintAuxPointsFocaux =
+    acteur.role === 'ADMIN'
+      ? {
+          role: 'POINT_FOCAL' as const,
+          structureId: { in: acteur.structuresAdmin },
+        }
+      : {};
+
+  const structuresLisibles =
+    acteur.role === 'ADMIN' ? { id: { in: acteur.structuresAdmin } } : {};
+
   const [utilisateurs, structures] = await Promise.all([
     prisma.utilisateur.findMany({
-      where: { organisationId: acteur.organisationId, deletedAt: null },
+      where: {
+        organisationId: acteur.organisationId,
+        deletedAt: null,
+        ...restreintAuxPointsFocaux,
+      },
       select: {
         id: true,
         nom: true,
@@ -42,7 +65,12 @@ export default async function PageUtilisateurs() {
       orderBy: [{ role: 'asc' }, { nom: 'asc' }],
     }),
     prisma.structure.findMany({
-      where: { organisationId: acteur.organisationId, deletedAt: null, actif: true },
+      where: {
+        organisationId: acteur.organisationId,
+        deletedAt: null,
+        actif: true,
+        ...structuresLisibles,
+      },
       select: { id: true, nom: true, sigle: true, code: true, parentId: true, actif: true },
     }),
   ]);

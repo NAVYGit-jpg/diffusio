@@ -83,7 +83,7 @@ export async function ouvrirConversationAction(
     include: { structure: { select: { nom: true } } },
   });
 
-  await previenirLautreCamp(acteur, conversation.structureId, {
+  await previenirLesConcernes(acteur, conversation.structureId, {
     sujet: analyse.data.sujet,
     extrait: analyse.data.message,
     conversationId: conversation.id,
@@ -145,7 +145,7 @@ export async function repondreAction(
     }),
   ]);
 
-  await previenirLautreCamp(acteur, conversation.structureId, {
+  await previenirLesConcernes(acteur, conversation.structureId, {
     sujet: conversation.sujet,
     extrait: contenu,
     conversationId,
@@ -158,13 +158,14 @@ export async function repondreAction(
 }
 
 /**
- * Notifies the other side of the conversation.
+ * Notifies everyone the conversation concerns.
  *
- * A point focal writing reaches their administrators; an administrator writing
- * reaches the structure's point focals. Notifying everybody every time would
- * turn the bell into noise nobody reads.
+ * The structure's point focals, the administrators who supervise it, and the
+ * super administrator — the author excepted. The circle stays small because a
+ * conversation belongs to one structure; widening it to the whole organisation
+ * would turn the bell into noise nobody reads.
  */
-async function previenirLautreCamp(
+async function previenirLesConcernes(
   acteur: Awaited<ReturnType<typeof exigerActeur>>,
   structureId: string,
   contexte: {
@@ -174,10 +175,25 @@ async function previenirLautreCamp(
     structure: string;
   },
 ): Promise<void> {
-  const destinataires =
-    acteur.role === 'POINT_FOCAL'
-      ? await encadrementDe(acteur.organisationId, structureId)
-      : await pointsFocauxDe(acteur.organisationId, structureId);
+  /**
+   * Tout le monde autour de la structure, pas seulement « l'autre camp ».
+   *
+   * La règle précédente prévenait l'encadrement quand un point focal écrivait,
+   * et les points focaux quand l'encadrement écrivait. Une discussion ouverte
+   * par un administrateur n'atteignait donc ni le super administrateur ni les
+   * autres administrateurs de la même structure : le fil existait sans que les
+   * personnes concernées le sachent.
+   *
+   * Les deux ensembles sont réunis et dédoublonnés — un compte peut appartenir
+   * aux deux —, et `notifier` retire l'auteur : être averti de son propre
+   * message n'apprend rien.
+   */
+  const [encadrement, pointsFocaux] = await Promise.all([
+    encadrementDe(acteur.organisationId, structureId),
+    pointsFocauxDe(acteur.organisationId, structureId),
+  ]);
+
+  const destinataires = [...new Set([...encadrement, ...pointsFocaux])];
 
   const apercu =
     contexte.extrait.length > 140

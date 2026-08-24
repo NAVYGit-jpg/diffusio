@@ -4,7 +4,12 @@ import { randomBytes } from 'node:crypto';
 import { hash } from '@node-rs/argon2';
 import { revalidatePath } from 'next/cache';
 
-import { assertPermission, PermissionRefusee } from '@/lib/auth/permissions';
+import {
+  assertPermission,
+  PermissionRefusee,
+  peutGererCeCompte,
+  rolesAttribuables,
+} from '@/lib/auth/permissions';
 import { exigerActeur } from '@/lib/auth/session';
 import { adresseApplication } from '@/lib/email/adresse';
 import { envoyerEmail } from '@/lib/email/envoyer';
@@ -115,6 +120,52 @@ export async function enregistrerUtilisateurAction(
 
   const valeurs = analyse.data;
   const id = (donnees.get('id') as string | null) || null;
+
+  /**
+   * Périmètre de gestion, vérifié ici et pas seulement à l'écran.
+   *
+   * L'écran d'un administrateur ne propose que le rôle « point focal » et ses
+   * propres structures, mais une action serveur s'appelle directement : une
+   * liste réduite dans le navigateur n'est pas une restriction. Trois refus
+   * séparés, parce qu'ils ferment trois portes différentes.
+   */
+  if (!rolesAttribuables(acteur).includes(valeurs.role)) {
+    return {
+      erreur: "Vous ne pouvez pas attribuer ce rôle.",
+      valeurs: valeursSoumises(donnees),
+    };
+  }
+
+  // Le compte tel qu'il sera après enregistrement.
+  if (
+    !peutGererCeCompte(acteur, {
+      role: valeurs.role,
+      structureId: valeurs.structureId || null,
+    })
+  ) {
+    return {
+      erreur:
+        "Vous ne gérez que les points focaux des structures que vous supervisez.",
+      valeurs: valeursSoumises(donnees),
+    };
+  }
+
+  // Et le compte tel qu'il est aujourd'hui : sans ce contrôle, une modification
+  // permettrait de s'emparer d'un compte hors périmètre en le faisant entrer
+  // dans le sien.
+  if (id) {
+    const existant = await prisma.utilisateur.findFirst({
+      where: { id, organisationId: acteur.organisationId, deletedAt: null },
+      select: { role: true, structureId: true },
+    });
+
+    if (!existant || !peutGererCeCompte(acteur, existant)) {
+      return {
+        erreur: "Ce compte n'est pas dans votre périmètre.",
+        valeurs: valeursSoumises(donnees),
+      };
+    }
+  }
 
   // §4.3 business rules, before touching the database.
   const erreursRegles = validerCoherenceRole({
@@ -359,11 +410,17 @@ export async function basculerActivationUtilisateurAction(
 
   const cible = await prisma.utilisateur.findFirst({
     where: { id, organisationId: acteur.organisationId, deletedAt: null },
-    select: { id: true, actif: true, role: true },
+    select: { id: true, actif: true, role: true, structureId: true },
   });
 
   if (!cible) {
     return { erreur: "Ce compte n'existe plus." };
+  }
+
+  // Désactiver un compte est aussi une modification : le périmètre vaut ici
+  // comme à l'enregistrement.
+  if (!peutGererCeCompte(acteur, cible)) {
+    return { erreur: "Ce compte n'est pas dans votre périmètre." };
   }
 
   if (cible.id === acteur.id && cible.actif) {
@@ -427,11 +484,23 @@ export async function renvoyerInvitationAction(
 
   const cible = await prisma.utilisateur.findFirst({
     where: { id, organisationId: acteur.organisationId, deletedAt: null },
-    select: { id: true, nom: true, prenoms: true, email: true, role: true },
+    select: {
+      id: true,
+      nom: true,
+      prenoms: true,
+      email: true,
+      role: true,
+      structureId: true,
+    },
   });
 
   if (!cible) {
     return { erreur: "Ce compte n'existe plus." };
+  }
+
+  // Renvoyer une invitation, c'est reprendre la main sur un compte : même règle.
+  if (!peutGererCeCompte(acteur, cible)) {
+    return { erreur: "Ce compte n'est pas dans votre périmètre." };
   }
 
   const jeton = randomBytes(32).toString('hex');
