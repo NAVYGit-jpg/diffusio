@@ -38,8 +38,15 @@ export async function chargerIdentiteOrganisation(): Promise<IdentiteOrganisatio
       // whoever took the trouble to upload their logo expects to see it.
       logo: organisation.logoMimeType ? '/api/logo' : organisation.logoUrl,
     };
-  } catch {
-    // An unreachable database must not take the header down with it.
+  } catch (erreur) {
+    // An unreachable database must not take the header down with it — but it
+    // must not pass unnoticed either: the fallback wordmark is what a total
+    // outage looks like from the browser, and it looks like a styling bug.
+    console.error(
+      "[identite] Base injoignable, logo DIFFUSIO par defaut applique :",
+      erreur,
+    );
+
     return { nom: 'DIFFUSIO', slogan: SLOGAN_PAR_DEFAUT, logo: null };
   }
 }

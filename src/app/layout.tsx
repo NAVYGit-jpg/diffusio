@@ -69,7 +69,16 @@ async function apparenceOrganisation(): Promise<{
       variables: variablesCss(organisation),
       police: organisation.police,
     };
-  } catch {
+  } catch (erreur) {
+    // Le repli garde la page debout, mais il ne doit pas etre silencieux : une
+    // base injoignable se lisait alors comme un simple probleme d'apparence,
+    // l'application s'affichant en bleu par defaut sans rien dire. La cause
+    // reelle appartient au journal du serveur.
+    console.error(
+      "[apparence] Base injoignable, identite par defaut appliquee :",
+      erreur,
+    );
+
     return {
       variables: variablesCss(REGLAGES_PAR_DEFAUT),
       police: REGLAGES_PAR_DEFAUT.police,
