@@ -26,6 +26,23 @@ const PREFIXE_ESPACE_PUBLIC = '/calendrier-public';
 const ROUTE_PREMIERE_CONNEXION = '/premiere-connexion';
 
 export const authConfig = {
+  /**
+   * Trust the host the request arrived on.
+   *
+   * Auth.js refuses an unknown host by default, and rightly so: a forged
+   * `Host` header would otherwise redirect a sign-in to somebody else's
+   * domain. But one deployment answers on several names — the production
+   * alias, the team alias, the branch alias, and a unique URL per build — and
+   * a single `AUTH_URL` can never match them all. Every attempt was rejected
+   * with `UntrustedHost`, so nobody could sign in at all.
+   *
+   * Trusting the header is safe here because the application is only ever
+   * reached through Vercel's proxy, which sets it itself and does not pass a
+   * client-supplied one through. `AUTH_URL` stays, but for a different job:
+   * building the absolute links that go inside e-mails.
+   */
+  trustHost: true,
+
   pages: {
     signIn: '/connexion',
     error: '/connexion',
