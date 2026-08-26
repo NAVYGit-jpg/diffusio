@@ -204,8 +204,16 @@ export async function chargerCompteursOnglets(
       },
     }),
 
+    // Comme les neuf autres : ce qui est arrivé depuis la dernière visite, et
+    // non ce qui reste non lu. Les deux notions sont distinctes et le restent —
+    // « lu » se règle notification par notification, dans la liste. Compter les
+    // non-lues ici rendait la pastille impossible à éteindre : on ouvrait
+    // l'écran, on ne cliquait aucune ligne, et le nombre demeurait.
     prisma.notification.count({
-      where: { destinataireId: acteur.id, lu: false },
+      where: {
+        destinataireId: acteur.id,
+        createdAt: depuis('/notifications'),
+      },
     }),
 
     prisma.message.count({

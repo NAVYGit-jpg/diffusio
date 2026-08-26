@@ -6,16 +6,14 @@ import {
   SloganOrganisation,
   chargerIdentiteOrganisation,
 } from '@/components/layout/logo-organisation';
+import { ClocheNotifications } from '@/components/layout/cloche-notifications';
 import { MenuUtilisateur } from '@/components/layout/menu-utilisateur';
 import { SelecteurLangue } from '@/components/layout/selecteur-langue';
 import { langueValide, traducteur } from '@/lib/langue/dictionnaire';
 import { chargerCompteursOnglets } from '@/lib/navigation/compteurs';
 import { exigerActeur } from '@/lib/auth/session';
 import { Toaster } from '@/components/ui/sonner';
-import { Badge } from '@/components/ui/badge';
 import { prisma } from '@/lib/prisma';
-import { Bell } from 'lucide-react';
-import Link from 'next/link';
 
 export default async function LayoutApplication({
   children,
@@ -26,10 +24,7 @@ export default async function LayoutApplication({
 
   // Unread counter for the bell (§9). Cheap enough to read on every render,
   // and always accurate — no cache to invalidate.
-  const [nonLues, compte, identite, compteurs] = await Promise.all([
-    prisma.notification.count({
-      where: { destinataireId: acteur.id, lu: false },
-    }),
+  const [compte, identite, compteurs] = await Promise.all([
     prisma.utilisateur.findUnique({
       where: { id: acteur.id },
       select: { langue: true },
@@ -89,25 +84,10 @@ export default async function LayoutApplication({
                 messages qu'il habille. */}
             <SelecteurLangue langue={langue} />
 
-            <Link
-              href="/notifications"
-              className="relative rounded-full p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-              aria-label={
-                nonLues > 0
-                  ? `${t('entete.notifications')} — ${nonLues}`
-                  : t('entete.notifications')
-              }
-            >
-              <Bell className="size-5" aria-hidden />
-              {nonLues > 0 && (
-                <Badge
-                  className="absolute -right-1 -top-1 h-5 min-w-5 justify-center px-1 tabular-nums"
-                  aria-hidden
-                >
-                  {nonLues > 99 ? '99+' : nonLues}
-                </Badge>
-              )}
-            </Link>
+            <ClocheNotifications
+              nombre={compteurs['/notifications'] ?? 0}
+              libelle={t('entete.notifications')}
+            />
 
             <MenuUtilisateur
               nomComplet={acteur.nomComplet}
