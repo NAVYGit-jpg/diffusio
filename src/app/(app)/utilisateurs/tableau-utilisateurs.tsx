@@ -74,10 +74,20 @@ export function TableauUtilisateurs({
   utilisateurs,
   structures,
   quotaSuperAdmin,
+  peutCreer,
 }: {
   utilisateurs: Utilisateur[];
   structures: Structure[];
   quotaSuperAdmin: string;
+  /**
+   * Créer un compte est réservé au super administrateur.
+   *
+   * Masquer les commandes n'est pas la protection — l'action serveur refuse
+   * de toute façon. C'est une question d'honnêteté : proposer un bouton qui
+   * répondra « vous n'avez pas le droit » fait perdre son temps à qui le
+   * clique, et laisse croire à une panne plutôt qu'à une règle.
+   */
+  peutCreer: boolean;
 }) {
   const [ouvert, setOuvert] = useState(false);
   const [enEdition, setEnEdition] = useState<Utilisateur | null>(null);
@@ -170,13 +180,15 @@ export function TableauUtilisateurs({
         <p className="text-sm text-muted-foreground">
           Super administrateurs : <strong>{quotaSuperAdmin}</strong>
         </p>
-        <div className="flex flex-wrap gap-2">
-          <DialogueImportUtilisateurs desactive={structures.length === 0} />
-          <Button onClick={ouvrirCreation} disabled={structures.length === 0}>
-            <Plus aria-hidden />
-            Nouvel utilisateur
-          </Button>
-        </div>
+        {peutCreer && (
+          <div className="flex flex-wrap gap-2">
+            <DialogueImportUtilisateurs desactive={structures.length === 0} />
+            <Button onClick={ouvrirCreation} disabled={structures.length === 0}>
+              <Plus aria-hidden />
+              Nouvel utilisateur
+            </Button>
+          </div>
+        )}
       </div>
 
       {lienInvitation && (

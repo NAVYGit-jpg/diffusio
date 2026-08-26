@@ -166,3 +166,34 @@ describe('perimetreStructures', () => {
     expect(perimetreStructures({ ...admin, structuresAdmin: [] })).toEqual([]);
   });
 });
+
+describe('création de compte réservée au centre', () => {
+  // Un administrateur suit et corrige les points focaux de ses structures ;
+  // ouvrir un acces a l'application est autre chose. Les deux permissions sont
+  // distinctes exprès, et cette distinction est une frontiere de securite : la
+  // masquer a l'ecran ne suffirait pas, une action serveur s'appelle
+  // directement.
+
+  it('le super administrateur peut créer un compte', () => {
+    expect(peutRealiser(superAdmin, 'utilisateur:creer')).toBe(true);
+  });
+
+  it('l’administrateur ne peut pas créer de compte', () => {
+    expect(peutRealiser(admin, 'utilisateur:creer')).toBe(false);
+  });
+
+  it('le point focal non plus', () => {
+    expect(peutRealiser(pointFocal, 'utilisateur:creer')).toBe(false);
+  });
+
+  it('l’administrateur garde la gestion des comptes existants', () => {
+    // Sans quoi il ne verrait plus ses points focaux du tout.
+    expect(peutRealiser(admin, 'pointFocal:gerer')).toBe(true);
+  });
+
+  it('refuse l’action au lieu de la laisser passer silencieusement', () => {
+    expect(() => assertPermission(admin, 'utilisateur:creer')).toThrow(
+      PermissionRefusee,
+    );
+  });
+});

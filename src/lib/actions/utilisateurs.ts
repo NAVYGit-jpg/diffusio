@@ -8,6 +8,7 @@ import {
   assertPermission,
   PermissionRefusee,
   peutGererCeCompte,
+  peutRealiser,
   rolesAttribuables,
 } from '@/lib/auth/permissions';
 import { exigerActeur } from '@/lib/auth/session';
@@ -120,6 +121,22 @@ export async function enregistrerUtilisateurAction(
 
   const valeurs = analyse.data;
   const id = (donnees.get('id') as string | null) || null;
+
+  /**
+   * Créer un compte est réservé au super administrateur.
+   *
+   * Un administrateur suit et corrige les points focaux de ses structures ;
+   * ouvrir un accès à l'application est autre chose, et cela engage
+   * l'organisation. La distinction se joue sur l'absence d'identifiant : le
+   * même formulaire sert à créer et à modifier.
+   */
+  if (!id && !peutRealiser(acteur, 'utilisateur:creer')) {
+    return {
+      erreur:
+        "La création d'un compte est réservée au super administrateur. Vous pouvez modifier les points focaux de vos structures.",
+      valeurs: valeursSoumises(donnees),
+    };
+  }
 
   /**
    * Périmètre de gestion, vérifié ici et pas seulement à l'écran.

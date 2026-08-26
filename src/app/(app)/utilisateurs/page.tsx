@@ -148,6 +148,7 @@ export default async function PageUtilisateurs({
         }))}
         structures={aplatir(construireArborescence(structures))}
         quotaSuperAdmin={libelleQuotaSuperAdmin(superAdminsActifs)}
+        peutCreer={peutRealiser(acteur, 'utilisateur:creer')}
       />
     </div>
   );

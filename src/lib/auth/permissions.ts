@@ -25,6 +25,14 @@ export type Action =
   | 'structure:gerer'
   | 'pointFocal:gerer'
   | 'admin:gerer'
+  /**
+   * Créer un compte, par le formulaire ou par import.
+   *
+   * Distincte de « pointFocal:gerer », qui ouvre la gestion des comptes déjà
+   * existants. Un administrateur suit et corrige ses points focaux ; ouvrir un
+   * accès à l'application engage l'organisation, et cela reste au centre.
+   */
+  | 'utilisateur:creer'
   | 'superAdmin:gerer'
   | 'apparence:gerer'
   | 'referentiel:gerer'
@@ -57,6 +65,7 @@ const MATRICE: Record<Action, readonly Role[]> = {
   'structure:gerer': CENTRAL,
   'pointFocal:gerer': ENCADREMENT,
   'admin:gerer': CENTRAL,
+  'utilisateur:creer': CENTRAL,
   'superAdmin:gerer': CENTRAL,
   'apparence:gerer': CENTRAL,
   'referentiel:gerer': CENTRAL,

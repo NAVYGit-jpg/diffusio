@@ -35,7 +35,8 @@ export async function importerUtilisateursAction(
   const acteur = await exigerActeur();
 
   try {
-    assertPermission(acteur, 'pointFocal:gerer');
+    // L'import cree des comptes : meme porte que le formulaire, meme cle.
+    assertPermission(acteur, 'utilisateur:creer');
   } catch (erreur) {
     if (erreur instanceof PermissionRefusee) {
       return { erreur: erreur.message };
