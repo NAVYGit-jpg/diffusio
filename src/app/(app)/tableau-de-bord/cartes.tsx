@@ -1,4 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
+import Link from 'next/link';
 
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
@@ -23,6 +24,7 @@ export function CarteIndicateur({
   icone: Icone,
   ton = 'neutre',
   misEnAvant = false,
+  lien,
 }: {
   libelle: string;
   valeur: string | number | null;
@@ -32,19 +34,31 @@ export function CarteIndicateur({
   ton?: 'neutre' | 'positif' | 'alerte';
   /** Filled with the organisation's colour: one per row at most. */
   misEnAvant?: boolean;
+  /**
+   * Screen this figure leads to.
+   *
+   * A dashboard states a number; the work is done elsewhere. Reading « 14 en
+   * retard » and then hunting for the right tab in the side column is a step
+   * that serves nobody.
+   */
+  lien?: string;
 }) {
   // A missing figure is written "—", never 0: a zero would be read as a result.
   const affichage = valeur === null || valeur === '' ? '—' : valeur;
 
-  return (
+  const carte = (
     <Card
       // Repris par la feuille de style à l'impression : sur papier, toutes les
       // cartes sont repeintes en blanc pour épargner l'encre, et le texte blanc
       // de cette tuile-ci disparaissait avec le fond. Un attribut plutôt qu'une
       // classe : c'est un état de la carte, pas une décoration de plus.
       data-mis-en-avant={misEnAvant ? '' : undefined}
+      // `h-full` : enveloppée dans un lien, la carte n'est plus l'élément de
+      // grille et cesse donc de s'étirer d'elle-même. Sans cela, les tuiles
+      // d'une même rangée prennent des hauteurs différentes selon la longueur
+      // de leur ligne de précision.
       className={cn(
-        'overflow-hidden',
+        'h-full overflow-hidden',
         misEnAvant && 'border-transparent text-white',
       )}
       style={
@@ -111,6 +125,23 @@ export function CarteIndicateur({
         ) : null}
       </CardContent>
     </Card>
+  );
+
+  if (!lien) {
+    return carte;
+  }
+
+  return (
+    // Toute la tuile est cliquable, et non un lien discret en bas : c'est le
+    // chiffre qu'on vise, pas une mention. Le lien est masqué à l'impression —
+    // une carte de rapport papier ne mène nulle part — et le soulignement
+    // retiré, la carte se signalant déjà par son relief au survol.
+    <Link
+      href={lien}
+      className="block h-full rounded-xl no-underline transition-shadow hover:shadow-[var(--elevation-3)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--couleur-primaire-lisible)]"
+    >
+      {carte}
+    </Link>
   );
 }
 

@@ -139,6 +139,17 @@ export default async function PageTableauDeBord({
 
   const vide = contexte.lignes.length === 0;
 
+  /**
+   * Où mènent les tuiles.
+   *
+   * L'année suit, pour que l'écran d'arrivée montre la même période que le
+   * chiffre sur lequel on a cliqué. Les mois et les autres filtres ne suivent
+   * pas : les écrans de destination ne les connaissent pas, et fabriquer une
+   * adresse qu'ils ignoreraient donnerait l'illusion d'un filtre conservé.
+   */
+  const adresseCalendrier = `/calendrier?annee=${annee}`;
+  const adresseProduitsCharges = `/produits-charges?annee=${annee}`;
+
   // An empty screen has two very different causes, and telling them apart
   // matters: inviting somebody to "generate the calendar" when one already
   // exists and their filters simply exclude everything sends them off to redo
@@ -323,7 +334,7 @@ export default async function PageTableauDeBord({
           {/* --------------------------------------------------- indicateurs */}
           <section
             aria-label="Indicateurs clés"
-            className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
+            className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5"
           >
             <CarteIndicateur
               misEnAvant
@@ -337,6 +348,16 @@ export default async function PageTableauDeBord({
               }
               icone={CheckCircle2}
               ton={tonDuTaux(respect.taux)}
+              lien={adresseCalendrier}
+            />
+            <CarteIndicateur
+              libelle="Taux de publication"
+              valeur={avancement}
+              unite="%"
+              precision={`${nombres.misesEnLigne} ligne(s) publiée(s) sur ${nombres.total}`}
+              icone={Globe2}
+              ton={avancement >= 80 ? 'positif' : avancement < 50 ? 'alerte' : 'neutre'}
+              lien={adresseProduitsCharges}
             />
             {/* §10 — deux natures de retard, comptées à part : celui qui dure
                 encore et celui qui est soldé. Les additionner masquerait la
@@ -347,10 +368,25 @@ export default async function PageTableauDeBord({
               precision={
                 etat.nonPubliees === 0
                   ? 'Rien ne reste en attente'
-                  : 'Échéance passée, toujours rien en ligne'
+                  : retards.moyen === null
+                    ? 'Échéance passée, toujours rien en ligne'
+                    : `Retard moyen ${retards.moyen} j, max ${retards.maximum} j`
               }
               icone={AlertTriangle}
               ton={etat.nonPubliees > 0 ? 'alerte' : 'positif'}
+              lien="/retards"
+            />
+            <CarteIndicateur
+              libelle="Publications imminentes"
+              valeur={echeances.j15}
+              precision={
+                echeances.j15 === 0
+                  ? 'Rien à diffuser sous quinze jours'
+                  : `Dont ${echeances.j7} sous sept jours`
+              }
+              icone={CalendarClock}
+              ton={echeances.j7 > 0 ? 'alerte' : 'neutre'}
+              lien="/imminentes"
             />
             <CarteIndicateur
               libelle="Publiées après échéance"
@@ -361,21 +397,7 @@ export default async function PageTableauDeBord({
                   : `Sur ${etat.total} ligne(s) en retard au total`
               }
               icone={Clock}
-              ton={
-                etat.publieesApresEcheance > 0 && etat.nonPubliees === 0
-                  ? 'neutre'
-                  : 'neutre'
-              }
-            />
-            <CarteIndicateur
-              libelle="Échéances à 30 jours"
-              valeur={echeances.j30}
-              precision={
-                retards.moyen === null
-                  ? `${echeances.j7} sous 7 jours, ${echeances.j15} sous 15 jours`
-                  : `${echeances.j15} sous 15 jours · retard moyen ${retards.moyen} j, max ${retards.maximum} j`
-              }
-              icone={CalendarClock}
+              lien="/retards"
             />
           </section>
 
@@ -388,25 +410,40 @@ export default async function PageTableauDeBord({
               valeur={contexte.catalogue.publications + contexte.catalogue.indicateurs}
               precision={`${contexte.catalogue.publications} publication(s), ${contexte.catalogue.indicateurs} indicateur(s)`}
               icone={BookOpen}
+              lien="/catalogue"
             />
             <CarteIndicateur
               libelle="Lignes prévues"
               valeur={nombres.total}
               precision={rapport.periode}
               icone={CalendarClock}
+              lien={adresseCalendrier}
             />
             <CarteIndicateur
               libelle="Livrées"
-              valeur={nombres.televersees}
-              precision="En attente de confirmation de publication"
+              valeur={nombres.enAttenteDePublication}
+              precision={
+                nombres.enAttenteDePublication === 0
+                  ? 'Aucun dossier en attente'
+                  : 'Fichiers déposés, mise en ligne à confirmer'
+              }
               icone={FileUp}
+              lien={adresseProduitsCharges}
             />
             <CarteIndicateur
               libelle="Publiées"
               valeur={nombres.misesEnLigne}
-              precision={`${avancement} % du calendrier`}
+              // Plus le pourcentage : la tuile « Taux de publication » le dit
+              // désormais, et deux tuiles annonçant le même chiffre donnent
+              // l'impression d'un tableau qui se répète faute d'avoir mieux.
+              precision={
+                nombres.misesEnLigne === 0
+                  ? 'Rien encore en ligne'
+                  : `Dont ${nombres.misesEnLigne - etat.publieesApresEcheance} dans les délais`
+              }
               icone={Globe2}
               ton={nombres.misesEnLigne > 0 ? 'positif' : 'neutre'}
+              lien={adresseProduitsCharges}
             />
           </section>
 

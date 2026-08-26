@@ -23,6 +23,7 @@ function donnees(
       misesEnLigne: 8,
       enRetard: 2,
       annulees: 0,
+    enAttenteDePublication: 0,
     },
     avancement: 67,
     courbe: [],
@@ -56,6 +57,7 @@ describe('redigerCommentaire', () => {
           misesEnLigne: 0,
           enRetard: 0,
           annulees: 0,
+    enAttenteDePublication: 0,
         },
       }),
     );
@@ -277,6 +279,7 @@ describe('avancement', () => {
         misesEnLigne: 5,
         enRetard: 2,
         annulees: 0,
+    enAttenteDePublication: 0,
       },
     });
 

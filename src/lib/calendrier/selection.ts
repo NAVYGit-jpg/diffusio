@@ -48,7 +48,14 @@ export function joursAvantEcheance(
  * nothing left to produce.
  */
 export function estImminente(
-  ligne: LigneSelectionnable,
+  // Restreint à ce que la fonction lit réellement, plutôt qu'à la ligne
+  // entière : le tableau de bord manipule une forme allégée, sans le décompte
+  // des fichiers, et doit pouvoir appliquer exactement cette règle-ci. Deux
+  // définitions de « imminente » finiraient par diverger.
+  ligne: Pick<
+    LigneSelectionnable,
+    'statut' | 'dateDiffusionPrevue' | 'dateDiffusionReelle'
+  >,
   aujourdhui: Date,
   horizon: number = HORIZON_IMMINENT_JOURS,
 ): boolean {

@@ -429,6 +429,8 @@ describe('compteurs', () => {
       misesEnLigne: 1,
       enRetard: 1,
       annulees: 1,
+      // Hors partition : la seule ligne livrée, dont l'échéance est à venir.
+      enAttenteDePublication: 1,
     });
 
     // Les quatre catégories hors annulées reconstituent le total : le
@@ -495,5 +497,135 @@ describe('avancementAnnee', () => {
 
   it('vaut 0 sans aucune ligne, sans diviser par zéro', () => {
     expect(avancementAnnee([])).toBe(0);
+  });
+});
+
+describe('prochainesEcheances : accord avec l’écran « Publications imminentes »', () => {
+  // Le chiffre du tableau de bord et la liste de l'onglet doivent designer les
+  // memes lignes. Ils appliquent desormais la meme fonction ; ces tests le
+  // verrouillent, parce que la divergence ne se voit pas avant qu'un
+  // utilisateur compare les deux ecrans.
+
+  it('compte une ligne planifiée dans les trois fenêtres', () => {
+    const lignes = [ligne({ dateDiffusionPrevue: jour(2026, 3, 5) })];
+
+    expect(prochainesEcheances(lignes, AUJOURDHUI)).toEqual({
+      j7: 1,
+      j15: 1,
+      j30: 1,
+    });
+  });
+
+  it('écarte une ligne déjà livrée', () => {
+    // Les fichiers sont deposes : il n'y a plus rien a produire, et l'ecran
+    // « imminentes » ne l'affiche pas.
+    const lignes = [
+      ligne({ dateDiffusionPrevue: jour(2026, 3, 5), statut: 'TELEVERSE' }),
+    ];
+
+    expect(prochainesEcheances(lignes, AUJOURDHUI).j15).toBe(0);
+  });
+
+  it('écarte une ligne annulée', () => {
+    const lignes = [
+      ligne({ dateDiffusionPrevue: jour(2026, 3, 5), statut: 'ANNULE' }),
+    ];
+
+    expect(prochainesEcheances(lignes, AUJOURDHUI).j15).toBe(0);
+  });
+
+  it('écarte une ligne déjà diffusée', () => {
+    const lignes = [
+      ligne({
+        dateDiffusionPrevue: jour(2026, 3, 5),
+        dateDiffusionReelle: jour(2026, 2, 28),
+        statut: 'MIS_EN_LIGNE',
+      }),
+    ];
+
+    expect(prochainesEcheances(lignes, AUJOURDHUI).j15).toBe(0);
+  });
+
+  it('écarte une échéance déjà passée, qui relève des retards', () => {
+    const lignes = [ligne({ dateDiffusionPrevue: jour(2026, 2, 20) })];
+
+    expect(prochainesEcheances(lignes, AUJOURDHUI).j30).toBe(0);
+  });
+
+  it('retient l’échéance du jour même', () => {
+    const lignes = [ligne({ dateDiffusionPrevue: jour(2026, 3, 1) })];
+
+    expect(prochainesEcheances(lignes, AUJOURDHUI).j7).toBe(1);
+  });
+});
+
+describe('compteurs : produits en attente de mise en ligne', () => {
+  // Le tableau de bord annoncait « Livrees : 0 » alors que deux dossiers
+  // attendaient d'etre publies. La partition rangeait la ligne livree dont
+  // l'echeance etait passee parmi les retards, et elle n'etait plus comptee
+  // nulle part comme livree.
+
+  it('compte une ligne livrée dont l’échéance est passée', () => {
+    const lignes = [
+      ligne({ dateDiffusionPrevue: jour(2026, 2, 10), statut: 'TELEVERSE' }),
+    ];
+
+    const resultat = compteurs(lignes, AUJOURDHUI);
+
+    expect(resultat.enAttenteDePublication).toBe(1);
+    // Elle reste un retard dans la partition : rien n'est en ligne.
+    expect(resultat.enRetard).toBe(1);
+    expect(resultat.televersees).toBe(0);
+  });
+
+  it('compte une ligne livrée dont l’échéance est à venir', () => {
+    const lignes = [
+      ligne({ dateDiffusionPrevue: jour(2026, 3, 20), statut: 'TELEVERSE' }),
+    ];
+
+    const resultat = compteurs(lignes, AUJOURDHUI);
+
+    expect(resultat.enAttenteDePublication).toBe(1);
+    expect(resultat.televersees).toBe(1);
+  });
+
+  it('n’y compte pas une ligne déjà mise en ligne', () => {
+    const lignes = [
+      ligne({
+        dateDiffusionPrevue: jour(2026, 2, 10),
+        dateDiffusionReelle: jour(2026, 2, 12),
+        statut: 'MIS_EN_LIGNE',
+      }),
+    ];
+
+    expect(compteurs(lignes, AUJOURDHUI).enAttenteDePublication).toBe(0);
+  });
+
+  it('n’y compte ni une ligne planifiée ni une ligne annulée', () => {
+    const lignes = [
+      ligne({ dateDiffusionPrevue: jour(2026, 3, 20) }),
+      ligne({ dateDiffusionPrevue: jour(2026, 3, 20), statut: 'ANNULE' }),
+    ];
+
+    expect(compteurs(lignes, AUJOURDHUI).enAttenteDePublication).toBe(0);
+  });
+
+  it('ne fausse pas la partition, qui totalise toujours les lignes', () => {
+    const lignes = [
+      ligne({ dateDiffusionPrevue: jour(2026, 2, 10), statut: 'TELEVERSE' }),
+      ligne({ dateDiffusionPrevue: jour(2026, 3, 20), statut: 'TELEVERSE' }),
+      ligne({ dateDiffusionPrevue: jour(2026, 3, 20) }),
+      ligne({
+        dateDiffusionPrevue: jour(2026, 2, 1),
+        dateDiffusionReelle: jour(2026, 2, 1),
+        statut: 'MIS_EN_LIGNE',
+      }),
+    ];
+
+    const r = compteurs(lignes, AUJOURDHUI);
+
+    expect(
+      r.planifiees + r.televersees + r.misesEnLigne + r.enRetard,
+    ).toBe(r.total);
   });
 });

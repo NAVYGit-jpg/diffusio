@@ -1,3 +1,4 @@
+import { estImminente } from '@/lib/calendrier/selection';
 import { normaliserJour } from '@/lib/calendrier/dates';
 
 /**
@@ -153,28 +154,22 @@ export type Echeances = { j7: number; j15: number; j30: number };
  * Upcoming deadlines at 7 / 15 / 30 days (§10).
  *
  * The windows are cumulative — everything due within 7 days is also due within
- * 30 — because that is how the figures are read side by side. Lines already
- * released are excluded: they are no longer something to do.
+ * 30 — because that is how the figures are read side by side.
+ *
+ * The rule itself is **not written here**: it is `estImminente`, the very
+ * function the « Publications imminentes » screen selects with. This count used
+ * to apply its own, looser rule — it excluded only released lines, and so kept
+ * counting deliverables already filed and calendars already cancelled. A tile
+ * announcing four deadlines next to a screen listing two is the kind of
+ * disagreement that costs an afternoon, and the dashboard had already produced
+ * it once over late releases.
  */
 export function prochainesEcheances(
   lignes: readonly LigneIndicateur[],
   aujourdhui: Date,
 ): Echeances {
-  const depart = normaliserJour(aujourdhui).getTime();
-
-  const restantes = lignes.filter(
-    (ligne) => !estMiseEnLigne(ligne) && !estEchue(ligne, aujourdhui),
-  );
-
   const compter = (fenetre: number) =>
-    restantes.filter((ligne) => {
-      const jours = Math.round(
-        (normaliserJour(ligne.dateDiffusionPrevue).getTime() - depart) /
-          86_400_000,
-      );
-
-      return jours <= fenetre;
-    }).length;
+    lignes.filter((ligne) => estImminente(ligne, aujourdhui, fenetre)).length;
 
   return { j7: compter(7), j15: compter(15), j30: compter(30) };
 }
@@ -373,6 +368,16 @@ export type Compteurs = {
   misesEnLigne: number;
   enRetard: number;
   annulees: number;
+  /**
+   * Produits déposés qui attendent leur mise en ligne.
+   *
+   * **Hors partition** : ce compteur recoupe les cinq autres, il ne s'additionne
+   * pas avec eux. Il répond à une question qu'aucun d'eux ne pose — combien de
+   * dossiers sont sur le bureau de l'encadrement — et une ligne livrée dont
+   * l'échéance est passée y figure, alors que la partition la range parmi les
+   * retards.
+   */
+  enAttenteDePublication: number;
 };
 
 /**
@@ -397,6 +402,7 @@ export function compteurs(
     misesEnLigne: 0,
     enRetard: 0,
     annulees: 0,
+    enAttenteDePublication: 0,
   };
 
   for (const ligne of lignes) {
@@ -406,6 +412,13 @@ export function compteurs(
     }
 
     resultat.total += 1;
+
+    // Compté avant la partition, et indépendamment d'elle : la question posée
+    // est « qu'y a-t-il à mettre en ligne », pas « où en est cette ligne ». Une
+    // ligne livrée en retard reste un dossier à traiter.
+    if (ligne.statut === 'TELEVERSE' && !estMiseEnLigne(ligne)) {
+      resultat.enAttenteDePublication += 1;
+    }
 
     if (estMiseEnLigne(ligne)) {
       resultat.misesEnLigne += 1;
