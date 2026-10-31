@@ -263,6 +263,12 @@ model Utilisateur {
   fonction  String?
   avatarUrl String?
 
+  // Photo de profil televersee par l'utilisateur lui-meme. Stockee en base,
+  // comme le logo : le bucket est prive et une URL signee expirerait.
+  photoFichier  Bytes?
+  photoMimeType String?
+  photoMajAt    DateTime?
+
   // Langue de l'interface, propre a chaque utilisateur (§9.5).
   langue Langue @default(FR)
 

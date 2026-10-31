@@ -94,8 +94,9 @@ export function CarteIndicateur({
         </div>
 
         <p
+          data-chiffre-cle
           className={cn(
-            'mt-2 text-3xl font-semibold tabular-nums tracking-tight',
+            'mt-3 tabular-nums',
             !misEnAvant && ton === 'positif' && 'text-emerald-600 dark:text-emerald-400',
             !misEnAvant && ton === 'alerte' && 'text-destructive',
           )}

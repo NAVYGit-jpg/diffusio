@@ -45,7 +45,7 @@ export function FiltreStructure({
   }));
 
   return (
-    <div className="mb-4 flex flex-wrap items-end gap-3">
+    <div data-panneau-filtres className="mb-4 flex flex-wrap items-end gap-3">
       <div className="w-full space-y-2 sm:w-80">
         <Label htmlFor="filtreStructureUtilisateurs">Structure</Label>
         <SelecteurMultiple

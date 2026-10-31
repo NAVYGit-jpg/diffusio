@@ -7,7 +7,7 @@ import { prisma } from '@/lib/prisma';
 import { FormulaireApparence } from './formulaire-apparence';
 
 export const metadata: Metadata = {
-  title: 'Logo et slogan — DIFFUSIO',
+  title: 'Thème et identité — DIFFUSIO',
 };
 
 export default async function PageApparence() {
@@ -42,7 +42,7 @@ export default async function PageApparence() {
     <div className="mx-auto max-w-4xl">
       <header className="mb-6">
         <h1 className="text-2xl font-semibold tracking-tight">
-          Logo et slogan
+          Thème et identité visuelle
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
           L&apos;identité visuelle de {organisation.nom}. Les changements

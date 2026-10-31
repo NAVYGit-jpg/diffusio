@@ -193,7 +193,7 @@ export function BarreLaterale({
             confond avec un survol, le trait dit « vous êtes ici ». */}
         {actif && (
           <span
-            className="absolute inset-y-1.5 left-0 w-1 rounded-full bg-[var(--couleur-primaire-lisible)]"
+            className="hidden"
             aria-hidden
           />
         )}
@@ -204,14 +204,14 @@ export function BarreLaterale({
           className={cn(
             'flex items-center gap-3 rounded-full py-2.5 pl-4 pr-3 text-sm transition-colors',
             actif
-              ? 'bg-[var(--couleur-primaire-douce)] font-medium text-foreground'
+              ? 'bg-foreground font-medium text-background shadow-[0_6px_16px_-6px_rgb(0_0_0/0.45)]'
               : 'text-muted-foreground hover:bg-muted hover:text-foreground',
           )}
         >
           <Icone
             className={cn(
               'size-[18px] shrink-0',
-              actif && 'text-[var(--couleur-primaire-lisible)]',
+              actif && 'text-[var(--couleur-primaire)]',
             )}
             aria-hidden
           />

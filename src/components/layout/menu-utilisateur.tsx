@@ -22,29 +22,22 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { AvatarUtilisateur } from '@/components/avatar-utilisateur';
 import { deconnexionAction } from '@/lib/actions/auth';
 import { type CodeLangue, traducteur } from '@/lib/langue/dictionnaire';
-
-/** Initials for the avatar: "Elie N'DOUBA" gives "EN". */
-function initiales(nomComplet: string): string {
-  return nomComplet
-    .split(/[\s'’-]+/)
-    .filter((morceau) => morceau.length > 0)
-    .slice(0, 2)
-    .map((morceau) => morceau[0].toUpperCase())
-    .join('');
-}
 
 export function MenuUtilisateur({
   nomComplet,
   email,
   role,
   langue,
+  photo = null,
 }: {
   nomComplet: string;
   email: string;
   role: Role;
   langue: CodeLangue;
+  photo?: string | null;
 }) {
   const { theme, setTheme } = useTheme();
   const t = traducteur(langue);
@@ -65,12 +58,10 @@ export function MenuUtilisateur({
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          className="h-9 gap-2 px-2"
+          className="h-11 gap-2.5 rounded-full py-1 pl-1 pr-3"
           aria-label="Mon compte et préférences"
         >
-          <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
-            {initiales(nomComplet)}
-          </span>
+          <AvatarUtilisateur photo={photo} nomComplet={nomComplet} className="size-9 text-xs ring-2 ring-card" />
           <span className="hidden text-left sm:block">
             <span className="block text-sm leading-tight">{nomComplet}</span>
             <span className="block text-xs leading-tight text-muted-foreground">
@@ -80,13 +71,17 @@ export function MenuUtilisateur({
         </Button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end" className="w-64">
-        <DropdownMenuLabel className="font-normal">
-          <span className="block text-sm font-medium">{nomComplet}</span>
-          <span className="block truncate text-xs text-muted-foreground">
-            {email}
+      <DropdownMenuContent align="end" className="w-72 overflow-hidden rounded-3xl p-0">
+        <div className="relative px-4 pb-4 pt-12">
+          <div className="absolute inset-x-0 top-0 h-16" style={{ backgroundImage: 'var(--gradient-primaire)' }} aria-hidden />
+          <AvatarUtilisateur photo={photo} nomComplet={nomComplet} className="relative size-16 border-4 border-popover text-lg shadow-[var(--elevation-2)]" />
+          <p className="mt-2 text-base font-semibold leading-tight">{nomComplet}</p>
+          <p className="truncate text-xs text-muted-foreground">{email}</p>
+          <span className="mt-2 inline-block rounded-full bg-[var(--couleur-primaire-douce)] px-2.5 py-0.5 text-xs font-medium text-[var(--couleur-primaire-lisible)]">
+            {t(`role.${role}`)}
           </span>
-        </DropdownMenuLabel>
+        </div>
+        <div className="p-1.5">
 
         <DropdownMenuSeparator />
 
@@ -140,6 +135,7 @@ export function MenuUtilisateur({
             {t('compte.deconnexion')}
           </button>
         </form>
+        </div>
       </DropdownMenuContent>
     </DropdownMenu>
   );

@@ -1,5 +1,7 @@
 'use client';
 
+import { ChoixTheme } from './choix-theme';
+
 import {
   Image as ImageIcon,
   LoaderCircle,
@@ -120,30 +122,20 @@ export function FormulaireApparence({
 
   return (
     <form action={action} className="space-y-6">
-      {/* Les réglages de thème ne sont plus modifiables ici, mais restent
-          transmis tels quels : les omettre les remettrait aux valeurs par
-          défaut au premier enregistrement. */}
-      <input
-        type="hidden"
-        name="couleurPrimaire"
-        value={organisation.couleurPrimaire}
-      />
-      <input
-        type="hidden"
-        name="couleurSecondaire"
-        value={organisation.couleurSecondaire}
-      />
-      <input
-        type="hidden"
-        name="couleurAccent"
-        value={organisation.couleurAccent}
+      <ChoixTheme
+        reglages={{
+          couleurPrimaire: organisation.couleurPrimaire,
+          couleurSecondaire: organisation.couleurSecondaire,
+          couleurAccent: organisation.couleurAccent,
+          couleurFond: organisation.couleurFond,
+          couleurBouton: null,
+          police: organisation.police,
+          styleInterface: organisation.styleInterface,
+          densiteInterface: organisation.densiteInterface,
+          radiusInterface: organisation.radiusInterface,
+        }}
       />
       <input type="hidden" name="couleurFond" value={organisation.couleurFond} />
-      <input
-        type="hidden"
-        name="couleurBouton"
-        value={organisation.couleurBouton ?? ''}
-      />
       <input type="hidden" name="police" value={organisation.police} />
       <input
         type="hidden"

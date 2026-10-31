@@ -7,7 +7,15 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { exigerActeur } from '@/lib/auth/session';
 import { prisma } from '@/lib/prisma';
+import { adressePhoto } from '@/components/avatar-utilisateur';
+import { EnTeteProfil } from './en-tete-profil';
 import { FormulairesProfil } from './formulaires-profil';
+
+const LIBELLE_ROLE = {
+  SUPER_ADMIN: 'Super administrateur',
+  ADMIN: 'Administrateur',
+  POINT_FOCAL: 'Point focal',
+} as const;
 
 export const metadata: Metadata = {
   title: 'Mon profil — DIFFUSIO',
@@ -19,6 +27,9 @@ export default async function PageProfil() {
   const utilisateur = await prisma.utilisateur.findUniqueOrThrow({
     where: { id: acteur.id },
     select: {
+      id: true,
+      photoMimeType: true,
+      photoMajAt: true,
       nom: true,
       prenoms: true,
       email: true,
@@ -32,13 +43,16 @@ export default async function PageProfil() {
   });
 
   return (
-    <div className="mx-auto max-w-2xl">
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Mon profil</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Vos coordonnées et votre mot de passe.
-        </p>
-      </header>
+    <div className="mx-auto max-w-4xl">
+      <EnTeteProfil
+        photo={adressePhoto(utilisateur)}
+        nomComplet={`${utilisateur.prenoms} ${utilisateur.nom}`}
+        role={LIBELLE_ROLE[utilisateur.role]}
+        fonction={utilisateur.fonction}
+        email={utilisateur.email}
+        structure={utilisateur.structure ? `${utilisateur.structure.nom} (${utilisateur.structure.sigle})` : null}
+        derniereConnexion={utilisateur.derniereConnexion?.toISOString() ?? null}
+      />
 
       {/* The theme belongs to the organisation, so only its main administrator
           sets it — from here, where they look for their own settings. */}

@@ -6,6 +6,7 @@ import {
   SloganOrganisation,
   chargerIdentiteOrganisation,
 } from '@/components/layout/logo-organisation';
+import { adressePhoto } from '@/components/avatar-utilisateur';
 import { ClocheNotifications } from '@/components/layout/cloche-notifications';
 import { MenuUtilisateur } from '@/components/layout/menu-utilisateur';
 import { SelecteurLangue } from '@/components/layout/selecteur-langue';
@@ -27,7 +28,7 @@ export default async function LayoutApplication({
   const [compte, identite, compteurs] = await Promise.all([
     prisma.utilisateur.findUnique({
       where: { id: acteur.id },
-      select: { langue: true },
+      select: { langue: true, photoMimeType: true, photoMajAt: true },
     }),
     chargerIdentiteOrganisation(),
     chargerCompteursOnglets(acteur),
@@ -95,6 +96,7 @@ export default async function LayoutApplication({
               email={acteur.email}
               role={acteur.role}
               langue={langue}
+              photo={compte ? adressePhoto({ id: acteur.id, ...compte }) : null}
             />
           </div>
         </header>

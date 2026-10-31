@@ -497,3 +497,95 @@ a:hover > [data-slot='card'] {
 body {
   font-family: var(--police-interface), var(--font-geist-sans), system-ui, sans-serif;
 }
+
+/* ===========================================================================
+   Visual direction after the reference mock-up: a soft gradient ground, every
+   block a frosted white panel with generous radius, pills for navigation and
+   actions, large light numerals. Everything stays derived from the
+   organisation's colours.
+=========================================================================== */
+body {
+  background-color: #eceef2;
+  background-image:
+    radial-gradient(120% 90% at 100% 0%, color-mix(in oklab, var(--couleur-primaire) 22%, transparent) 0%, transparent 55%),
+    radial-gradient(90% 80% at 0% 100%, color-mix(in oklab, var(--couleur-accent) 12%, transparent) 0%, transparent 60%),
+    linear-gradient(160deg, #f1f2f5 0%, #e7e9ee 100%);
+  background-attachment: fixed;
+}
+
+.dark body {
+  background-color: #111214;
+  background-image:
+    radial-gradient(120% 90% at 100% 0%, color-mix(in oklab, var(--couleur-primaire) 18%, transparent) 0%, transparent 55%),
+    linear-gradient(160deg, #141518 0%, #0d0e10 100%);
+}
+
+/* Every card, page header and filter bar floats off the ground. */
+[data-slot='card'],
+main > div > header,
+[data-filtres-tableau-de-bord],
+[data-panneau-filtres] {
+  background-color: color-mix(in oklab, var(--card) 76%, transparent) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(1.6);
+  backdrop-filter: blur(20px) saturate(1.6);
+  border: 1px solid rgb(255 255 255 / 0.65) !important;
+  border-radius: 1.75rem !important;
+  box-shadow:
+    0 1px 2px rgb(15 23 42 / 0.04),
+    0 12px 32px -12px rgb(15 23 42 / 0.14),
+    inset 0 1px 0 rgb(255 255 255 / 0.8) !important;
+}
+
+.dark [data-slot='card'],
+.dark main > div > header,
+.dark [data-filtres-tableau-de-bord],
+.dark [data-panneau-filtres] {
+  border-color: rgb(255 255 255 / 0.07) !important;
+  box-shadow: 0 16px 40px -16px rgb(0 0 0 / 0.7), inset 0 1px 0 rgb(255 255 255 / 0.05) !important;
+}
+
+main > div > header,
+[data-filtres-tableau-de-bord],
+[data-panneau-filtres] {
+  padding: 1.25rem 1.5rem;
+}
+
+/* Page title in the reference's voice: large, light, tight. */
+main > div > header h1 {
+  font-size: clamp(1.6rem, 1.2rem + 1vw, 2.15rem);
+  font-weight: 400;
+  letter-spacing: -0.025em;
+}
+
+/* Pills: selects and inputs follow the buttons. */
+[data-slot='select-trigger'],
+input[data-slot='input'] {
+  border-radius: 9999px !important;
+  padding-inline: 1rem !important;
+  background-color: color-mix(in oklab, var(--card) 90%, transparent);
+}
+
+/* Featured figures: big light numerals. */
+[data-chiffre-cle] {
+  font-size: 2.6rem;
+  font-weight: 300;
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+/* Table frames match the panels. */
+.border:has(> [data-slot='table-container']) {
+  border-radius: 1.5rem;
+}
+
+@media print {
+  body {
+    background: #fff !important;
+  }
+  main > div > header,
+  [data-filtres-tableau-de-bord],
+  [data-panneau-filtres] {
+    backdrop-filter: none;
+    box-shadow: none !important;
+  }
+}
