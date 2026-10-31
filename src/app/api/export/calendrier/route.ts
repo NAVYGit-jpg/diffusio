@@ -1,5 +1,8 @@
 import ExcelJS from 'exceljs';
 
+import { chargerChartePdf } from '@/lib/pdf/charte';
+import { genererCalendrierPdf } from '@/lib/pdf/calendrier';
+
 import { auth } from '@/auth';
 import { canAccessStructure, perimetreStructures } from '@/lib/auth/permissions';
 import {
@@ -147,6 +150,21 @@ export async function GET(requete: Request): Promise<Response> {
 
   const triees = trierLignesExport(sources);
   const structuresPresentes = new Set(triees.map((l) => l.structureNom));
+
+  if (parametres.get('format') === 'pdf') {
+    const charte = await chargerChartePdf(session.user.organisationId);
+    const perimetreLibelle =
+      structuresPresentes.size === 1 ? [...structuresPresentes][0] : `${structuresPresentes.size} structures`;
+    const pdf = await genererCalendrierPdf(triees, charte, annee, perimetreLibelle, session.user.name ?? '');
+
+    return new Response(new Uint8Array(pdf), {
+      headers: {
+        'content-type': 'application/pdf',
+        'content-disposition': `attachment; filename="calendrier-${annee}.pdf"`,
+        'cache-control': 'no-store',
+      },
+    });
+  }
 
   // ---------------------------------------------------------------- classeur
   const classeur = new ExcelJS.Workbook();

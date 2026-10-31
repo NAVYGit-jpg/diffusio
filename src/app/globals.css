@@ -396,3 +396,97 @@
   box-shadow: var(--ombre-carte);
   border-width: var(--epaisseur-bordure);
 }
+
+/* ---------------------------------------------------------------------------
+   Design refresh: table frames, glass panels, ambient light.
+--------------------------------------------------------------------------- */
+
+/* Every screen wraps its table in a bordered div; the frame is styled once
+   here instead of in nine places. */
+.border:has(> [data-slot='table-container']) {
+  overflow: hidden;
+  border-color: color-mix(in oklab, var(--couleur-primaire) 12%, var(--border));
+  border-radius: calc(var(--rayon-panneau) * 0.75);
+  background-color: var(--card);
+  box-shadow: var(--elevation-2), var(--liseré-surface);
+}
+
+/* Frosted surface. Only readable over something to look through, hence the
+   two ambient glows below — tinted with the organisation's colours, never a
+   grey wash. */
+.verre {
+  background-color: color-mix(in oklab, var(--card) 70%, transparent) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(1.5);
+  backdrop-filter: blur(18px) saturate(1.5);
+  border: 1px solid rgb(255 255 255 / 0.55);
+  box-shadow: var(--elevation-3), var(--liseré-surface);
+}
+
+.dark .verre {
+  border-color: rgb(255 255 255 / 0.08);
+}
+
+.lueurs-ambiantes {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.lueurs-ambiantes::before,
+.lueurs-ambiantes::after {
+  content: '';
+  position: absolute;
+  width: 46vw;
+  height: 46vw;
+  border-radius: 9999px;
+  filter: blur(90px);
+  opacity: 0.16;
+}
+
+.lueurs-ambiantes::before {
+  top: -14vw;
+  right: -10vw;
+  background: var(--couleur-primaire);
+}
+
+.lueurs-ambiantes::after {
+  bottom: -18vw;
+  left: -12vw;
+  background: var(--couleur-accent);
+  opacity: 0.12;
+}
+
+/* Cards lift on hover only when they are links: the cue says « clickable ». */
+a > [data-slot='card'] {
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease;
+}
+
+a:hover > [data-slot='card'] {
+  transform: translateY(-2px);
+  box-shadow: var(--elevation-3), var(--liseré-surface);
+}
+
+@media print {
+  .lueurs-ambiantes {
+    display: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  a:hover > [data-slot='card'] {
+    transform: none;
+  }
+}
+
+/* Entry screens: the form card is frosted over the ambient glows. */
+.coque-auth [data-slot='card'] {
+  background-color: color-mix(in oklab, var(--card) 74%, transparent);
+  -webkit-backdrop-filter: blur(18px) saturate(1.5);
+  backdrop-filter: blur(18px) saturate(1.5);
+  border: 1px solid rgb(255 255 255 / 0.6);
+  box-shadow: var(--elevation-4), var(--liseré-surface);
+}

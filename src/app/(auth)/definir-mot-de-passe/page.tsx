@@ -1,10 +1,7 @@
 import type { Metadata } from 'next';
 
-import {
-  LogoOrganisation,
-  SloganOrganisation,
-  chargerIdentiteOrganisation,
-} from '@/components/layout/logo-organisation';
+import { CoqueAuthentification } from '@/components/layout/coque-authentification';
+import { chargerIdentiteOrganisation } from '@/components/layout/logo-organisation';
 
 import { prisma } from '@/lib/prisma';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -40,19 +37,7 @@ export default async function PageDefinirMotDePasse({
     : null;
 
   return (
-    <main className="flex min-h-svh items-center justify-center bg-muted/40 p-4">
-      <div className="w-full max-w-sm">
-        <div className="mb-8 flex flex-col items-center text-center">
-          {/* L'invitation est le tout premier contact de la personne avec
-              l'application : elle doit y reconnaître son institution, pas
-              l'outil. Le contexte — « activation » — est déjà porté par la
-              carte, qui souhaite la bienvenue et explique quoi faire. */}
-          <LogoOrganisation identite={identite} hauteur={40} priorite />
-          <SloganOrganisation
-            identite={identite}
-            className="mt-3 text-sm text-muted-foreground"
-          />
-        </div>
+    <CoqueAuthentification identite={identite}>
 
         {utilisateur ? (
           <FormulaireDefinirMotDePasse
@@ -69,7 +54,6 @@ export default async function PageDefinirMotDePasse({
             </AlertDescription>
           </Alert>
         )}
-      </div>
-    </main>
+    </CoqueAuthentification>
   );
 }

@@ -4,6 +4,9 @@ import { perimetreStructures } from '@/lib/auth/permissions';
 import { exigerActeur } from '@/lib/auth/session';
 import { prisma } from '@/lib/prisma';
 import { aplatir, construireArborescence } from '@/lib/structures/arborescence';
+import { BoutonsExport } from '@/components/boutons-export';
+import { statistiquesCatalogue } from '@/lib/catalogue/statistiques';
+import { StatistiquesCatalogueVue } from './statistiques-catalogue';
 import { VueCatalogue } from './vue-catalogue';
 
 export const metadata: Metadata = {
@@ -90,15 +93,41 @@ export default async function PageCatalogue() {
 
   return (
     <div className="mx-auto max-w-6xl">
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Publications &amp; indicateurs
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Le catalogue alimente la génération du calendrier. La périodicité et le
-          délai saisis ici déterminent les dates de diffusion.
-        </p>
+      <header className="mb-6 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            Publications &amp; indicateurs
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Le catalogue alimente la génération du calendrier. La périodicité et le
+            délai saisis ici déterminent les dates de diffusion.
+          </p>
+        </div>
+        <BoutonsExport adresse="/api/export/catalogue" />
       </header>
+
+      <StatistiquesCatalogueVue
+        stats={statistiquesCatalogue([
+          ...publications.map((p) => ({
+            type: 'PUBLICATION' as const,
+            nom: p.nom,
+            structure: p.structure.sigle,
+            domaine: p.domaine?.nom ?? null,
+            periodicite: p.periodicite,
+            delaiJours: p.delaiJours,
+            actif: p.actif,
+          })),
+          ...indicateurs.map((i) => ({
+            type: 'INDICATEUR' as const,
+            nom: i.nom,
+            structure: i.structure.sigle,
+            domaine: i.domaine?.nom ?? null,
+            periodicite: i.periodicite,
+            delaiJours: i.delaiJours,
+            actif: i.actif,
+          })),
+        ])}
+      />
 
       <VueCatalogue
         publications={publications}

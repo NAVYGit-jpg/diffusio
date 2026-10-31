@@ -6,6 +6,9 @@ import { defineConfig } from 'vitest/config';
  * it does not read `paths` from tsconfig on its own.
  */
 export default defineConfig({
+  // tsconfig keeps JSX as-is for Next.js; tests that render PDF documents
+  // need it compiled.
+  oxc: { jsx: { runtime: 'automatic' } },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

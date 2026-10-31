@@ -1,5 +1,11 @@
 import 'server-only';
 
+import {
+  assombrirJusquAuContraste,
+  depuisHex,
+  eclaircir,
+  versHex,
+} from '@/lib/apparence/palette';
 import { adresseApplication } from './adresse';
 
 /**
@@ -32,15 +38,54 @@ function adresseLogo(): string {
  * signs the footer: the recipient must recognise their institution first, the
  * tool second.
  */
-function enveloppe(organisation: Organisation, contenu: string): string {
-  const logoDiffusio = adresseLogo();
+type Etiquette = { texte: string; fond: string; encre: string };
 
-  // Centred, as the message templates ask. `margin:0 auto` on a block image is
-  // the only centring every mail client honours — `text-align` alone fails in
-  // Outlook.
-  const enTete = organisation.logoUrl
-    ? `<img src="${organisation.logoUrl}" alt="${organisation.nom}" style="max-height:44px;display:block;margin:0 auto">`
-    : `<img src="${logoDiffusio}" alt="DIFFUSIO" width="180" style="max-height:34px;width:auto;display:block;margin:0 auto">`;
+/** Message kind, shown as a pill above the text so it is read before opening. */
+const ETIQUETTES = {
+  MISE_EN_LIGNE: { texte: 'Mise en ligne', fond: '#dcfce7', encre: '#166534' },
+  ALERTE: { texte: 'Alerte', fond: '#fee2e2', encre: '#991b1b' },
+  RAPPEL: { texte: 'Rappel d’échéance', fond: '#fef3c7', encre: '#92400e' },
+  RELANCE: { texte: 'Publication en retard', fond: '#fee2e2', encre: '#991b1b' },
+  INVITATION: { texte: 'Invitation', fond: '#e0e7ff', encre: '#3730a3' },
+} satisfies Record<string, Etiquette>;
+
+/**
+ * The organisation's colour, made safe for white text, and a pale tint of it.
+ * A charter in bright yellow would otherwise put white on yellow at 1.7:1.
+ */
+function teintes(organisation: Organisation): { fort: string; doux: string } {
+  const base = depuisHex(organisation.couleurPrimaire) ?? { r: 30, v: 64, b: 175 };
+
+  return {
+    fort: versHex(assombrirJusquAuContraste(base)),
+    doux: versHex(eclaircir(base, 0.92)),
+  };
+}
+
+/**
+ * Shared frame of every message.
+ *
+ * Table layout and inline styles only: that is what every mail client,
+ * Outlook included, renders the same way. A band in the organisation's colour
+ * carries its logo on a white chip, the kind of message is announced by a pill,
+ * and DIFFUSIO signs the footer — the recipient recognises their institution
+ * first, the tool second.
+ */
+function enveloppe(
+  organisation: Organisation,
+  contenu: string,
+  etiquette?: Etiquette,
+): string {
+  const logoDiffusio = adresseLogo();
+  const { fort, doux } = teintes(organisation);
+
+  const logo = organisation.logoUrl
+    ? `<img src="${organisation.logoUrl}" alt="${organisation.nom}" style="max-height:40px;display:block;margin:0 auto">`
+    : `<img src="${logoDiffusio}" alt="DIFFUSIO" width="170" style="max-height:32px;width:auto;display:block;margin:0 auto">`;
+
+  const pastille = etiquette
+    ? `<span style="display:inline-block;padding:5px 12px;border-radius:999px;background:${etiquette.fond};color:${etiquette.encre};font-size:12px;font-weight:600;letter-spacing:0.02em">${etiquette.texte}</span>`
+    : '';
 
   return `<!doctype html>
 <html lang="fr">
@@ -49,31 +94,42 @@ function enveloppe(organisation: Organisation, contenu: string): string {
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="light">
 </head>
-<body style="margin:0;padding:24px;background:#f4f4f5;font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;color:#18181b">
-  <table role="presentation" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:10px;border:1px solid #e4e4e7">
-    <tr>
-      <td align="center" style="padding:20px 24px;border-bottom:3px solid ${organisation.couleurPrimaire};text-align:center">
-        ${enTete}
-      </td>
-    </tr>
-
-    <tr><td style="padding:24px;line-height:1.6;font-size:15px">${contenu}</td></tr>
-
-    <tr>
-      <td style="padding:16px 24px;border-top:1px solid #e4e4e7">
-        <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%">
-          <tr>
-            <td style="vertical-align:middle">
-              <img src="${logoDiffusio}" alt="DIFFUSIO" width="104" style="max-height:20px;width:auto;display:block;opacity:0.55">
-            </td>
-            <td style="text-align:right;font-size:12px;color:#71717a;line-height:1.5">
-              Message automatique envoyé pour ${organisation.nom}.<br>
-              Merci de ne pas répondre à cet e-mail.
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
+<body style="margin:0;padding:0;background:#eef0f4;font-family:'Segoe UI',system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;color:#18181b">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eef0f4">
+    <tr><td align="center" style="padding:32px 16px">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 8px 30px rgba(15,23,42,0.08)">
+        <tr>
+          <td align="center" style="background:${fort};padding:28px 24px">
+            <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+              <td style="background:#ffffff;border-radius:12px;padding:10px 18px">${logo}</td>
+            </tr></table>
+            <p style="margin:14px 0 0;color:#ffffff;opacity:0.85;font-size:13px;letter-spacing:0.04em">${organisation.nom}</p>
+          </td>
+        </tr>
+        <tr><td style="height:4px;background:${doux};font-size:0;line-height:0">&nbsp;</td></tr>
+        <tr>
+          <td style="padding:32px 36px 12px;line-height:1.65;font-size:15px">
+            ${pastille}
+            <div style="margin-top:${etiquette ? '16px' : '0'}">${contenu}</div>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:20px 36px 28px">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #e4e4e7">
+              <tr>
+                <td style="padding-top:18px;vertical-align:middle">
+                  <img src="${logoDiffusio}" alt="DIFFUSIO" width="96" style="max-height:18px;width:auto;display:block;opacity:0.55">
+                </td>
+                <td style="padding-top:18px;text-align:right;font-size:12px;color:#71717a;line-height:1.5">
+                  Message automatique envoyé pour ${organisation.nom}.<br>
+                  Merci de ne pas répondre à cet e-mail.
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
   </table>
 </body>
 </html>`;
@@ -187,7 +243,7 @@ Cordialement,`;
 
      <p style="margin:24px 0">
        <a href="${params.lien}"
-          style="display:inline-block;padding:12px 20px;background:${params.organisation.couleurPrimaire};color:#ffffff;text-decoration:none;border-radius:6px">
+          style="display:inline-block;padding:14px 28px;background:${teintes(params.organisation).fort};color:#ffffff;text-decoration:none;border-radius:10px;font-weight:600;font-size:15px">
          Consulter la publication
        </a>
      </p>
@@ -204,6 +260,7 @@ Cordialement,`;
      </table>
 
      <p style="margin-top:24px">Cordialement,</p>`,
+    ETIQUETTES.MISE_EN_LIGNE,
   );
 
   return { sujet, corpsHtml, corpsTexte };
@@ -246,7 +303,7 @@ ${params.lien}`;
      </table>
 
      <p style="margin:24px 0">
-       <a href="${params.lien}" style="display:inline-block;padding:12px 20px;background:${params.organisation.couleurPrimaire};color:#ffffff;text-decoration:none;border-radius:6px">
+       <a href="${params.lien}" style="display:inline-block;padding:14px 28px;background:${teintes(params.organisation).fort};color:#ffffff;text-decoration:none;border-radius:10px;font-weight:600;font-size:15px">
          Ouvrir la ligne concernée
        </a>
      </p>
@@ -254,6 +311,7 @@ ${params.lien}`;
      <p style="font-size:13px;color:#71717a">
        Message envoyé par ${params.auteur}.
      </p>`,
+    ETIQUETTES.ALERTE,
   );
 
   return { sujet, corpsHtml, corpsTexte };
@@ -312,12 +370,13 @@ Déposer le livrable : ${params.lien}`;
      <p>${demande}</p>
 
      <p style="margin:24px 0">
-       <a href="${params.lien}" style="display:inline-block;padding:12px 20px;background:${params.organisation.couleurPrimaire};color:#ffffff;text-decoration:none;border-radius:6px">
+       <a href="${params.lien}" style="display:inline-block;padding:14px 28px;background:${teintes(params.organisation).fort};color:#ffffff;text-decoration:none;border-radius:10px;font-weight:600;font-size:15px">
          Déposer le livrable
        </a>
      </p>
 
      <p>Cordialement.</p>`,
+    ETIQUETTES.RAPPEL,
   );
 
   return { sujet, corpsHtml, corpsTexte };
@@ -376,7 +435,7 @@ ${params.lien}`;
      <p>${demande}</p>
 
      <p style="margin:24px 0">
-       <a href="${params.lien}" style="display:inline-block;padding:12px 20px;background:${params.organisation.couleurPrimaire};color:#ffffff;text-decoration:none;border-radius:6px">
+       <a href="${params.lien}" style="display:inline-block;padding:14px 28px;background:${teintes(params.organisation).fort};color:#ffffff;text-decoration:none;border-radius:10px;font-weight:600;font-size:15px">
          Ouvrir la ligne concernée
        </a>
      </p>
@@ -388,6 +447,7 @@ ${params.lien}`;
        et la prochaine date prévisionnelle depuis votre espace : les relances
        automatiques cesseront alors.
      </p>`,
+    ETIQUETTES.RELANCE,
   );
 
   return { sujet, corpsHtml, corpsTexte };
@@ -457,7 +517,7 @@ votre part, le compte restera inactif.`;
 
      <p style="margin:24px 0">
        <a href="${params.lien}"
-          style="display:inline-block;padding:12px 20px;background:${params.organisation.couleurPrimaire};color:#ffffff;text-decoration:none;border-radius:6px">
+          style="display:inline-block;padding:14px 28px;background:${teintes(params.organisation).fort};color:#ffffff;text-decoration:none;border-radius:10px;font-weight:600;font-size:15px">
          Choisir mon mot de passe
        </a>
      </p>
@@ -473,6 +533,7 @@ votre part, le compte restera inactif.`;
        concerné par ce message, ignorez-le : sans action de votre part, le compte
        restera inactif.
      </p>`,
+    ETIQUETTES.INVITATION,
   );
 
   return { sujet, corpsHtml, corpsTexte };

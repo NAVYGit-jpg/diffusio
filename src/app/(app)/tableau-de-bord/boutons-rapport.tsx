@@ -1,6 +1,6 @@
 'use client';
 
-import { FileSpreadsheet, Printer } from 'lucide-react';
+import { FileSpreadsheet, FileText } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
@@ -8,31 +8,34 @@ import { Button } from '@/components/ui/button';
 /**
  * Downloading the dashboard (cahier des charges §10).
  *
- * Excel goes through a route that rebuilds the figures server-side. The PDF
- * goes through the browser's own print-to-PDF: the charts are already on the
- * page as SVG, so they print as sharp vectors, and no headless browser has to
- * be installed and kept alive in production to redraw them.
- *
- * Both carry the current query string, so the file matches the view on screen.
+ * Both files are built on the server from the same figures as the screen and
+ * carry the current filters. The PDF is composed from the data in the
+ * organisation's colours — it is no longer a print of the page.
  */
 export function BoutonsRapport() {
   const parametres = useSearchParams();
 
+  const adresse = (format: 'pdf' | 'xlsx') => {
+    const copie = new URLSearchParams(parametres.toString());
+    copie.set('format', format);
+
+    return `/api/export/tableau-de-bord?${copie.toString()}`;
+  };
+
   return (
     <div data-boutons-rapport className="flex flex-wrap gap-2 print:hidden">
-      <Button asChild variant="outline" size="sm">
-        <a
-          href={`/api/export/tableau-de-bord?${parametres.toString()}`}
-          download
-        >
+      <Button asChild variant="outline">
+        <a href={adresse('xlsx')} download>
           <FileSpreadsheet aria-hidden />
-          Télécharger en Excel
+          Excel
         </a>
       </Button>
 
-      <Button variant="outline" size="sm" onClick={() => window.print()}>
-        <Printer aria-hidden />
-        Télécharger en PDF
+      <Button asChild>
+        <a href={adresse('pdf')} download>
+          <FileText aria-hidden />
+          Rapport PDF
+        </a>
       </Button>
     </div>
   );

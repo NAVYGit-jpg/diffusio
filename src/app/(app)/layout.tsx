@@ -41,12 +41,13 @@ export default async function LayoutApplication({
     // surfaces posées sur le fond, séparées par une gouttière, plutôt que deux
     // colonnes collées par une bordure. C'est ce qui donne à l'écran sa
     // respiration.
-    <div className="flex min-h-svh gap-3 p-3 sm:gap-4 sm:p-4">
+    <div className="relative flex min-h-svh gap-3 p-3 sm:gap-4 sm:p-4">
+      <div className="lueurs-ambiantes" aria-hidden />
       {/* La navigation porte le logo et reste en place pendant que le contenu
           défile : sur un long calendrier, une barre qui remonte oblige à
           revenir en haut pour changer d'écran. */}
-      <aside className="hidden w-64 shrink-0 md:block">
-        <div className="sticky top-4 flex max-h-[calc(100svh-2rem)] flex-col overflow-hidden rounded-panneau bg-card shadow-[var(--elevation-2)]">
+      <aside className="relative z-10 hidden w-64 shrink-0 md:block">
+        <div className="sticky top-4 flex max-h-[calc(100svh-2rem)] flex-col overflow-hidden rounded-panneau verre">
           {/* Le logo seul, et plus grand : le slogan qui l'accompagnait le
               tassait contre le haut du panneau. Il a rejoint l'en-tête, où il
               tient sur une ligne sans rien serrer. */}
@@ -64,12 +65,12 @@ export default async function LayoutApplication({
         </div>
       </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col gap-3 sm:gap-4">
+      <div className="relative z-10 flex min-w-0 flex-1 flex-col gap-3 sm:gap-4">
         {/* `data-application` distinguishes the navigation bar from the <header>
             each page carries: printing hides this one and keeps the other. */}
         <header
           data-application
-          className="sticky top-4 z-20 flex h-16 items-center justify-between gap-4 rounded-panneau bg-card/85 px-4 shadow-[var(--elevation-2)] backdrop-blur-xl"
+          className="sticky top-4 z-20 flex h-16 items-center justify-between gap-4 rounded-panneau px-4 verre"
         >
           {/* Le logo ayant rejoint la colonne, l'en-tête n'a plus à le
               répéter : il porte le slogan, qui dit ce que fait l'application

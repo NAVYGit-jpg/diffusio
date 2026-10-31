@@ -7,6 +7,7 @@ import {
   ClipboardList,
   LayoutDashboard,
   MessageSquare,
+  Network,
   PackageCheck,
   TriangleAlert,
   Users,
@@ -108,6 +109,13 @@ const ENTREES: Entree[] = [
     icone: TriangleAlert,
     roles: ['SUPER_ADMIN', 'ADMIN', 'POINT_FOCAL'],
     groupe: 'suivi',
+  },
+  {
+    href: '/organigramme',
+    cle: 'nav.organigramme',
+    icone: Network,
+    roles: ['SUPER_ADMIN', 'ADMIN', 'POINT_FOCAL'],
+    groupe: 'general',
   },
   {
     href: '/equipe',

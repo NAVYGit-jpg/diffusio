@@ -43,7 +43,16 @@ export function BoutonsExport({
           download
         >
           <Download aria-hidden />
-          Télécharger ce calendrier
+          Excel
+        </a>
+      </Button>
+      <Button asChild size="sm">
+        <a
+          href={`/api/export/calendrier?annee=${annee}&structure=${structureId}&format=pdf`}
+          download
+        >
+          <Download aria-hidden />
+          PDF
         </a>
       </Button>
 
@@ -51,7 +60,15 @@ export function BoutonsExport({
         <Button asChild variant="outline" size="sm">
           <a href={`/api/export/calendrier?annee=${annee}&global=1`} download>
             <Layers aria-hidden />
-            {libelleConsolide}
+            {libelleConsolide} — Excel
+          </a>
+        </Button>
+      )}
+      {consolideUtile && (
+        <Button asChild variant="outline" size="sm">
+          <a href={`/api/export/calendrier?annee=${annee}&global=1&format=pdf`} download>
+            <Layers aria-hidden />
+            {libelleConsolide} — PDF
           </a>
         </Button>
       )}

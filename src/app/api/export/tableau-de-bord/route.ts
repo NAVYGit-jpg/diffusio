@@ -6,6 +6,8 @@ import { LIBELLE_STATUT_PLURIEL } from '@/lib/calendrier/statuts';
 import { prisma } from '@/lib/prisma';
 import { lireFiltres } from '@/lib/tableau-bord/filtres-url';
 import { nomFichierPeriode } from '@/lib/tableau-bord/periode';
+import { chargerChartePdf } from '@/lib/pdf/charte';
+import { genererRapportTableauDeBordPdf } from '@/lib/pdf/rapport-tableau-de-bord';
 import {
   type Rapport,
   assemblerRapport,
@@ -163,6 +165,25 @@ export async function GET(requete: Request): Promise<Response> {
     where: { id: acteur.organisationId },
     select: { nom: true },
   });
+
+  // PDF composed from the data, in the organisation's colours — never a
+  // screenshot of the page.
+  if (new URL(requete.url).searchParams.get('format') === 'pdf') {
+    const charte = await chargerChartePdf(acteur.organisationId);
+    const pdf = await genererRapportTableauDeBordPdf(
+      rapport,
+      charte,
+      session.user.name ?? '',
+    );
+
+    return new Response(new Uint8Array(pdf), {
+      headers: {
+        'content-type': 'application/pdf',
+        'content-disposition': `attachment; filename="rapport-diffusion-${nomFichierPeriode(filtres.annee, filtres.mois)}.pdf"`,
+        'cache-control': 'no-store',
+      },
+    });
+  }
 
   const classeur = new ExcelJS.Workbook();
   classeur.creator = 'DIFFUSIO';

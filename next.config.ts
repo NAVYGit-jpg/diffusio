@@ -13,6 +13,8 @@ const nextConfig: NextConfig = {
    */
   devIndicators: false,
 
+  serverExternalPackages: ['@react-pdf/renderer'],
+
   experimental: {
     /**
      * Ceiling on the body of a Server Action.
