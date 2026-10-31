@@ -561,7 +561,7 @@ main > div > header h1 {
 [data-slot='select-trigger'],
 input[data-slot='input'] {
   border-radius: 9999px !important;
-  padding-inline: 1rem !important;
+  padding-right: 1rem !important;
   background-color: color-mix(in oklab, var(--card) 90%, transparent);
 }
 
@@ -588,4 +588,25 @@ input[data-slot='input'] {
     backdrop-filter: none;
     box-shadow: none !important;
   }
+}
+
+/* Search fields (icon + input in a relative box), wherever they appear: the
+   text starts clear of the icon, and the icon fades out once something is
+   typed — the field then reads as a plain value, with its full width back. */
+.relative:has(> svg.absolute + input[data-slot='input']) > svg.absolute {
+  left: 0.95rem;
+  transition: opacity 150ms ease;
+}
+
+.relative:has(> svg.absolute + input[data-slot='input']) > input[data-slot='input'] {
+  padding-left: 2.5rem !important;
+  transition: padding-left 150ms ease;
+}
+
+.relative:has(> input[data-slot='input']:not(:placeholder-shown)) > svg.absolute {
+  opacity: 0;
+}
+
+.relative:has(> svg.absolute + input[data-slot='input']) > input[data-slot='input']:not(:placeholder-shown) {
+  padding-left: 1rem !important;
 }
