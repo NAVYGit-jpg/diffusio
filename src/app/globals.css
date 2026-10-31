@@ -7,7 +7,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
+  --font-sans: var(--police-interface), var(--font-geist-sans), system-ui, sans-serif;
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -489,4 +489,11 @@ a:hover > [data-slot='card'] {
   backdrop-filter: blur(18px) saturate(1.5);
   border: 1px solid rgb(255 255 255 / 0.6);
   box-shadow: var(--elevation-4), var(--liseré-surface);
+}
+
+/* The font variables (next/font and the organisation's choice) are written on
+   <body>. Declared on <html>, the family resolved against undefined variables,
+   became invalid, and every screen fell back to the browser's serif. */
+body {
+  font-family: var(--police-interface), var(--font-geist-sans), system-ui, sans-serif;
 }
