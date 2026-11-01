@@ -1,7 +1,6 @@
 import { StyleSheet, Text, View } from '@react-pdf/renderer';
 
 import { formaterJJMMAAAA } from '@/lib/calendrier/dates';
-import { libelleStatut, statutAffiche } from '@/lib/calendrier/statuts';
 import type { LigneSource } from '@/lib/exports/calendrier-excel';
 import type { ChartePdf } from './charte';
 import {
@@ -97,79 +96,107 @@ const s = StyleSheet.create({
   },
 });
 
-/** Lines of one element, grouped so each publication reads as one card. */
-function regrouperParElement(lignes: LigneSource[]): LigneSource[][] {
-  const groupes = new Map<string, LigneSource[]>();
+const NOMS_MOIS = [
+  'Janvier',
+  'Février',
+  'Mars',
+  'Avril',
+  'Mai',
+  'Juin',
+  'Juillet',
+  'Août',
+  'Septembre',
+  'Octobre',
+  'Novembre',
+  'Décembre',
+];
+
+/** Lines grouped by the month they are due, then by publication. */
+function regrouperParMois(lignes: LigneSource[]): { titre: string; groupes: LigneSource[][]; nombre: number }[] {
+  const mois = new Map<string, LigneSource[]>();
 
   for (const ligne of lignes) {
-    const cle = `${ligne.structureSigle}::${ligne.elementType}::${ligne.nomElement}`;
-    groupes.set(cle, [...(groupes.get(cle) ?? []), ligne]);
+    const date = ligne.dateDiffusionPrevue;
+    const cle = `${date.getUTCFullYear()}-${String(date.getUTCMonth()).padStart(2, '0')}`;
+    mois.set(cle, [...(mois.get(cle) ?? []), ligne]);
   }
 
-  return [...groupes.values()]
-    .map((groupe) => [...groupe].sort((a, b) => a.dateDiffusionPrevue.getTime() - b.dateDiffusionPrevue.getTime()))
-    .sort((a, b) => a[0].nomElement.localeCompare(b[0].nomElement, 'fr'));
+  return [...mois.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([cle, siennes]) => {
+      const [annee, rang] = cle.split('-').map(Number);
+      const parProduit = new Map<string, LigneSource[]>();
+
+      for (const ligne of siennes) {
+        const produit = `${ligne.structureSigle}::${ligne.elementType}::${ligne.nomElement}`;
+        parProduit.set(produit, [...(parProduit.get(produit) ?? []), ligne]);
+      }
+
+      return {
+        titre: `${NOMS_MOIS[rang]} ${annee}`,
+        nombre: siennes.length,
+        groupes: [...parProduit.values()]
+          .map((groupe) => [...groupe].sort((a, b) => a.dateDiffusionPrevue.getTime() - b.dateDiffusionPrevue.getTime()))
+          .sort((a, b) => a[0].nomElement.localeCompare(b[0].nomElement, 'fr')),
+      };
+    });
 }
 
-function CarteElement({ charte, lignes, edite }: { charte: ChartePdf; lignes: LigneSource[]; edite: Date }) {
+/**
+ * One publication within a month: its name, structure and periodicity, then
+ * each programmed release — period covered and date. Nothing about progress:
+ * this is the schedule as announced, not a follow-up report.
+ */
+function CarteProduit({ charte, lignes }: { charte: ChartePdf; lignes: LigneSource[] }) {
   const premiere = lignes[0];
 
   return (
-    <View style={s.carte} wrap={lignes.length > 16}>
+    <View style={s.carte} wrap={false}>
       <View style={[s.carteEntete, { backgroundColor: charte.primaireDouce }]}>
         <View style={{ flex: 1, paddingRight: 8 }}>
           <Text style={s.nom}>{premiere.nomElement}</Text>
           <Text style={s.meta}>
-            {[
-              premiere.structureNom,
-              premiere.domaine,
-              premiere.pointFocal ? `Point focal : ${premiere.pointFocal}` : null,
-            ]
-              .filter(Boolean)
-              .join('  ·  ')}
+            {[premiere.structureNom, premiere.domaine].filter(Boolean).join('  ·  ')}
           </Text>
         </View>
-        <Text style={[s.pastille, { backgroundColor: charte.primaire }]}>
-          {`${lignes.length} diffusion(s)`}
+        <Text style={[s.pastille, { backgroundColor: charte.secondaire }]}>
+          {LIBELLE_PERIODICITE[premiere.periodicite] ?? premiere.periodicite}
         </Text>
       </View>
 
-      <View style={s.grille}>
-        {lignes.map((ligne, rang) => {
-          const statut = statutAffiche(ligne, edite);
-          const publiee = ligne.dateDiffusionReelle !== null;
-
-          return (
-            <View key={rang} style={s.echeance} wrap={false}>
-              <View
-                style={[
-                  s.echeanceInterieur,
-                  publiee ? { borderColor: '#86efac', backgroundColor: '#f0fdf4' } : {},
-                  statut === 'EN_RETARD' ? { borderColor: '#fca5a5', backgroundColor: '#fef2f2' } : {},
-                ]}
-              >
-                <Text style={s.periode}>{ligne.libellePeriode}</Text>
-                <Text style={[s.date, { color: charte.primaire }]}>
-                  {formaterJJMMAAAA(ligne.dateDiffusionPrevue)}
-                </Text>
-                <Text style={s.statut}>
-                  {publiee
-                    ? `Publiée le ${formaterJJMMAAAA(ligne.dateDiffusionReelle!)}`
-                    : libelleStatut(statut)}
-                </Text>
-              </View>
-            </View>
-          );
-        })}
-      </View>
+      {lignes.map((ligne, rang) => (
+        <View
+          key={rang}
+          style={{
+            flexDirection: 'row',
+            paddingVertical: 6,
+            paddingHorizontal: 10,
+            borderTopWidth: rang === 0 ? 0 : 0.5,
+            borderTopColor: GRIS_CLAIR,
+          }}
+        >
+          <View style={{ width: '50%' }}>
+            <Text style={{ fontSize: 7, color: GRIS }}>PÉRIODE COUVERTE</Text>
+            <Text style={s.periode}>{ligne.libellePeriode}</Text>
+          </View>
+          <View style={{ width: '50%' }}>
+            <Text style={{ fontSize: 7, color: GRIS }}>DATE DE DIFFUSION</Text>
+            <Text style={[s.date, { color: charte.primaire, fontWeight: 700 }]}>
+              {formaterJJMMAAAA(ligne.dateDiffusionPrevue)}
+            </Text>
+          </View>
+        </View>
+      ))}
     </View>
   );
 }
 
 /**
- * Release calendar as a PDF: a cover, an overview, one section per
- * periodicity with one card per publication, and a glossary of the
- * indicators the calendar contains. Cancelled lines are left out.
+ * Release calendar as a PDF: the schedule only. A cover, an overview by
+ * periodicity, then one section per month — each publication of the month
+ * with its periodicity and release dates — and a glossary of the indicators.
+ * No status, no actual release date: a calendar announces, it does not
+ * report. Cancelled lines are left out.
  */
 export async function genererCalendrierPdf(
   toutesLesLignes: LigneSource[],
@@ -182,12 +209,16 @@ export async function genererCalendrierPdf(
   const { renderToBuffer } = await import('@react-pdf/renderer');
   const edite = new Date();
   const lignes = toutesLesLignes.filter((ligne) => ligne.statut !== 'ANNULE');
-  const publiees = lignes.filter((ligne) => ligne.dateDiffusionReelle !== null).length;
-  const sections = SECTIONS.map((section) => ({
-    ...section,
-    groupes: regrouperParElement(lignes.filter((ligne) => ligne.periodicite === section.cle)),
-  })).filter((section) => section.groupes.length > 0);
-  const nombreProduits = sections.reduce((total, section) => total + section.groupes.length, 0);
+  const mois = regrouperParMois(lignes);
+  const parPeriodicite = SECTIONS.map((section) => {
+    const siennes = lignes.filter((ligne) => ligne.periodicite === section.cle);
+    return {
+      libelle: LIBELLE_PERIODICITE[section.cle],
+      diffusions: siennes.length,
+      produits: new Set(siennes.map((ligne) => `${ligne.structureSigle}::${ligne.nomElement}`)).size,
+    };
+  }).filter((part) => part.diffusions > 0);
+  const nombreProduits = parPeriodicite.reduce((total, part) => total + part.produits, 0);
   const rappel = `Calendrier ${annee} — ${perimetre}`;
   const edition = `Calendrier édité le ${formaterJJMMAAAA(edite)}`;
 
@@ -200,37 +231,36 @@ export async function genererCalendrierPdf(
         periode={`Année ${annee}`}
         details={[
           ['Périmètre', perimetre],
-          ['Produits', `${nombreProduits} publication(s) et indicateur(s)`],
-          ['Diffusions prévues', String(lignes.length)],
-          ['Déjà publiées', String(publiees)],
+          ['Publications', `${nombreProduits} publication(s) et indicateur(s)`],
+          ['Diffusions programmées', String(lignes.length)],
           ['Édité le', formaterJJMMAAAA(edite)],
           ['Édité par', editeur],
         ]}
       />
 
       <PageContenu charte={charte} rappel={rappel} edition={edition}>
-        <TitreSection charte={charte} sousTitre="Nombre de diffusions prévues par rythme de publication.">
+        <TitreSection charte={charte} sousTitre="Diffusions programmées selon la périodicité des publications.">
           Le calendrier en bref
         </TitreSection>
         <GrilleIndicateurs
           charte={charte}
-          indicateurs={sections.map((section) => ({
-            libelle: section.titre.replace('Publications ', ''),
-            valeur: String(section.groupes.reduce((total, groupe) => total + groupe.length, 0)),
-            precision: `${section.groupes.length} produit(s)`,
+          indicateurs={parPeriodicite.map((part) => ({
+            libelle: part.libelle,
+            valeur: String(part.diffusions),
+            precision: `${part.produits} publication(s)`,
           }))}
         />
 
-        {sections.map((section) => (
-          <View key={section.cle} break>
+        {mois.map((section, rang) => (
+          <View key={section.titre} break={rang === 0}>
             <TitreSection
               charte={charte}
-              sousTitre={`${section.groupes.length} produit(s) — chaque case donne la période couverte et la date de diffusion prévue.`}
+              sousTitre={`${section.nombre} diffusion(s) programmée(s) — ${section.groupes.length} publication(s)`}
             >
               {section.titre}
             </TitreSection>
-            {section.groupes.map((groupe, rang) => (
-              <CarteElement key={rang} charte={charte} lignes={groupe} edite={edite} />
+            {section.groupes.map((groupe, position) => (
+              <CarteProduit key={position} charte={charte} lignes={groupe} />
             ))}
           </View>
         ))}
