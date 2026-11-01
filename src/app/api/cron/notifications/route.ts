@@ -18,7 +18,9 @@ export async function GET(requete: Request): Promise<Response> {
 }
 
 export async function POST(requete: Request): Promise<Response> {
-  const secretAttendu = process.env.CRON_SECRET;
+  // Trimmed: a value pasted into Vercel with a trailing newline would never
+  // match, HTTP header values being stripped of surrounding whitespace.
+  const secretAttendu = process.env.CRON_SECRET?.trim();
 
   if (!secretAttendu) {
     return Response.json(
@@ -35,6 +37,10 @@ export async function POST(requete: Request): Promise<Response> {
   // Constant-time-ish: compare lengths first so a wrong secret never reveals
   // how much of it was right through timing.
   if (fourni.length !== secretAttendu.length || fourni !== secretAttendu) {
+    // Logged without the value: the only trace of a cron run that never starts.
+    console.warn(
+      `[cron] Accès refusé (secret fourni : ${fourni ? `${fourni.length} car.` : 'aucun'}, attendu : ${secretAttendu.length} car.)`,
+    );
     return Response.json({ erreur: 'Accès refusé.' }, { status: 401 });
   }
 
@@ -67,8 +73,10 @@ export async function POST(requete: Request): Promise<Response> {
   try {
     const resultat = await executerRelances(date);
 
+    console.info(`[cron] Traitement terminé : ${JSON.stringify(resultat)}`);
     return Response.json(resultat);
   } catch (erreur) {
+    console.error('[cron] Échec du traitement', erreur);
     return Response.json(
       {
         erreur: 'Échec du traitement.',
