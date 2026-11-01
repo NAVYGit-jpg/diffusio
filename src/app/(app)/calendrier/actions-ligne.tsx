@@ -1,6 +1,6 @@
 'use client';
 
-import { LoaderCircle, Pencil, Trash2 } from 'lucide-react';
+import { LoaderCircle, Pencil } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { toast } from 'sonner';
@@ -17,10 +17,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  modifierDateLigneAction,
-  supprimerLigneAction,
-} from '@/lib/actions/lignes-calendrier';
+import { modifierDateLigneAction } from '@/lib/actions/lignes-calendrier';
 
 /**
  * Manual edition of one calendar line (§5.5).
@@ -71,30 +68,6 @@ export function ActionsLigne({
     });
   };
 
-  const supprimer = () => {
-    const confirmation = window.confirm(
-      `Supprimer la ligne « ${nomElement} — ${libellePeriode} » ?\n\n` +
-        'Elle disparaîtra du calendrier. Vous pourrez la régénérer plus tard ' +
-        'en relançant une génération sur cet élément.',
-    );
-
-    if (!confirmation) {
-      return;
-    }
-
-    demarrer(async () => {
-      const resultat = await supprimerLigneAction(ligneId);
-
-      if (resultat.erreur) {
-        toast.error(resultat.erreur);
-        return;
-      }
-
-      toast.success(resultat.message ?? 'Supprimée.');
-      router.refresh();
-    });
-  };
-
   return (
     <>
       <Button
@@ -106,15 +79,8 @@ export function ActionsLigne({
         <Pencil aria-hidden />
       </Button>
 
-      <Button
-        variant="ghost"
-        size="sm"
-        disabled={enCours}
-        onClick={supprimer}
-        aria-label={`Supprimer ${nomElement} — ${libellePeriode}`}
-      >
-        <Trash2 aria-hidden />
-      </Button>
+      {/* No delete here: the bin next to it asks for a cancellation, which
+          keeps the line and its reason on record instead of erasing it. */}
 
       <Dialog open={ouvert} onOpenChange={setOuvert}>
         <DialogContent className="sm:max-w-md">

@@ -1,6 +1,6 @@
 'use client';
 
-import { Ban, LoaderCircle } from 'lucide-react';
+import { LoaderCircle, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { toast } from 'sonner';
@@ -19,7 +19,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { deciderAnnulationAction, demanderAnnulationAction } from '@/lib/actions/annulation';
 
 /**
- * « Annuler » on a calendar line.
+ * The bin of a calendar line: it cancels, it does not erase.
  *
  * For a point focal it sends a request, with its reason, to the supervisors;
  * for an administrator it cancels at once. Either way the reason is written
@@ -70,10 +70,14 @@ export function BoutonAnnulation({
         size="sm"
         className="text-destructive hover:text-destructive"
         onClick={() => setOuvert(true)}
-        aria-label={`Annuler ${nomElement} — ${libellePeriode}`}
+        aria-label={
+          estAdmin
+            ? `Annuler ${nomElement} — ${libellePeriode}`
+            : `Demander l’annulation de ${nomElement} — ${libellePeriode}`
+        }
+        title={estAdmin ? 'Annuler cette publication' : 'Demander l’annulation'}
       >
-        <Ban aria-hidden />
-        Annuler
+        <Trash2 aria-hidden />
       </Button>
 
       <Dialog open={ouvert} onOpenChange={setOuvert}>
