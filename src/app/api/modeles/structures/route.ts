@@ -1,5 +1,5 @@
 import ExcelJS from 'exceljs';
-import { appliquerPolice } from '@/lib/exports/police';
+import { appliquerPolice, couleursClasseur } from '@/lib/exports/police';
 
 import { auth } from '@/auth';
 
@@ -90,7 +90,7 @@ export async function GET() {
   ]);
   aide.getRow(1).font = { bold: true, size: 13 };
 
-  appliquerPolice(classeur);
+  appliquerPolice(classeur, await couleursClasseur(session.user.organisationId));
 
 
   const tampon = await classeur.xlsx.writeBuffer();

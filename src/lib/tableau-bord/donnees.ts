@@ -110,11 +110,13 @@ export async function chargerTableauDeBord(
         elementType: true,
         dateDiffusionPrevue: true,
         dateDiffusionReelle: true,
+        libellePeriode: true,
         calendrier: {
           select: { structureId: true, structure: { select: { nom: true } } },
         },
         publication: {
           select: {
+            nom: true,
             periodicite: true,
             domaineId: true,
             domaine: { select: { nom: true } },
@@ -122,6 +124,7 @@ export async function chargerTableauDeBord(
         },
         indicateur: {
           select: {
+            nom: true,
             periodicite: true,
             domaineId: true,
             domaine: { select: { nom: true } },
@@ -259,6 +262,8 @@ export async function chargerTableauDeBord(
       dateDiffusionReelle: ligne.dateDiffusionReelle,
       statut: ligne.statut as string,
       retardPublie: ligne.retard ? ligne.retard.publie : null,
+      nomElement: element?.nom ?? 'Élément',
+      libellePeriode: ligne.libellePeriode,
     });
   }
 

@@ -1,5 +1,5 @@
 import ExcelJS from 'exceljs';
-import { appliquerPolice } from '@/lib/exports/police';
+import { appliquerPolice, couleursClasseur } from '@/lib/exports/police';
 
 import { chargerChartePdf } from '@/lib/pdf/charte';
 import { genererCalendrierPdf } from '@/lib/pdf/calendrier';
@@ -259,7 +259,7 @@ export async function GET(requete: Request): Promise<Response> {
       'Aucune ligne de calendrier pour cette année et ce périmètre.';
   }
 
-  appliquerPolice(classeur);
+  appliquerPolice(classeur, await couleursClasseur(session.user.organisationId));
 
   const tampon = await classeur.xlsx.writeBuffer();
 

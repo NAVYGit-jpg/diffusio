@@ -110,7 +110,7 @@ export async function importerUtilisateursAction(
 
   const organisation = await prisma.organisation.findUniqueOrThrow({
     where: { id: acteur.organisationId },
-    select: { nom: true, sigle: true, couleurPrimaire: true, logoUrl: true, logoMimeType: true },
+    select: { nom: true, sigle: true, couleurPrimaire: true, couleurSecondaire: true, logoUrl: true, logoMimeType: true },
   });
 
   const base = adresseApplication();

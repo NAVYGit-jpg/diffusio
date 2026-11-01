@@ -299,7 +299,7 @@ export async function enregistrerUtilisateurAction(
     const [organisation, structure] = await Promise.all([
       prisma.organisation.findUniqueOrThrow({
         where: { id: acteur.organisationId },
-        select: { nom: true, sigle: true, couleurPrimaire: true, logoUrl: true, logoMimeType: true },
+        select: { nom: true, sigle: true, couleurPrimaire: true, couleurSecondaire: true, logoUrl: true, logoMimeType: true },
       }),
       valeurs.structureId
         ? prisma.structure.findUnique({
@@ -534,7 +534,7 @@ export async function renvoyerInvitationAction(
 
   const organisation = await prisma.organisation.findUniqueOrThrow({
     where: { id: acteur.organisationId },
-    select: { nom: true, sigle: true, couleurPrimaire: true, logoUrl: true, logoMimeType: true },
+    select: { nom: true, sigle: true, couleurPrimaire: true, couleurSecondaire: true, logoUrl: true, logoMimeType: true },
   });
 
   const base = adresseApplication();

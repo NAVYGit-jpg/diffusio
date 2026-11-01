@@ -22,6 +22,14 @@ export type ChartePdf = {
   primaire: string;
   /** Very light tint for table headers and panels. */
   primaireDouce: string;
+  /**
+   * Second colour of the charter, made legible on white. Used next to the
+   * primary one — section titles, the cover band, a second series — so a
+   * document never reads as a single colour. The accent (tertiary) stays a
+   * touch, not a theme.
+   */
+  secondaire: string;
+  secondaireDouce: string;
   accent: string;
   /** PNG or JPEG bytes; react-pdf renders neither SVG nor WebP. */
   logo: Buffer | null;
@@ -53,6 +61,7 @@ export async function chargerChartePdf(organisationId: string): Promise<ChartePd
       sigle: true,
       slogan: true,
       couleurPrimaire: true,
+      couleurSecondaire: true,
       couleurAccent: true,
       logoFichier: true,
       logoMimeType: true,
@@ -64,6 +73,12 @@ export async function chargerChartePdf(organisationId: string): Promise<ChartePd
     r: 30,
     v: 64,
     b: 175,
+  };
+
+  const second = depuisHex(organisation?.couleurSecondaire ?? '#475569') ?? {
+    r: 71,
+    v: 85,
+    b: 105,
   };
 
   let logo: Buffer | null = null;
@@ -83,6 +98,8 @@ export async function chargerChartePdf(organisationId: string): Promise<ChartePd
     slogan: organisation?.slogan || 'Calendrier de diffusion statistique',
     primaire: versHex(assombrirJusquAuContraste(base)),
     primaireDouce: versHex(eclaircir(base, 0.9)),
+    secondaire: versHex(assombrirJusquAuContraste(second)),
+    secondaireDouce: versHex(eclaircir(second, 0.9)),
     accent: organisation?.couleurAccent ?? '#0891b2',
     logo,
   };

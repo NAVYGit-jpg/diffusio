@@ -1,12 +1,14 @@
 import { Text, View } from '@react-pdf/renderer';
 
 import { formaterJJMMAAAA } from '@/lib/calendrier/dates';
-import { LIBELLE_STATUT_PLURIEL } from '@/lib/calendrier/statuts';
+import { LIBELLE_STATUT_PLURIEL, libelleStatut, statutAffiche } from '@/lib/calendrier/statuts';
 import type { Rapport } from '@/lib/tableau-bord/rapport';
 import type { ChartePdf } from './charte';
 import {
   BarresHorizontales,
-  BarresVerticales,
+  BarresColorees,
+  BarreProgression,
+  CourbeEvolution,
   DocumentMarque,
   Encadre,
   GrilleIndicateurs,
@@ -17,9 +19,20 @@ import {
   couleursPdf,
 } from './composants';
 
+/** Status colours of the screen, as hex: the PDF engine reads no CSS variable. */
+const COULEUR_STATUT_PDF: Record<string, string> = {
+  PLANIFIE: '#94a3b8',
+  TELEVERSE: '#e0a526',
+  MIS_EN_LIGNE: '#16a34a',
+  EN_RETARD: '#dc2626',
+  ANNULE: '#71717a',
+};
+
 /**
  * Dashboard report, composed from the same `Rapport` as the screen and the
- * Excel file — the three cannot disagree.
+ * Excel file — the three cannot disagree. Every block of the dashboard is
+ * here: key figures, progress, the monthly curve, every breakdown, the
+ * ranking, the next deadlines and the list of releases.
  */
 export function RapportTableauDeBordPdf({
   rapport,
@@ -30,16 +43,29 @@ export function RapportTableauDeBordPdf({
   charte: ChartePdf;
   editeur: string;
 }) {
-  const { respect, etat, echeances, nombres, avancement, courbe, classement } = rapport;
+  const { respect, etat, echeances, nombres, avancement, courbe, classement, retards } = rapport;
   const edition = `Rapport édité le ${formaterJJMMAAAA(rapport.genereLe)}`;
+  const catalogue = rapport.contexte.catalogue;
+  const jour = rapport.genereLe.getTime() - 86_400_000;
 
   const partsStatut = [
-    { libelle: LIBELLE_STATUT_PLURIEL.PLANIFIE, nombre: nombres.planifiees },
-    { libelle: LIBELLE_STATUT_PLURIEL.TELEVERSE, nombre: nombres.televersees },
-    { libelle: LIBELLE_STATUT_PLURIEL.MIS_EN_LIGNE, nombre: nombres.misesEnLigne },
-    { libelle: LIBELLE_STATUT_PLURIEL.EN_RETARD, nombre: nombres.enRetard },
-    { libelle: LIBELLE_STATUT_PLURIEL.ANNULE, nombre: nombres.annulees },
-  ].filter((part) => part.nombre > 0);
+    { cle: 'PLANIFIE', nombre: nombres.planifiees },
+    { cle: 'TELEVERSE', nombre: nombres.televersees },
+    { cle: 'MIS_EN_LIGNE', nombre: nombres.misesEnLigne },
+    { cle: 'EN_RETARD', nombre: nombres.enRetard },
+    { cle: 'ANNULE', nombre: nombres.annulees },
+  ].map((part) => ({
+    libelle: LIBELLE_STATUT_PLURIEL[part.cle as keyof typeof LIBELLE_STATUT_PLURIEL],
+    nombre: part.nombre,
+    couleur: COULEUR_STATUT_PDF[part.cle],
+  }));
+
+  const parDate = [...rapport.lignes].sort(
+    (a, b) => a.dateDiffusionPrevue.getTime() - b.dateDiffusionPrevue.getTime(),
+  );
+  const prochaines = parDate
+    .filter((ligne) => ligne.dateDiffusionReelle === null && ligne.statut !== 'ANNULE' && ligne.dateDiffusionPrevue.getTime() >= jour)
+    .slice(0, 10);
 
   return (
     <DocumentMarque charte={charte} titre={`Rapport de diffusion — ${rapport.periode}`}>
@@ -73,7 +99,6 @@ export function RapportTableauDeBordPdf({
               libelle: 'Taux de publication',
               valeur: `${avancement} %`,
               precision: `${nombres.misesEnLigne} publiée(s) sur ${nombres.total}`,
-              ton: avancement >= 80 ? 'positif' : avancement < 50 ? 'alerte' : undefined,
             },
             {
               libelle: 'En retard, non publiées',
@@ -92,11 +117,22 @@ export function RapportTableauDeBordPdf({
               valeur: String(etat.publieesApresEcheance),
               precision: `Sur ${etat.total} ligne(s) en retard`,
             },
+            {
+              libelle: 'Retard moyen',
+              valeur: retards.moyen === null ? '—' : `${Math.round(retards.moyen)} j`,
+              precision: retards.maximum === null ? 'Aucun retard' : `Maximum : ${retards.maximum} jour(s)`,
+              ton: retards.nombre > 0 ? 'alerte' : undefined,
+            },
+            {
+              libelle: 'Au catalogue',
+              valeur: String(catalogue.publications + catalogue.indicateurs),
+              precision: `${catalogue.publications} publication(s), ${catalogue.indicateurs} indicateur(s)`,
+            },
             { libelle: 'Lignes prévues', valeur: String(nombres.total), precision: rapport.periode },
             {
               libelle: 'Livrées, à publier',
               valeur: String(nombres.enAttenteDePublication),
-              precision: 'Mise en ligne à confirmer',
+              precision: 'Fichiers déposés, mise en ligne à confirmer',
             },
             {
               libelle: 'Publiées',
@@ -104,8 +140,23 @@ export function RapportTableauDeBordPdf({
               precision: `Dont ${nombres.misesEnLigne - etat.publieesApresEcheance} dans les délais`,
               ton: nombres.misesEnLigne > 0 ? 'positif' : undefined,
             },
+            {
+              libelle: 'Échéances à 30 jours',
+              valeur: String(echeances.j30),
+              precision: `${echeances.j7} à 7 jours · ${echeances.j15} à 15 jours`,
+            },
+            {
+              libelle: 'Annulées',
+              valeur: String(nombres.annulees),
+              precision: 'Retirées du calendrier',
+            },
           ]}
         />
+
+        <TitreSection charte={charte} sousTitre={`${nombres.misesEnLigne} ligne(s) mise(s) en ligne sur ${nombres.total} inscrite(s) au calendrier.`}>
+          {`Avancement — ${rapport.periode}`}
+        </TitreSection>
+        <BarreProgression charte={charte} pourcentage={avancement} legende="Part des diffusions déjà publiées" />
 
         {rapport.commentaire.length > 0 && (
           <View>
@@ -128,31 +179,49 @@ export function RapportTableauDeBordPdf({
           </View>
         )}
 
-        <TitreSection
-          charte={charte}
-          sousTitre="Chaque ligne est comptée dans le mois où elle était attendue. Un tiret signale un mois sans échéance jugeable."
-        >
-          Taux de respect des délais par mois
-        </TitreSection>
-        <BarresVerticales
-          charte={charte}
-          points={courbe.map((point) => ({ libelle: point.libelle, valeur: point.taux }))}
-        />
+        <View break>
+          <TitreSection
+            charte={charte}
+            sousTitre="Chaque ligne est comptée dans le mois où elle était attendue. Les mois sans échéance jugeable coupent la courbe."
+          >
+            Évolution mensuelle du taux de respect
+          </TitreSection>
+          <CourbeEvolution
+            charte={charte}
+            points={courbe.map((point) => ({ libelle: point.libelle, valeur: point.taux }))}
+          />
+          <Tableau
+            charte={charte}
+            colonnes={[
+              { titre: 'Mois', largeur: 40 },
+              { titre: 'Lignes jugeables', largeur: 30, aDroite: true },
+              { titre: 'Taux de respect', largeur: 30, aDroite: true },
+            ]}
+            lignes={courbe
+              .filter((point) => point.base > 0)
+              .map((point) => [point.libelle, String(point.base), point.taux === null ? '—' : `${point.taux} %`])}
+          />
+
+          <TitreSection charte={charte} sousTitre={`État actuel des ${nombres.total + nombres.annulees} ligne(s) du calendrier.`}>
+            Répartition par statut
+          </TitreSection>
+          <BarresColorees parts={partsStatut} />
+        </View>
 
         <View break>
-          <TitreSection charte={charte}>Répartition par statut</TitreSection>
-          <BarresHorizontales charte={charte} parts={partsStatut} />
-
           <TitreSection charte={charte}>Répartition par domaine</TitreSection>
-          <BarresHorizontales charte={charte} parts={rapport.parDomaine} couleur={charte.accent} />
+          <BarresHorizontales charte={charte} parts={rapport.parDomaine} couleur={charte.secondaire} />
 
           <TitreSection charte={charte}>Répartition par périodicité</TitreSection>
           <BarresHorizontales charte={charte} parts={rapport.parPeriodicite} />
 
+          <TitreSection charte={charte}>Répartition par type de produit</TitreSection>
+          <BarresHorizontales charte={charte} parts={rapport.parType} couleur={charte.secondaire} />
+
           {rapport.parStructure.length > 1 && (
             <View>
               <TitreSection charte={charte}>Répartition par structure</TitreSection>
-              <BarresHorizontales charte={charte} parts={rapport.parStructure} couleur={charte.accent} />
+              <BarresHorizontales charte={charte} parts={rapport.parStructure} />
             </View>
           )}
         </View>
@@ -186,6 +255,50 @@ export function RapportTableauDeBordPdf({
             />
           </View>
         )}
+
+        <View break>
+          <TitreSection charte={charte} sousTitre="Les diffusions attendues les plus proches, non encore mises en ligne.">
+            Prochaines échéances
+          </TitreSection>
+          <Tableau
+            charte={charte}
+            colonnes={[
+              { titre: 'Produit', largeur: 40 },
+              { titre: 'Période', largeur: 18 },
+              { titre: 'Structure', largeur: 26 },
+              { titre: 'Prévue le', largeur: 16, aDroite: true },
+            ]}
+            lignes={prochaines.map((ligne) => [
+              ligne.nomElement ?? '—',
+              ligne.libellePeriode ?? '—',
+              ligne.structureNom,
+              formaterJJMMAAAA(ligne.dateDiffusionPrevue),
+            ])}
+          />
+
+          <TitreSection charte={charte} sousTitre="Toutes les diffusions du périmètre et de la période, par date prévue.">
+            Liste des publications
+          </TitreSection>
+          <Tableau
+            charte={charte}
+            colonnes={[
+              { titre: 'Produit', largeur: 30 },
+              { titre: 'Période', largeur: 14 },
+              { titre: 'Structure', largeur: 18 },
+              { titre: 'Prévue le', largeur: 12 },
+              { titre: 'Publiée le', largeur: 12 },
+              { titre: 'Statut', largeur: 14 },
+            ]}
+            lignes={parDate.map((ligne) => [
+              ligne.nomElement ?? '—',
+              ligne.libellePeriode ?? '—',
+              ligne.structureNom,
+              formaterJJMMAAAA(ligne.dateDiffusionPrevue),
+              ligne.dateDiffusionReelle ? formaterJJMMAAAA(ligne.dateDiffusionReelle) : '—',
+              libelleStatut(statutAffiche(ligne, rapport.genereLe)),
+            ])}
+          />
+        </View>
       </PageContenu>
     </DocumentMarque>
   );

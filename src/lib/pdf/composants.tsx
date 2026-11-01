@@ -1,6 +1,20 @@
 import type { ReactNode } from 'react';
 import path from 'node:path';
-import { Document, Font, Image, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
+import {
+  Circle,
+  Document,
+  Font,
+  G,
+  Image,
+  Line,
+  Page,
+  Polygon,
+  Polyline,
+  StyleSheet,
+  Svg,
+  Text,
+  View,
+} from '@react-pdf/renderer';
 
 import type { ChartePdf } from './charte';
 
@@ -137,10 +151,11 @@ export function PageDeGarde({
           </Text>
         </View>
       </View>
-      <View style={{ height: 5, backgroundColor: charte.accent }} />
+      <View style={{ height: 10, backgroundColor: charte.secondaire }} />
+      <View style={{ height: 2.5, backgroundColor: charte.accent }} />
 
       <View style={{ padding: 44 }}>
-        <Text style={{ fontSize: 9, color: GRIS, letterSpacing: 1.5 }}>PÉRIODE COUVERTE</Text>
+        <Text style={{ fontSize: 9, color: charte.secondaire, letterSpacing: 1.5, fontWeight: 600 }}>PÉRIODE COUVERTE</Text>
         <Text style={{ fontSize: 22, fontFamily: 'Montserrat', fontWeight: 700, color: charte.primaire, marginTop: 6 }}>
           {periode}
         </Text>
@@ -196,8 +211,9 @@ export function TitreSection({ charte, children, sousTitre }: { charte: ChartePd
   return (
     <View wrap={false}>
       <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 14 }}>
-        <View style={{ width: 4, height: 14, backgroundColor: charte.primaire, borderRadius: 2, marginRight: 7 }} />
-        <Text style={[s.titreSection, { marginTop: 0, marginBottom: 0 }]}>{children}</Text>
+        <View style={{ width: 4, height: 14, backgroundColor: charte.primaire, borderRadius: 2, marginRight: 2 }} />
+        <View style={{ width: 4, height: 14, backgroundColor: charte.secondaire, borderRadius: 2, marginRight: 7 }} />
+        <Text style={[s.titreSection, { marginTop: 0, marginBottom: 0, color: charte.secondaire }]}>{children}</Text>
       </View>
       {sousTitre ? <Text style={[s.sousTitre, { marginTop: 4 }]}>{sousTitre}</Text> : <View style={{ height: 8 }} />}
     </View>
@@ -210,7 +226,8 @@ export function GrilleIndicateurs({ charte, indicateurs }: { charte: ChartePdf; 
   return (
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -4 }}>
       {indicateurs.map((indicateur, index) => {
-        const enAvant = index === 0;
+        const enAvant = index <= 1;
+        const fond = index === 0 ? charte.primaire : charte.secondaire;
         const couleurValeur = enAvant
           ? '#ffffff'
           : indicateur.ton === 'alerte'
@@ -226,9 +243,11 @@ export function GrilleIndicateurs({ charte, indicateurs }: { charte: ChartePdf; 
                 borderRadius: 8,
                 padding: 10,
                 minHeight: 74,
-                backgroundColor: enAvant ? charte.primaire : '#ffffff',
+                backgroundColor: enAvant ? fond : '#ffffff',
                 borderWidth: enAvant ? 0 : 0.75,
                 borderColor: GRIS_CLAIR,
+                borderTopWidth: enAvant ? 0 : 2.5,
+                borderTopColor: index % 2 === 0 ? charte.primaire : charte.secondaire,
               }}
             >
               <Text style={{ fontSize: 7.5, color: enAvant ? '#ffffff' : GRIS }}>{indicateur.libelle}</Text>
@@ -251,7 +270,7 @@ export type Colonne = { titre: string; largeur: number; aDroite?: boolean };
 export function Tableau({ charte, colonnes, lignes }: { charte: ChartePdf; colonnes: Colonne[]; lignes: string[][] }) {
   return (
     <View style={{ borderRadius: 6, borderWidth: 0.75, borderColor: GRIS_CLAIR }}>
-      <View fixed style={{ flexDirection: 'row', backgroundColor: charte.primaire, borderTopLeftRadius: 6, borderTopRightRadius: 6 }}>
+      <View fixed style={{ flexDirection: 'row', backgroundColor: charte.primaire, borderTopLeftRadius: 6, borderTopRightRadius: 6, borderBottomWidth: 2.5, borderBottomColor: charte.secondaire }}>
         {colonnes.map((colonne) => (
           <Text
             key={colonne.titre}
@@ -385,9 +404,9 @@ export function Encadre({ charte, children }: { charte: ChartePdf; children: Rea
   return (
     <View
       style={{
-        backgroundColor: charte.primaireDouce,
+        backgroundColor: charte.secondaireDouce,
         borderLeftWidth: 3,
-        borderLeftColor: charte.primaire,
+        borderLeftColor: charte.secondaire,
         borderRadius: 4,
         padding: 10,
       }}
@@ -397,4 +416,125 @@ export function Encadre({ charte, children }: { charte: ChartePdf; children: Rea
   );
 }
 
+/** Progress of the period, as on the dashboard. */
+export function BarreProgression({ charte, pourcentage, legende }: { charte: ChartePdf; pourcentage: number; legende: string }) {
+  const borne = Math.min(100, Math.max(0, pourcentage));
+
+  return (
+    <View wrap={false}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
+        <Text style={{ fontSize: 8.5, color: GRIS }}>{legende}</Text>
+        <Text style={{ fontSize: 12, fontWeight: 700, color: charte.primaire }}>{`${borne} %`}</Text>
+      </View>
+      <View style={{ height: 11, borderRadius: 6, backgroundColor: charte.secondaireDouce }}>
+        <View style={{ width: `${borne}%`, height: 11, borderRadius: 6, backgroundColor: charte.primaire }} />
+      </View>
+    </View>
+  );
+}
+
+/**
+ * Month-by-month curve, drawn as on the dashboard: a line in the primary
+ * colour over a soft area, points in the secondary colour. Months without
+ * anything to judge break the line instead of dropping it to zero.
+ */
+export function CourbeEvolution({
+  charte,
+  points,
+}: {
+  charte: ChartePdf;
+  points: { libelle: string; valeur: number | null }[];
+}) {
+  const LARGEUR = 500;
+  const HAUTEUR = 160;
+  const MARGE = 24;
+  const pas = points.length > 1 ? (LARGEUR - MARGE * 2) / (points.length - 1) : 0;
+  const x = (rang: number) => MARGE + rang * pas;
+  const y = (valeur: number) => HAUTEUR - 16 - (valeur / 100) * (HAUTEUR - 36);
+
+  // Consecutive runs of measured months.
+  const troncons: { rang: number; valeur: number }[][] = [[]];
+  points.forEach((point, rang) => {
+    if (point.valeur === null) {
+      troncons.push([]);
+      return;
+    }
+    troncons[troncons.length - 1].push({ rang, valeur: point.valeur });
+  });
+
+  return (
+    <View wrap={false}>
+      <Svg width={LARGEUR} height={HAUTEUR} viewBox={`0 0 ${LARGEUR} ${HAUTEUR}`}>
+        {[0, 25, 50, 75, 100].map((repere) => (
+          <G key={repere}>
+            <Line x1={MARGE} x2={LARGEUR - MARGE} y1={y(repere)} y2={y(repere)} stroke={GRIS_CLAIR} strokeWidth={0.6} strokeDasharray="3 3" />
+            <Text x={0} y={y(repere) + 2.5} style={{ fontSize: 6, fill: GRIS }}>{`${repere}%`}</Text>
+          </G>
+        ))}
+        {troncons
+          .filter((troncon) => troncon.length > 0)
+          .map((troncon, rang) => {
+            const ligne = troncon.map((p) => `${x(p.rang)},${y(p.valeur)}`).join(' ');
+            const aire = `${x(troncon[0].rang)},${y(0)} ${ligne} ${x(troncon[troncon.length - 1].rang)},${y(0)}`;
+
+            return (
+              <G key={rang}>
+                <Polygon points={aire} fill={charte.primaireDouce} />
+                <Polyline points={ligne} stroke={charte.primaire} strokeWidth={2} fill="none" />
+              </G>
+            );
+          })}
+        {points.map((point, rang) =>
+          point.valeur === null ? null : (
+            <G key={point.libelle}>
+              <Circle cx={x(rang)} cy={y(point.valeur)} r={3.2} fill={charte.secondaire} stroke="#ffffff" strokeWidth={1} />
+              <Text x={x(rang) - 7} y={y(point.valeur) - 7} style={{ fontSize: 6.5, fill: charte.secondaire }}>
+                {`${Math.round(point.valeur)}%`}
+              </Text>
+            </G>
+          ),
+        )}
+        {points.map((point, rang) => (
+          <Text key={`l-${point.libelle}`} x={x(rang) - 8} y={HAUTEUR - 2} style={{ fontSize: 6.5, fill: GRIS }}>
+            {point.libelle}
+          </Text>
+        ))}
+      </Svg>
+    </View>
+  );
+}
+
+/** Breakdown by status, each bar in the status colour used on screen. */
+export function BarresColorees({ parts }: { parts: { libelle: string; nombre: number; couleur: string }[] }) {
+  const maximum = Math.max(1, ...parts.map((part) => part.nombre));
+  const total = parts.reduce((somme, part) => somme + part.nombre, 0);
+
+  return (
+    <View>
+      {total > 0 && (
+        <View wrap={false} style={{ flexDirection: 'row', height: 12, borderRadius: 6, overflow: 'hidden', marginBottom: 10 }}>
+          {parts
+            .filter((part) => part.nombre > 0)
+            .map((part) => (
+              <View key={part.libelle} style={{ width: `${(part.nombre / total) * 100}%`, backgroundColor: part.couleur }} />
+            ))}
+        </View>
+      )}
+      {parts.map((part) => (
+        <View key={part.libelle} wrap={false} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 5 }}>
+          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: part.couleur, marginRight: 6 }} />
+          <Text style={{ width: '30%', fontSize: 8, paddingRight: 6 }}>{part.libelle}</Text>
+          <View style={{ width: '50%', height: 9, backgroundColor: '#f4f4f5', borderRadius: 4 }}>
+            <View style={{ width: `${(part.nombre / maximum) * 100}%`, height: 9, borderRadius: 4, backgroundColor: part.couleur }} />
+          </View>
+          <Text style={{ width: '14%', textAlign: 'right', fontSize: 8, fontWeight: 700 }}>
+            {total > 0 ? `${part.nombre} (${Math.round((part.nombre / total) * 100)} %)` : '0'}
+          </Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
 export const couleursPdf = { GRIS, GRIS_CLAIR, ENCRE };
+

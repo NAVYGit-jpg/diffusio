@@ -20,6 +20,8 @@ type Organisation = {
   nom: string;
   sigle: string;
   couleurPrimaire: string;
+  /** Second colour of the charter; absent where an older caller omits it. */
+  couleurSecondaire?: string;
   logoUrl: string | null;
   /** Set when the super admin uploaded a logo, served by /api/logo. */
   logoMimeType?: string | null;
@@ -55,12 +57,14 @@ const ETIQUETTES = {
  * The organisation's colour, made safe for white text, and a pale tint of it.
  * A charter in bright yellow would otherwise put white on yellow at 1.7:1.
  */
-function teintes(organisation: Organisation): { fort: string; doux: string } {
+function teintes(organisation: Organisation): { fort: string; doux: string; second: string } {
   const base = depuisHex(organisation.couleurPrimaire) ?? { r: 30, v: 64, b: 175 };
+  const secondaire = depuisHex(organisation.couleurSecondaire ?? '') ?? base;
 
   return {
     fort: versHex(assombrirJusquAuContraste(base)),
     doux: versHex(eclaircir(base, 0.92)),
+    second: versHex(assombrirJusquAuContraste(secondaire)),
   };
 }
 
@@ -79,7 +83,7 @@ function enveloppe(
   etiquette?: Etiquette,
 ): string {
   const logoDiffusio = adresseLogo();
-  const { fort, doux } = teintes(organisation);
+  const { fort, second } = teintes(organisation);
 
   // The uploaded logo first: the application serves it itself, whereas a
   // pasted address (often a search-engine thumbnail) breaks in mail clients.
@@ -114,7 +118,7 @@ function enveloppe(
             </tr></table>
           </td>
         </tr>
-        <tr><td style="height:4px;background:${doux};font-size:0;line-height:0">&nbsp;</td></tr>
+        <tr><td style="height:6px;background:${second};font-size:0;line-height:0">&nbsp;</td></tr>
         <tr>
           <td style="padding:32px 36px 12px;line-height:1.65;font-size:15px">
             ${pastille}

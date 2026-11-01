@@ -121,7 +121,7 @@ async function classeurCatalogue(elements: ElementCatalogue[], charte: ChartePdf
     element.actif ? 'Oui' : 'Non',
   ]));
 
-  appliquerPolice(classeur);
+  appliquerPolice(classeur, { primaire: charte.primaire, secondaire: charte.secondaire, secondaireDouce: charte.secondaireDouce });
 
   return classeur.xlsx.writeBuffer();
 }

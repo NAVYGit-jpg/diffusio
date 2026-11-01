@@ -34,6 +34,9 @@ export type LigneIndicateur = {
   statut: string;
   /** `null` when no lateness record exists for the line. */
   retardPublie: boolean | null;
+  /** For the reports' list of releases; absent in the unit tests. */
+  nomElement?: string;
+  libellePeriode?: string;
 };
 
 /** Was the line actually released, whatever the date? */
