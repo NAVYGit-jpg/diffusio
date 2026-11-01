@@ -173,7 +173,7 @@ export async function executerRelances(
           notification: {
             titre: `Publication imminente : ${element.nom}`,
             message: `${ligne.libellePeriode} — à diffuser ${libelleJoursRestants(rappel.joursRestants)}, le ${formaterJJMMAAAA(ligne.dateDiffusionPrevue)}.`,
-            lien: `/imminentes`,
+            lien: '/etat-calendrier?onglet=imminentes',
           },
           ...modele,
         }, aujourdhui);
@@ -226,7 +226,7 @@ export async function executerRelances(
           notification: {
             titre: `Publication en retard : ${element.nom}`,
             message: `${ligne.libellePeriode} — en retard ${libelleRetard(decision.joursDeRetard)}, attendu le ${formaterJJMMAAAA(decision.dateDeReference)}.`,
-            lien: '/retards',
+            lien: '/etat-calendrier?onglet=retard',
           },
           ...modele,
         }, aujourdhui);

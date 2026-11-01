@@ -9,7 +9,6 @@ import {
   MessageSquare,
   Network,
   PackageCheck,
-  TriangleAlert,
   Users,
   Users2,
 } from 'lucide-react';
@@ -90,8 +89,9 @@ const ENTREES: Entree[] = [
     groupe: 'suivi',
   },
   {
-    href: '/imminentes',
-    cle: 'nav.imminentes',
+    // Imminent, late, delivered, published and cancelled lines in one screen.
+    href: '/etat-calendrier',
+    cle: 'nav.etatCalendrier',
     icone: CalendarClock,
     roles: ['SUPER_ADMIN', 'ADMIN', 'POINT_FOCAL'],
     groupe: 'suivi',
@@ -100,13 +100,6 @@ const ENTREES: Entree[] = [
     href: '/produits-charges',
     cle: 'nav.produitsCharges',
     icone: PackageCheck,
-    roles: ['SUPER_ADMIN', 'ADMIN', 'POINT_FOCAL'],
-    groupe: 'suivi',
-  },
-  {
-    href: '/retards',
-    cle: 'nav.retards',
-    icone: TriangleAlert,
     roles: ['SUPER_ADMIN', 'ADMIN', 'POINT_FOCAL'],
     groupe: 'suivi',
   },

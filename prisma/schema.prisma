@@ -136,63 +136,63 @@ enum StatutEnvoiEmail {
 // =============================================================================
 
 model Organisation {
-  id            String  @id @default(cuid())
+  id            String @id @default(cuid())
   nom           String
   sigle         String
   pays          String
-  fuseauHoraire String  @default("Africa/Abidjan")
+  fuseauHoraire String @default("Africa/Abidjan")
 
   // Identite visuelle — injectee en variables CSS au niveau du layout racine (§9.4)
-  logoUrl           String?
+  logoUrl            String?
   // Logo televerse, servi par /api/logo. Stocke en base plutot qu'au bucket :
   // les messageries n'accedent pas a un fichier protege, et un logo pese peu.
-  logoFichier       Bytes?
-  logoMimeType      String?
-  slogan            String           @default("Calendrier de diffusion statistique")
-  couleurPrimaire   String           @default("#1e40af")
-  couleurSecondaire String           @default("#475569")
-  couleurAccent     String           @default("#0891b2")
-  couleurFond       String           @default("#ffffff")
+  logoFichier        Bytes?
+  logoMimeType       String?
+  slogan             String           @default("Calendrier de diffusion statistique")
+  couleurPrimaire    String           @default("#1e40af")
+  couleurSecondaire  String           @default("#475569")
+  couleurAccent      String           @default("#0891b2")
+  couleurFond        String           @default("#ffffff")
   // Nul = la couleur des boutons suit la couleur principale.
-  couleurBouton     String?
+  couleurBouton      String?
   // Vrai : la palette est deduite du logo a chaque televersement.
-  paletteAutomatique Boolean         @default(false)
-  police            String           @default("Geist")
-  styleInterface    StyleInterface   @default(MODERNE)
-  densiteInterface  DensiteInterface @default(CONFORTABLE)
-  radiusInterface   Float            @default(0.5)
+  paletteAutomatique Boolean          @default(false)
+  police             String           @default("Geist")
+  styleInterface     StyleInterface   @default(MODERNE)
+  densiteInterface   DensiteInterface @default(CONFORTABLE)
+  radiusInterface    Float            @default(0.5)
 
   emailExpediteur String?
   signatureEmail  String?
 
   // Defaut herite par chaque publication / indicateur (§5.3)
-  delaiTypeParDefaut          TypeDelai @default(CALENDAIRES)
-  reportSiWeekendOuFerieDefaut Boolean  @default(false)
+  delaiTypeParDefaut           TypeDelai @default(CALENDAIRES)
+  reportSiWeekendOuFerieDefaut Boolean   @default(false)
 
   // Espace public consultable sans compte (DEC-113)
   espacePublicActif Boolean @default(false)
   slugPublic        String? @unique
 
   // Parametres de relance rendus configurables (§9.3)
-  joursRappel               Int[] @default([15, 10, 5, 3, 1])
-  frequenceRelanceRetardJours Int @default(2)
+  joursRappel                 Int[] @default([15, 10, 5, 3, 1])
+  frequenceRelanceRetardJours Int   @default(2)
 
   actif     Boolean   @default(true)
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  structures     Structure[]
-  utilisateurs   Utilisateur[]
-  domaines       Domaine[]
-  joursFeries    JourFerie[]
-  publications   Publication[]
-  indicateurs    Indicateur[]
-  calendriers    Calendrier[]
-  conversations  Conversation[]
-  journauxAudit  JournalAudit[]
-  modelesEmail   ModeleEmail[]
-  membresEquipe  MembreEquipe[]
+  structures    Structure[]
+  utilisateurs  Utilisateur[]
+  domaines      Domaine[]
+  joursFeries   JourFerie[]
+  publications  Publication[]
+  indicateurs   Indicateur[]
+  calendriers   Calendrier[]
+  conversations Conversation[]
+  journauxAudit JournalAudit[]
+  modelesEmail  ModeleEmail[]
+  membresEquipe MembreEquipe[]
 
   @@map("organisations")
 }
@@ -298,17 +298,17 @@ model Utilisateur {
   organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
   structure    Structure?   @relation(fields: [structureId], references: [id], onDelete: SetNull)
 
-  adminStructures     AdminStructure[]
-  publications        Publication[]      @relation("PointFocalPublication")
-  indicateurs         Indicateur[]       @relation("PointFocalIndicateur")
-  calendriersGeneres  Calendrier[]       @relation("CalendrierGenerePar")
-  calendriersValides  Calendrier[]       @relation("CalendrierValidePar")
-  fichiersTeleverses  Fichier[]
-  valeursSaisies      ValeurIndicateur[]
-  notifications       Notification[]
-  messages            Message[]
-  journauxAudit       JournalAudit[]
-  visitesOnglet       VisiteOnglet[]
+  adminStructures    AdminStructure[]
+  publications       Publication[]      @relation("PointFocalPublication")
+  indicateurs        Indicateur[]       @relation("PointFocalIndicateur")
+  calendriersGeneres Calendrier[]       @relation("CalendrierGenerePar")
+  calendriersValides Calendrier[]       @relation("CalendrierValidePar")
+  fichiersTeleverses Fichier[]
+  valeursSaisies     ValeurIndicateur[]
+  notifications      Notification[]
+  messages           Message[]
+  journauxAudit      JournalAudit[]
+  visitesOnglet      VisiteOnglet[]
 
   @@index([organisationId, role, actif])
   @@index([structureId])
@@ -383,7 +383,7 @@ model Publication {
   domaineId      String
 
   periodicite             Periodicite
-  nombreAnneesPeriodicite Int?        // renseigne si PLURIANNUELLE
+  nombreAnneesPeriodicite Int? // renseigne si PLURIANNUELLE
 
   // §5.1 : le delai est saisi a la creation de l'element, pas a la generation
   delaiJours             Int
@@ -474,9 +474,9 @@ model Calendrier {
   commentaireValidation String?
 
   // Demande d'autorisation de modification d'un calendrier valide (§5.6)
-  demandeDeblocage       Boolean   @default(false)
-  demandeDeblocageMotif  String?
-  demandeDeblocageAt     DateTime?
+  demandeDeblocage      Boolean   @default(false)
+  demandeDeblocageMotif String?
+  demandeDeblocageAt    DateTime?
 
   // DEC-113 : seul un calendrier VALIDE et explicitement publie est visible
   // depuis l'espace public.
@@ -486,10 +486,10 @@ model Calendrier {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
-  structure      Structure    @relation(fields: [structureId], references: [id], onDelete: Cascade)
-  generateur     Utilisateur? @relation("CalendrierGenerePar", fields: [generePar], references: [id], onDelete: SetNull)
-  validateur     Utilisateur? @relation("CalendrierValidePar", fields: [validePar], references: [id], onDelete: SetNull)
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  structure    Structure    @relation(fields: [structureId], references: [id], onDelete: Cascade)
+  generateur   Utilisateur? @relation("CalendrierGenerePar", fields: [generePar], references: [id], onDelete: SetNull)
+  validateur   Utilisateur? @relation("CalendrierValidePar", fields: [validePar], references: [id], onDelete: SetNull)
 
   lignes LigneCalendrier[]
 
@@ -507,7 +507,7 @@ model LigneCalendrier {
   publicationId String?
   indicateurId  String?
 
-  libellePeriode      String   // "Janvier 2026", "T1 2026", "2026"...
+  libellePeriode      String // "Janvier 2026", "T1 2026", "2026"...
   dateDebutCouverture DateTime @db.Date
   dateFinCouverture   DateTime @db.Date
 
@@ -523,6 +523,15 @@ model LigneCalendrier {
   // Protege la ligne lors d'une regeneration (§5.5)
   modifieManuellement Boolean @default(false)
   commentaire         String?
+
+  // Annulation : demandee par le point focal, decidee par un administrateur.
+  // Une ligne annulee quitte le calendrier et n'apparait plus que dans
+  // l'ecran « Etat du calendrier ».
+  annulationDemandee    Boolean   @default(false)
+  motifAnnulation       String?
+  annulationDemandeeAt  DateTime?
+  annulationDemandeePar String?
+  annuleeAt             DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -608,8 +617,8 @@ model Retard {
   ligneCalendrierId String   @unique
   detecteAt         DateTime @default(now())
 
-  statutAvancement      StatutAvancement?
-  justification         String?
+  statutAvancement       StatutAvancement?
+  justification          String?
   prochaineDateDiffusion DateTime?         @db.Date
 
   publie          Boolean   @default(false)
@@ -620,7 +629,7 @@ model Retard {
   relancesSuspendues     Boolean   @default(false)
 
   // Chaque report est historise (§8.2)
-  nombreReports Int  @default(0)
+  nombreReports     Int  @default(0)
   historiqueReports Json @default("[]")
 
   createdAt DateTime @default(now())

@@ -48,6 +48,7 @@ import { peutModifierLignes } from '@/lib/calendrier/workflow';
 import { BandeauWorkflow } from './bandeau-workflow';
 import { DialogueLivrable, type DetailLigne } from './dialogue-livrable';
 import { ActionsLigne } from './actions-ligne';
+import { BoutonAnnulation } from './bouton-annulation';
 import { BoutonsExport } from './boutons-export';
 import type { Role, StatutCalendrier } from '@prisma/client';
 
@@ -64,6 +65,8 @@ type Element = {
 type LigneCalendrier = DetailLigne & {
   modifieManuellement: boolean;
   commentaire: string | null;
+  annulationDemandee: boolean;
+  motifAnnulation: string | null;
   dateDebutCouverture: string;
   dateFinCouverture: string;
 };
@@ -747,12 +750,23 @@ export function VueCalendrier({
                         const affiche = statutAffiche(ligne);
 
                         return (
-                          <Badge
-                            variant="outline"
-                            className={classesBadgeStatut(affiche)}
-                          >
-                            {libelleStatut(affiche)}
-                          </Badge>
+                          <>
+                            <Badge
+                              variant="outline"
+                              className={classesBadgeStatut(affiche)}
+                            >
+                              {libelleStatut(affiche)}
+                            </Badge>
+                            {ligne.annulationDemandee && (
+                              <Badge
+                                variant="outline"
+                                className="ml-1 border-amber-300 bg-amber-50 text-amber-800"
+                                title={ligne.motifAnnulation ?? undefined}
+                              >
+                                Annulation demandée
+                              </Badge>
+                            )}
+                          </>
                         );
                       })()}
                     </TableCell>
@@ -777,6 +791,15 @@ export function VueCalendrier({
                           ligne.statut !== 'MIS_EN_LIGNE'
                         }
                       />
+                      {ligne.statut !== 'MIS_EN_LIGNE' && (
+                        <BoutonAnnulation
+                          ligneId={ligne.id}
+                          nomElement={ligne.nomElement}
+                          libellePeriode={ligne.libellePeriode}
+                          estAdmin={role === 'ADMIN' || role === 'SUPER_ADMIN'}
+                          dejaDemandee={ligne.annulationDemandee}
+                        />
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}

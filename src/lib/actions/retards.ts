@@ -253,7 +253,7 @@ export async function envoyerAlerteAction(
       type: 'ALERTE_MANUELLE',
       titre: 'Alerte de votre administrateur',
       message: contenu,
-      lien: '/retards',
+      lien: '/etat-calendrier?onglet=retard',
     },
     acteur.id,
   );

@@ -26,8 +26,8 @@ describe('porteUnCompteur', () => {
     expect(porteUnCompteur('/inexistant')).toBe(false);
   });
 
-  it('couvre les dix onglets attendus', () => {
-    expect(ONGLETS_AVEC_COMPTEUR).toHaveLength(10);
+  it('couvre les onze onglets attendus', () => {
+    expect(ONGLETS_AVEC_COMPTEUR).toHaveLength(11);
   });
 });
 

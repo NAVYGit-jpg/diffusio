@@ -119,6 +119,9 @@ export default async function PageCalendrier({
       where: { structureId_annee: { structureId, annee } },
       include: {
         lignes: {
+          // A cancelled line leaves the calendar: it only shows under
+          // « État du calendrier ».
+          where: { statut: { not: 'ANNULE' } },
           orderBy: { dateDiffusionPrevue: 'asc' },
           include: {
             publication: {
@@ -195,6 +198,8 @@ export default async function PageCalendrier({
                   statut: ligne.statut,
                   modifieManuellement: ligne.modifieManuellement,
                   commentaire: ligne.commentaire,
+                  annulationDemandee: ligne.annulationDemandee,
+                  motifAnnulation: ligne.motifAnnulation,
                   lienPublication: ligne.lienPublication,
                   fichiers: ligne.fichiers.map((fichier) => ({
                     id: fichier.id,

@@ -235,6 +235,8 @@ export async function chargerCompteursOnglets(
     '/calendrier': lignes,
     '/imminentes': imminentes,
     '/retards': retards,
+    // The unified screen carries what demands action: the late lines.
+    '/etat-calendrier': retards,
     '/produits-charges': fichiers + valeurs,
     '/equipe': equipe,
     '/notifications': notifications,

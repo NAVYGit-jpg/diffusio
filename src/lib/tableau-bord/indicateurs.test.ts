@@ -455,15 +455,15 @@ describe('compteurs', () => {
     expect(resultat.planifiees).toBe(0);
   });
 
-  it('compte comme en retard un fichier téléversé mais non mis en ligne', () => {
-    // Le fichier est arrivé, la publication n'est pas sortie : elle est en retard.
+  it('compte comme livrée, et non en retard, une ligne déposée après son échéance', () => {
+    // Le fichier est arrivé : la ligne attend l'encadrement, elle est livrée.
     const resultat = compteurs(
       [ligne({ statut: 'TELEVERSE', dateDiffusionPrevue: jour(2026, 1, 10) })],
       AUJOURDHUI,
     );
 
-    expect(resultat.enRetard).toBe(1);
-    expect(resultat.televersees).toBe(0);
+    expect(resultat.enRetard).toBe(0);
+    expect(resultat.televersees).toBe(1);
   });
 
   it('ne compte pas en retard une ligne mise en ligne, même tardivement', () => {
@@ -573,9 +573,9 @@ describe('compteurs : produits en attente de mise en ligne', () => {
     const resultat = compteurs(lignes, AUJOURDHUI);
 
     expect(resultat.enAttenteDePublication).toBe(1);
-    // Elle reste un retard dans la partition : rien n'est en ligne.
-    expect(resultat.enRetard).toBe(1);
-    expect(resultat.televersees).toBe(0);
+    // Dans la partition, elle est livrée : elle attend la mise en ligne.
+    expect(resultat.enRetard).toBe(0);
+    expect(resultat.televersees).toBe(1);
   });
 
   it('compte une ligne livrée dont l’échéance est à venir', () => {

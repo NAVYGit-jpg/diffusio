@@ -422,12 +422,14 @@ export function compteurs(
 
     if (estMiseEnLigne(ligne)) {
       resultat.misesEnLigne += 1;
-    } else if (estEchue(ligne, aujourdhui)) {
-      // A file may well have been uploaded; as long as it is not online, the
-      // publication is late — that is what §10 measures.
-      resultat.enRetard += 1;
     } else if (ligne.statut === 'TELEVERSE') {
+      // Delivered comes before late: once the files are handed over, the line
+      // waits on the supervisors, not on the point focal. Counting it as late
+      // hid every delivery past its date — the chart showed no « Livrées » at
+      // all while the « État du calendrier » screen listed them.
       resultat.televersees += 1;
+    } else if (estEchue(ligne, aujourdhui)) {
+      resultat.enRetard += 1;
     } else {
       resultat.planifiees += 1;
     }

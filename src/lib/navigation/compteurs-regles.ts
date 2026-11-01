@@ -27,6 +27,7 @@ export const ONGLETS_AVEC_COMPTEUR = [
   '/imminentes',
   '/produits-charges',
   '/retards',
+  '/etat-calendrier',
   '/equipe',
   '/notifications',
   '/discussion',

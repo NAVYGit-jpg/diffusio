@@ -121,7 +121,9 @@ export async function GET(requete: Request): Promise<Response> {
     },
   });
 
-  const sources: LigneSource[] = lignes.map((ligne) => {
+  const sources: LigneSource[] = lignes
+    .filter((ligne) => ligne.statut !== 'ANNULE')
+    .map((ligne) => {
     const element = ligne.publication ?? ligne.indicateur;
 
     return {
