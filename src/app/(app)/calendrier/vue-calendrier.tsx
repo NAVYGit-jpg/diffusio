@@ -570,7 +570,7 @@ export function VueCalendrier({
         )}
 
         {apercuVisible && apercu.apercu && apercu.apercu.length > 0 && (
-          <div className="mt-6 rounded-md border border-primary/40 bg-primary/5 p-4">
+          <div className="mt-6 rounded-3xl border border-primary/30 bg-card p-5 shadow-[var(--elevation-3)]">
             <h3 className="font-medium">
               Prévisualisation — {apercu.apercu.length} ligne(s)
             </h3>
