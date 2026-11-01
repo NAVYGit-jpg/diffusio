@@ -6,10 +6,11 @@ import {
   CircleCheck,
   Download,
   FileText,
+  FolderUp,
+  Gauge,
   Globe,
   LoaderCircle,
   Save,
-  Upload,
 } from 'lucide-react';
 import { useActionState, useEffect, useState, useTransition } from 'react';
 import { toast } from 'sonner';
@@ -31,6 +32,8 @@ import { formaterJJMMAAAA } from '@/lib/calendrier/dates';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import { cn } from '@/lib/utils';
+import { DepotFichier } from './depot-fichier';
 import {
   type EtatLivrable,
   enregistrerLivrableAction,
@@ -80,56 +83,6 @@ export type DetailLigne = {
 
 const ETAT_LIVRABLE: EtatLivrable = {};
 const ETAT_MISE_EN_LIGNE: EtatMiseEnLigne = {};
-
-/**
- * One named upload slot inside the single deliverable form.
- *
- * Not a form of its own: the file travels with the rest when the user presses
- * "Enregistrer". The field is never `required` — somebody correcting a value on
- * a line whose PDF is already stored must not be forced to pick it again.
- *
- * `accept` only guides the file picker. The stored type is derived from the
- * file itself, so a spreadsheet dropped in the PDF slot is still filed as a
- * spreadsheet — the slots organise the screen, they do not decide the truth.
- */
-function DepotFichier({
-  identifiant,
-  champ,
-  intitule,
-  precision,
-  accept,
-  depose,
-}: {
-  identifiant: string;
-  champ: string;
-  intitule: string;
-  precision: string;
-  accept: string;
-  depose: boolean;
-}) {
-  return (
-    <div className="space-y-1.5">
-      <Label htmlFor={identifiant} className="flex items-center gap-2">
-        <Upload className="size-4 text-muted-foreground" aria-hidden />
-        {intitule}
-        {depose && (
-          <Badge
-            variant="outline"
-            className="border-emerald-300 bg-emerald-100 text-emerald-900 dark:border-emerald-500/40 dark:bg-emerald-500/20 dark:text-emerald-200"
-          >
-            Déposé
-          </Badge>
-        )}
-      </Label>
-      <Input id={identifiant} name={champ} type="file" accept={accept} />
-      <p className="text-xs text-muted-foreground">
-        {depose
-          ? 'Choisir un nouveau fichier créera une version ; l’ancienne reste consultable.'
-          : precision}
-      </p>
-    </div>
-  );
-}
 
 function formaterTaille(octets: number): string {
   if (octets < 1024) return `${octets} o`;
@@ -281,7 +234,11 @@ export function DialogueLivrable({
 
             {/* -------------------------------------------------- fichiers */}
             <section className="space-y-3">
-              <h3 className="font-medium">Fichiers</h3>
+              <EnTeteSection
+                Icone={FolderUp}
+                titre="Fichiers"
+                teinte="bg-sky-500/12 text-sky-700 dark:text-sky-400"
+              />
 
               {ligne.fichiers.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
@@ -338,6 +295,7 @@ export function DialogueLivrable({
                     }
                     accept=".pdf"
                     depose={aUnPdf}
+                    genre="pdf"
                   />
 
                   <DepotFichier
@@ -347,6 +305,7 @@ export function DialogueLivrable({
                     precision="Facultatif — .xlsx, .xls ou .csv, 20 Mo maximum"
                     accept=".xlsx,.xls,.csv"
                     depose={aUnExcel}
+                    genre="tableur"
                   />
                 </div>
               )}
@@ -358,60 +317,27 @@ export function DialogueLivrable({
                 <Separator />
 
                 <section className="space-y-3">
-                  <h3 className="font-medium">
-                    {ligne.elementType === 'PUBLICATION'
-                      ? 'Valeurs des indicateurs rattachés'
-                      : 'Valeur de l’indicateur'}
-                  </h3>
+                  <EnTeteSection
+                    Icone={Gauge}
+                    titre={
+                      ligne.elementType === 'PUBLICATION'
+                        ? 'Valeurs des indicateurs rattachés'
+                        : 'Valeur de l’indicateur'
+                    }
+                    teinte="bg-violet-500/12 text-violet-700 dark:text-violet-400"
+                    compteur={ligne.indicateursASaisir.length}
+                  />
 
                   {ligne.indicateursASaisir.map((indicateur) => {
                     const existante = valeurDe(indicateur.id);
 
                     return (
-                      <div
+                      <CarteIndicateur
                         key={indicateur.id}
-                        className="space-y-2 rounded-md border p-3"
-                      >
-                        <Label htmlFor={`valeur_${indicateur.id}`}>
-                          {indicateur.nom}
-                          {indicateur.unite && (
-                            <span className="ml-1 text-xs text-muted-foreground">
-                              ({indicateur.unite})
-                            </span>
-                          )}
-                        </Label>
-
-                        <Input
-                          id={`valeur_${indicateur.id}`}
-                          name={`valeur_${indicateur.id}`}
-                          defaultValue={existante.valeur}
-                          disabled={dejaEnLigne}
-                          placeholder="Valeur"
-                        />
-
-                        <div className="flex items-center gap-2">
-                          <Switch
-                            id={`indisponible_${indicateur.id}`}
-                            name={`indisponible_${indicateur.id}`}
-                            defaultChecked={existante.nonDisponible}
-                            disabled={dejaEnLigne}
-                          />
-                          <Label
-                            htmlFor={`indisponible_${indicateur.id}`}
-                            className="text-sm font-normal"
-                          >
-                            Donnée non disponible
-                          </Label>
-                        </div>
-
-                        <Textarea
-                          name={`commentaire_${indicateur.id}`}
-                          rows={2}
-                          defaultValue={existante.commentaire}
-                          disabled={dejaEnLigne}
-                          placeholder="Commentaire — obligatoire si la donnée n’est pas disponible"
-                        />
-                      </div>
+                        indicateur={indicateur}
+                        existante={existante}
+                        verrouille={dejaEnLigne}
+                      />
                     );
                   })}
 
@@ -522,5 +448,113 @@ export function DialogueLivrable({
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+/** Section title with a tinted icon chip: the dialog reads as distinct blocks. */
+function EnTeteSection({
+  Icone,
+  titre,
+  teinte,
+  compteur,
+}: {
+  Icone: typeof FolderUp;
+  titre: string;
+  teinte: string;
+  compteur?: number;
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      <span className={cn('flex size-9 items-center justify-center rounded-xl shadow-[var(--elevation-1)]', teinte)}>
+        <Icone className="size-[18px]" aria-hidden />
+      </span>
+      <h3 className="text-[15px] font-semibold tracking-tight">{titre}</h3>
+      {compteur !== undefined && (
+        <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+          {compteur}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/**
+ * One indicator to fill in. Marking the figure unavailable turns the card
+ * amber and moves the eye to the comment, which then becomes mandatory.
+ */
+function CarteIndicateur({
+  indicateur,
+  existante,
+  verrouille,
+}: {
+  indicateur: IndicateurLigne;
+  existante: { valeur: string; commentaire: string; nonDisponible: boolean };
+  verrouille: boolean;
+}) {
+  const [indisponible, setIndisponible] = useState(existante.nonDisponible);
+
+  return (
+    <div
+      className={cn(
+        'relative space-y-3 overflow-hidden rounded-2xl border bg-card p-4 pl-5 shadow-[var(--elevation-2)] transition-colors',
+        indisponible && 'border-amber-300/70 bg-amber-50/60 dark:bg-amber-500/5',
+      )}
+    >
+      <span
+        aria-hidden
+        className="absolute inset-y-0 left-0 w-1"
+        style={{
+          backgroundImage: indisponible
+            ? 'linear-gradient(180deg, #f59e0b, #d97706)'
+            : 'var(--gradient-primaire)',
+        }}
+      />
+
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Label htmlFor={`valeur_${indicateur.id}`} className="text-sm font-semibold">
+          {indicateur.nom}
+        </Label>
+        {indicateur.unite && (
+          <span className="rounded-full bg-[var(--couleur-primaire-douce)] px-2.5 py-0.5 text-xs font-medium text-[var(--couleur-primaire-lisible)]">
+            {indicateur.unite}
+          </span>
+        )}
+      </div>
+
+      <Input
+        id={`valeur_${indicateur.id}`}
+        name={`valeur_${indicateur.id}`}
+        defaultValue={existante.valeur}
+        disabled={verrouille}
+        placeholder={indisponible ? 'Non disponible' : 'Saisissez la valeur'}
+        className={cn('text-base font-medium tabular-nums', indisponible && 'opacity-50')}
+      />
+
+      <div className="flex items-center gap-2.5 rounded-xl bg-muted/50 px-3 py-2">
+        <Switch
+          id={`indisponible_${indicateur.id}`}
+          name={`indisponible_${indicateur.id}`}
+          defaultChecked={existante.nonDisponible}
+          onCheckedChange={setIndisponible}
+          disabled={verrouille}
+        />
+        <Label htmlFor={`indisponible_${indicateur.id}`} className="text-sm font-normal">
+          Donnée non disponible
+        </Label>
+      </div>
+
+      <Textarea
+        name={`commentaire_${indicateur.id}`}
+        rows={2}
+        defaultValue={existante.commentaire}
+        disabled={verrouille}
+        placeholder={
+          indisponible
+            ? 'Expliquez pourquoi la donnée n’est pas disponible (obligatoire)'
+            : 'Commentaire (facultatif)'
+        }
+        className={cn('rounded-xl', indisponible && 'border-amber-400 ring-2 ring-amber-400/20')}
+      />
+    </div>
   );
 }
