@@ -15,6 +15,7 @@ import {
   trierLignesExport,
 } from '@/lib/exports/calendrier-excel';
 import { prisma } from '@/lib/prisma';
+import { avecDescendants } from '@/lib/structures/descendance';
 
 /**
  * Calendar export to Excel (cahier des charges §9.3 and §10).
@@ -85,7 +86,11 @@ export async function GET(requete: Request): Promise<Response> {
       return new Response("Cette structure n'existe plus.", { status: 404 });
     }
 
-    filtreStructures = { in: [structureDemandee] };
+    // A parent structure exports with its children, within the perimeter.
+    const famille = await avecDescendants(session.user.organisationId, [structureDemandee]);
+    filtreStructures = {
+      in: famille.filter((id) => id === structureDemandee || canAccessStructure(acteur, id)),
+    };
   } else if (perimetre !== null) {
     filtreStructures = { in: perimetre };
   }
@@ -157,7 +162,11 @@ export async function GET(requete: Request): Promise<Response> {
   if (parametres.get('format') === 'pdf') {
     const charte = await chargerChartePdf(session.user.organisationId);
     const perimetreLibelle =
-      structuresPresentes.size === 1 ? [...structuresPresentes][0] : `${structuresPresentes.size} structures`;
+      structuresPresentes.size === 1
+        ? [...structuresPresentes][0]
+        : structureUnique
+          ? `${structureUnique.nom} et ses structures rattachées`
+          : `${structuresPresentes.size} structures`;
     // Glossary: every indicator of the calendar, with its own lines or
     // published inside one of the calendar's publications.
     const actives = lignes.filter((ligne) => ligne.statut !== 'ANNULE');

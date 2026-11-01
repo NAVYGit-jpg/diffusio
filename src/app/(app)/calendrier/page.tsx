@@ -7,6 +7,8 @@ import { perimetreStructures } from '@/lib/auth/permissions';
 import { exigerActeur } from '@/lib/auth/session';
 import { nombreDeLignes } from '@/lib/calendrier/moteur';
 import { prisma } from '@/lib/prisma';
+import { avecDescendants } from '@/lib/structures/descendance';
+import { StructuresRattachees } from './structures-rattachees';
 import { VueCalendrier } from './vue-calendrier';
 
 export const metadata: Metadata = {
@@ -75,6 +77,12 @@ export default async function PageCalendrier({
       </div>
     );
   }
+
+  // Children of the structure on screen, within the perimeter: their
+  // calendars are shown under this one, each in its own panel.
+  const rattachees = (await avecDescendants(acteur.organisationId, [structureId])).filter(
+    (id) => id !== structureId && structures.some((structure) => structure.id === id),
+  );
 
   const [publications, indicateurs, calendrier] = await Promise.all([
     prisma.publication.findMany({
@@ -227,6 +235,12 @@ export default async function PageCalendrier({
               }
             : null
         }
+      />
+
+      <StructuresRattachees
+        organisationId={acteur.organisationId}
+        structureIds={rattachees}
+        annee={annee}
       />
     </div>
   );

@@ -8,6 +8,7 @@ import { prisma } from '@/lib/prisma';
 import { aplatir, construireArborescence } from '@/lib/structures/arborescence';
 import { libelleQuotaSuperAdmin } from '@/lib/utilisateurs/regles';
 import { FiltreStructure } from './filtre-structure';
+import { avecDescendants } from '@/lib/structures/descendance';
 import { TableauUtilisateurs } from './tableau-utilisateurs';
 
 export const metadata: Metadata = {
@@ -25,7 +26,11 @@ export default async function PageUtilisateurs({
     redirect('/tableau-de-bord');
   }
 
-  const structuresFiltrees = lireParametres(await searchParams, 'structure');
+  // Choosing a parent structure lists the people of its children too.
+  const structuresFiltrees = await avecDescendants(
+    acteur.organisationId,
+    lireParametres(await searchParams, 'structure'),
+  );
 
   /**
    * « Appartenir » à une structure n'a pas le même sens selon le rôle : un

@@ -6,6 +6,7 @@ import {
   construireArborescence,
   creeraitUnCycle,
   descendants,
+  etendreAuxDescendants,
   parentsPossibles,
 } from './arborescence';
 
@@ -188,5 +189,31 @@ describe('parentsPossibles', () => {
     expect(parentsPossibles(HIERARCHIE, 'service-2')).toHaveLength(
       HIERARCHIE.length - 1,
     );
+  });
+});
+
+describe('etendreAuxDescendants', () => {
+  const arbre = [
+    { id: 'dg', parentId: null },
+    { id: 'dsm', parentId: 'dg' },
+    { id: 'sp', parentId: 'dsm' },
+    { id: 'sc', parentId: 'dsm' },
+    { id: 'drh', parentId: 'dg' },
+  ];
+
+  it('ajoute tous les niveaux sous une structure parente', () => {
+    expect(etendreAuxDescendants(arbre, ['dsm']).sort()).toEqual(['dsm', 'sc', 'sp']);
+  });
+
+  it('laisse seule une structure sans enfant', () => {
+    expect(etendreAuxDescendants(arbre, ['drh'])).toEqual(['drh']);
+  });
+
+  it('ne duplique pas une structure choisie avec son parent', () => {
+    expect(etendreAuxDescendants(arbre, ['dsm', 'sp']).sort()).toEqual(['dsm', 'sc', 'sp']);
+  });
+
+  it('ne renvoie rien sans filtre', () => {
+    expect(etendreAuxDescendants(arbre, [])).toEqual([]);
   });
 });

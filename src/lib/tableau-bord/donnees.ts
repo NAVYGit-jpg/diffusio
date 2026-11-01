@@ -4,6 +4,7 @@ import type { ActeurSession } from '@/lib/auth/permissions';
 import { perimetreStructures } from '@/lib/auth/permissions';
 import { normaliserJour } from '@/lib/calendrier/dates';
 import { prisma } from '@/lib/prisma';
+import { avecDescendants } from '@/lib/structures/descendance';
 import type { LigneIndicateur } from './indicateurs';
 
 /**
@@ -66,7 +67,11 @@ export async function chargerTableauDeBord(
   acteur: ActeurSession & { organisationId: string },
   filtres: FiltresTableauDeBord,
 ): Promise<ContexteTableauDeBord> {
-  const lisibles = structuresLisibles(acteur, filtres.structureIds);
+  // A parent structure brings its children along; the perimeter still applies.
+  const lisibles = structuresLisibles(
+    acteur,
+    await avecDescendants(acteur.organisationId, filtres.structureIds),
+  );
 
   // The dropdown must keep offering the whole perimeter even once a structure
   // is ticked: narrowing it to the current selection would make a second choice

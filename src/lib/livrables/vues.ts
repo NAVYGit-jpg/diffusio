@@ -3,6 +3,7 @@ import 'server-only';
 import type { ActeurSession } from '@/lib/auth/permissions';
 import { perimetreStructures } from '@/lib/auth/permissions';
 import { prisma } from '@/lib/prisma';
+import { avecDescendants } from '@/lib/structures/descendance';
 import type { DetailLigne } from '@/app/(app)/calendrier/dialogue-livrable';
 
 /**
@@ -88,7 +89,11 @@ export async function chargerLignesLivrables(
     return [];
   }
 
-  const lisibles = structuresLisibles(perimetre, filtre.structureIds ?? []);
+  // A parent structure brings its children along; the perimeter still applies.
+  const lisibles = structuresLisibles(
+    perimetre,
+    await avecDescendants(acteur.organisationId, filtre.structureIds ?? []),
+  );
 
   if (lisibles !== null && lisibles.length === 0) {
     return [];

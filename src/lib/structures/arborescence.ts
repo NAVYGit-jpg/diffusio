@@ -189,3 +189,25 @@ export function parentsPossibles<T extends NoeudPlat>(
     (structure) => structure.id !== id && !interdits.has(structure.id),
   );
 }
+
+/**
+ * The requested structures plus all their descendants.
+ *
+ * Filtering on a parent structure means « this structure and everything
+ * attached to it »: a directorate's figures include its services. A structure
+ * without children is returned alone.
+ */
+export function etendreAuxDescendants(
+  structures: readonly Pick<NoeudPlat, 'id' | 'parentId'>[],
+  ids: readonly string[],
+): string[] {
+  const resultat = new Set(ids);
+
+  for (const id of ids) {
+    for (const descendant of descendants(structures as readonly NoeudPlat[], id)) {
+      resultat.add(descendant);
+    }
+  }
+
+  return [...resultat];
+}
