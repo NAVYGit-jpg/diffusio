@@ -31,7 +31,21 @@ export type LigneApercu = {
   dateDebutCouverture: string;
   dateFinCouverture: string;
   dateDiffusionPrevue: string;
+  /** Identifies the line when the preview's checkboxes send it back. */
+  cle: string;
 };
+
+/**
+ * Key of a computed line: the element and the start of the period it covers,
+ * which is what identifies a line of the calendar.
+ */
+function cleLigne(ligne: {
+  elementType: string;
+  elementId: string;
+  dateDebutCouverture: Date;
+}): string {
+  return `${ligne.elementType}::${ligne.elementId}::${ligne.dateDebutCouverture.toISOString().slice(0, 10)}`;
+}
 
 export type EtatCalendrier = {
   apercu?: LigneApercu[];
@@ -344,6 +358,7 @@ export async function previsualiserCalendrierAction(
       dateDebutCouverture: ligne.dateDebutCouverture.toISOString(),
       dateFinCouverture: ligne.dateFinCouverture.toISOString(),
       dateDiffusionPrevue: ligne.dateDiffusionPrevue.toISOString(),
+      cle: cleLigne(ligne),
     })),
     aConfirmer: rapport.aConfirmer.map((paire) => ({
       nomElement: nommer(paire.calculee),
@@ -385,7 +400,7 @@ export async function genererCalendrierAction(
     }),
   ]);
 
-  const { calculees, erreurs } = calculerLignes(
+  const { calculees: toutesCalculees, erreurs } = calculerLignes(
     elements,
     selection.annee,
     feries,
@@ -396,8 +411,22 @@ export async function genererCalendrierAction(
     return { erreur: erreurs.join(' ') };
   }
 
+  // Only the lines ticked in the preview: a monthly series may be wanted for
+  // January and April alone. Unticked lines are neither added nor touched.
+  const retenues =
+    donnees.get('filtrerLignes') === '1'
+      ? new Set(donnees.getAll('lignesRetenues').map(String))
+      : null;
+  const calculees = retenues
+    ? toutesCalculees.filter((ligne) => retenues.has(cleLigne(ligne)))
+    : toutesCalculees;
+
   if (calculees.length === 0) {
-    return { erreur: 'Aucune ligne à générer.' };
+    return {
+      erreur: retenues
+        ? 'Cochez au moins une ligne à enregistrer.'
+        : 'Aucune ligne à générer.',
+    };
   }
 
   const calendrier = await prisma.calendrier.upsert({

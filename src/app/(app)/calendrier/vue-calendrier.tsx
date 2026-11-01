@@ -37,6 +37,7 @@ import {
   previsualiserCalendrierAction,
 } from '@/lib/actions/calendrier';
 import { ANNEES_DISPONIBLES } from '@/lib/calendrier/annees';
+import { cn } from '@/lib/utils';
 import {
   classesBadgeStatut,
   libelleStatut,
@@ -133,11 +134,27 @@ export function VueCalendrier({
     Record<string, { debut: string; fin: string }>
   >({});
 
+  // Lines unticked in the preview. Every line starts ticked: generating the
+  // whole series stays one click, and keeping a few is a matter of unticking.
+  const [exclues, setExclues] = useState<Set<string>>(new Set());
+
   useEffect(() => {
     if (apercu.apercu && apercu.apercu.length > 0) {
       setApercuVisible(true);
+      setExclues(new Set());
     }
   }, [apercu]);
+
+  const basculerLigne = (cle: string) =>
+    setExclues((avant) => {
+      const apres = new Set(avant);
+      if (apres.has(cle)) {
+        apres.delete(cle);
+      } else {
+        apres.add(cle);
+      }
+      return apres;
+    });
 
   useEffect(() => {
     if (resultat.applique) {
@@ -580,6 +597,27 @@ export function VueCalendrier({
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-12">
+                      <input
+                        type="checkbox"
+                        className="size-4 cursor-pointer accent-[var(--couleur-primaire-lisible)]"
+                        aria-label="Tout sélectionner ou tout désélectionner"
+                        checked={exclues.size === 0}
+                        ref={(caseTout) => {
+                          if (caseTout) {
+                            caseTout.indeterminate =
+                              exclues.size > 0 && exclues.size < apercu.apercu!.length;
+                          }
+                        }}
+                        onChange={() =>
+                          setExclues(
+                            exclues.size === 0
+                              ? new Set(apercu.apercu!.map((ligne) => ligne.cle))
+                              : new Set(),
+                          )
+                        }
+                      />
+                    </TableHead>
                     <TableHead>Élément</TableHead>
                     <TableHead>Période</TableHead>
                     <TableHead>Couverture</TableHead>
@@ -588,7 +626,24 @@ export function VueCalendrier({
                 </TableHeader>
                 <TableBody>
                   {apercu.apercu.map((ligne, index) => (
-                    <TableRow key={`${ligne.elementId}-${index}`}>
+                    <TableRow
+                      key={`${ligne.elementId}-${index}`}
+                      className={cn(
+                        'cursor-pointer',
+                        exclues.has(ligne.cle) && 'opacity-45',
+                      )}
+                      onClick={() => basculerLigne(ligne.cle)}
+                    >
+                      <TableCell>
+                        <input
+                          type="checkbox"
+                          className="size-4 cursor-pointer accent-[var(--couleur-primaire-lisible)]"
+                          aria-label={`Retenir ${ligne.nomElement} — ${ligne.libellePeriode}`}
+                          checked={!exclues.has(ligne.cle)}
+                          onClick={(evenement) => evenement.stopPropagation()}
+                          onChange={() => basculerLigne(ligne.cle)}
+                        />
+                      </TableCell>
                       <TableCell className="text-sm">{ligne.nomElement}</TableCell>
                       <TableCell className="text-sm">{ligne.libellePeriode}</TableCell>
                       <TableCell className="text-sm tabular-nums text-muted-foreground">
@@ -604,12 +659,24 @@ export function VueCalendrier({
               </Table>
             </div>
 
-            <form action={generer} className="mt-4 flex flex-wrap justify-end gap-2">
+            <form action={generer} className="mt-4 flex flex-wrap items-center justify-end gap-3">
               {champsSelection}
+              <input type="hidden" name="filtrerLignes" value="1" />
+              {apercu.apercu
+                .filter((ligne) => !exclues.has(ligne.cle))
+                .map((ligne) => (
+                  <input key={ligne.cle} type="hidden" name="lignesRetenues" value={ligne.cle} />
+                ))}
+              <span className="text-sm text-muted-foreground">
+                {apercu.apercu.length - exclues.size} ligne(s) sur {apercu.apercu.length} retenue(s)
+              </span>
               {apercu.aConfirmer && apercu.aConfirmer.length > 0 && (
                 <input type="hidden" name="ecraserManuelles" value="1" />
               )}
-              <Button type="submit" disabled={generationEnCours}>
+              <Button
+                type="submit"
+                disabled={generationEnCours || exclues.size === apercu.apercu.length}
+              >
                 {generationEnCours && (
                   <LoaderCircle className="animate-spin" aria-hidden />
                 )}
