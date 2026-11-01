@@ -128,14 +128,30 @@ export function VueDiscussion({
 
   // Opening a thread marks it read, and the newest message is what matters:
   // scrolling to the bottom saves a gesture on a long exchange.
+  //
+  // Keyed on the thread and its length, not on the `active` object: marking
+  // read refreshes the page, which hands a new object every time and used to
+  // yank the reader back on each refresh. Only the thread scrolls — not the
+  // page, which `scrollIntoView` would also move.
+  const idActive = active?.id;
+  const nombreMessages = active?.messages.length ?? 0;
+
   useEffect(() => {
-    if (!active) {
+    if (!idActive) {
       return;
     }
 
-    finDuFil.current?.scrollIntoView({ block: 'end' });
-    void marquerConversationLueAction(active.id);
-  }, [active]);
+    const fil = finDuFil.current?.parentElement;
+    if (fil) {
+      fil.scrollTop = fil.scrollHeight;
+    }
+  }, [idActive, nombreMessages]);
+
+  useEffect(() => {
+    if (idActive) {
+      void marquerConversationLueAction(idActive);
+    }
+  }, [idActive]);
 
   return (
     <>
