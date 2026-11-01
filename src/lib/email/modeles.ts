@@ -21,6 +21,8 @@ type Organisation = {
   sigle: string;
   couleurPrimaire: string;
   logoUrl: string | null;
+  /** Set when the super admin uploaded a logo, served by /api/logo. */
+  logoMimeType?: string | null;
 };
 
 /** Absolute address of the DIFFUSIO wordmark. See `adresseApplication`. */
@@ -79,8 +81,15 @@ function enveloppe(
   const logoDiffusio = adresseLogo();
   const { fort, doux } = teintes(organisation);
 
-  const logo = organisation.logoUrl
-    ? `<img src="${organisation.logoUrl}" alt="${organisation.nom}" style="max-height:40px;display:block;margin:0 auto">`
+  // The uploaded logo first: the application serves it itself, whereas a
+  // pasted address (often a search-engine thumbnail) breaks in mail clients.
+  const adresseLogoOrganisation = organisation.logoMimeType
+    ? `${adresseApplication()}/api/logo`
+    : organisation.logoUrl;
+
+  // No name under the logo: the logo already says who writes.
+  const logo = adresseLogoOrganisation
+    ? `<img src="${adresseLogoOrganisation}" alt="${organisation.sigle || 'Logo'}" style="max-height:48px;display:block;margin:0 auto">`
     : `<img src="${logoDiffusio}" alt="DIFFUSIO" width="170" style="max-height:32px;width:auto;display:block;margin:0 auto">`;
 
   const pastille = etiquette
@@ -103,7 +112,6 @@ function enveloppe(
             <table role="presentation" cellpadding="0" cellspacing="0"><tr>
               <td style="background:#ffffff;border-radius:12px;padding:10px 18px">${logo}</td>
             </tr></table>
-            <p style="margin:14px 0 0;color:#ffffff;opacity:0.85;font-size:13px;letter-spacing:0.04em">${organisation.nom}</p>
           </td>
         </tr>
         <tr><td style="height:4px;background:${doux};font-size:0;line-height:0">&nbsp;</td></tr>

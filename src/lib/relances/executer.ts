@@ -56,6 +56,7 @@ export async function executerRelances(
       sigle: true,
       couleurPrimaire: true,
       logoUrl: true,
+      logoMimeType: true,
       joursRappel: true,
       frequenceRelanceRetardJours: true,
     },

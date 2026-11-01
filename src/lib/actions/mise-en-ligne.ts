@@ -156,7 +156,7 @@ export async function mettreEnLigneAction(
   const [organisation, pointsFocaux, copieObligatoire] = await Promise.all([
     prisma.organisation.findUniqueOrThrow({
       where: { id: acteur.organisationId },
-      select: { nom: true, sigle: true, couleurPrimaire: true, logoUrl: true },
+      select: { nom: true, sigle: true, couleurPrimaire: true, logoUrl: true, logoMimeType: true },
     }),
     pointsFocauxDe(acteur.organisationId, ligne.calendrier.structureId),
     // §7 — the structure's team and its administrators are always in copy; the

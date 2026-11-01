@@ -70,8 +70,8 @@ async function main(): Promise<void> {
   } else {
     organisation = await prisma.organisation.create({
       data: {
-        nom: 'Organisation de démonstration',
-        sigle: 'DEMO',
+        nom: 'Agence Nationale de la Statistique',
+        sigle: 'ANStat',
         pays: "Côte d'Ivoire",
         fuseauHoraire: 'Africa/Abidjan',
         emailExpediteur: process.env.EMAIL_EXPEDITEUR ?? 'no-reply@example.org',
