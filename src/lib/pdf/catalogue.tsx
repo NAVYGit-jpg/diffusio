@@ -79,20 +79,20 @@ export function CataloguePdf({
           <Tableau
             charte={charte}
             colonnes={[
-              { titre: 'Publication', largeur: 36 },
-              { titre: 'Structure', largeur: 12 },
-              { titre: 'Domaine', largeur: 18 },
+              { titre: 'Publication', largeur: 42 },
+              { titre: 'Structure', largeur: 14 },
+              { titre: 'Domaine', largeur: 20 },
               { titre: 'Périodicité', largeur: 14 },
-              { titre: 'Délai', largeur: 8, aDroite: true },
-              { titre: 'Point focal', largeur: 12 },
+              { titre: 'Délai', largeur: 10, aDroite: true },
             ]}
+            // No point focal: the printed catalogue circulates outside the
+            // organisation and names no one.
             lignes={publications.map((element) => [
               element.nom,
               element.structure,
               element.domaine ?? '—',
               libellePeriodicite(element.periodicite),
               `${element.delaiJours} j`,
-              element.pointFocal ?? '—',
             ])}
           />
         </View>
