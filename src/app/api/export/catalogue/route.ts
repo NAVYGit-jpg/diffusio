@@ -1,4 +1,5 @@
 import ExcelJS from 'exceljs';
+import { appliquerPolice } from '@/lib/exports/police';
 
 import { auth } from '@/auth';
 import { formaterJJMMAAAA } from '@/lib/calendrier/dates';
@@ -119,6 +120,8 @@ async function classeurCatalogue(elements: ElementCatalogue[], charte: ChartePdf
     element.delaiJours,
     element.actif ? 'Oui' : 'Non',
   ]));
+
+  appliquerPolice(classeur);
 
   return classeur.xlsx.writeBuffer();
 }

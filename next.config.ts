@@ -15,6 +15,12 @@ const nextConfig: NextConfig = {
 
   serverExternalPackages: ['@react-pdf/renderer'],
 
+  // The PDF typeface is read from disk at render time: make sure the files
+  // travel with the functions that generate documents.
+  outputFileTracingIncludes: {
+    '/api/**': ['./src/lib/pdf/polices/**'],
+  },
+
   experimental: {
     /**
      * Ceiling on the body of a Server Action.

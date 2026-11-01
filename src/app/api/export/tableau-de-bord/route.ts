@@ -1,4 +1,5 @@
 import ExcelJS from 'exceljs';
+import { appliquerPolice } from '@/lib/exports/police';
 
 import { auth } from '@/auth';
 import { formaterJJMMAAAA } from '@/lib/calendrier/dates';
@@ -387,6 +388,8 @@ export async function GET(requete: Request): Promise<Response> {
       ligneClassement += 1;
     });
   }
+
+  appliquerPolice(classeur);
 
   const tampon = await classeur.xlsx.writeBuffer();
 

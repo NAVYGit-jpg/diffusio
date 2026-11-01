@@ -1,4 +1,5 @@
 import ExcelJS from 'exceljs';
+import { appliquerPolice } from '@/lib/exports/police';
 
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
@@ -133,6 +134,9 @@ export async function GET() {
   } else {
     codes.addRows(structures);
   }
+
+  appliquerPolice(classeur);
+
 
   const tampon = await classeur.xlsx.writeBuffer();
 

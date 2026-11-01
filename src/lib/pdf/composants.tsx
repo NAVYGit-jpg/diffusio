@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import { Document, Image, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
+import path from 'node:path';
+import { Document, Font, Image, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
 
 import type { ChartePdf } from './charte';
 
@@ -11,6 +12,23 @@ import type { ChartePdf } from './charte';
  * organisation's colours and logo frame every page.
  */
 
+// Montserrat, the house typeface of every generated document. The files ship
+// with the code (next.config traces them into the export functions).
+const POLICES = path.join(process.cwd(), 'src/lib/pdf/polices');
+
+Font.register({
+  family: 'Montserrat',
+  fonts: [
+    { src: path.join(POLICES, 'montserrat-latin-400-normal.woff'), fontWeight: 400 },
+    { src: path.join(POLICES, 'montserrat-latin-400-italic.woff'), fontWeight: 400, fontStyle: 'italic' },
+    { src: path.join(POLICES, 'montserrat-latin-600-normal.woff'), fontWeight: 600 },
+    { src: path.join(POLICES, 'montserrat-latin-700-normal.woff'), fontWeight: 700 },
+  ],
+});
+
+// No hyphenation: French words cut by an English rule read badly.
+Font.registerHyphenationCallback((mot) => [mot]);
+
 const GRIS = '#52525b';
 const GRIS_CLAIR = '#e4e4e7';
 const ENCRE = '#18181b';
@@ -20,7 +38,7 @@ const s = StyleSheet.create({
     paddingTop: 78,
     paddingBottom: 56,
     paddingHorizontal: 40,
-    fontFamily: 'Helvetica',
+    fontFamily: 'Montserrat',
     fontSize: 9.5,
     color: ENCRE,
   },
@@ -48,7 +66,7 @@ const s = StyleSheet.create({
     borderTopColor: GRIS_CLAIR,
     paddingTop: 6,
   },
-  titreSection: { fontSize: 13, fontFamily: 'Helvetica-Bold', marginBottom: 8, marginTop: 14 },
+  titreSection: { fontSize: 13, fontFamily: 'Montserrat', fontWeight: 700, marginBottom: 8, marginTop: 14 },
   sousTitre: { fontSize: 8.5, color: GRIS, marginBottom: 8 },
 });
 
@@ -59,7 +77,7 @@ function formatImage(donnees: Buffer): 'png' | 'jpg' {
 export function Logo({ charte, hauteur }: { charte: ChartePdf; hauteur: number }) {
   if (!charte.logo) {
     return (
-      <Text style={{ fontSize: hauteur * 0.55, fontFamily: 'Helvetica-Bold', color: charte.primaire }}>
+      <Text style={{ fontSize: hauteur * 0.55, fontFamily: 'Montserrat', fontWeight: 700, color: charte.primaire }}>
         {charte.sigle || charte.nom}
       </Text>
     );
@@ -105,7 +123,7 @@ export function PageDeGarde({
   details: [string, string][];
 }) {
   return (
-    <Page size="A4" style={{ fontFamily: 'Helvetica', color: ENCRE }}>
+    <Page size="A4" style={{ fontFamily: 'Montserrat', color: ENCRE }}>
       <View style={{ height: 250, backgroundColor: charte.primaire, padding: 44, justifyContent: 'space-between' }}>
         <View style={{ alignSelf: 'flex-start', backgroundColor: '#ffffff', borderRadius: 10, paddingVertical: 10, paddingHorizontal: 14 }}>
           <Logo charte={charte} hauteur={34} />
@@ -114,7 +132,7 @@ export function PageDeGarde({
           <Text style={{ color: '#ffffff', opacity: 0.75, fontSize: 9, letterSpacing: 2 }}>
             {surtitre.toUpperCase()}
           </Text>
-          <Text style={{ color: '#ffffff', fontSize: 24, fontFamily: 'Helvetica-Bold', marginTop: 8, lineHeight: 1.25 }}>
+          <Text style={{ color: '#ffffff', fontSize: 24, fontFamily: 'Montserrat', fontWeight: 700, marginTop: 8, lineHeight: 1.25 }}>
             {titre}
           </Text>
         </View>
@@ -123,7 +141,7 @@ export function PageDeGarde({
 
       <View style={{ padding: 44 }}>
         <Text style={{ fontSize: 9, color: GRIS, letterSpacing: 1.5 }}>PÉRIODE COUVERTE</Text>
-        <Text style={{ fontSize: 22, fontFamily: 'Helvetica-Bold', color: charte.primaire, marginTop: 6 }}>
+        <Text style={{ fontSize: 22, fontFamily: 'Montserrat', fontWeight: 700, color: charte.primaire, marginTop: 6 }}>
           {periode}
         </Text>
 
@@ -131,7 +149,7 @@ export function PageDeGarde({
           {details.map(([libelle, valeur]) => (
             <View key={libelle} style={{ flexDirection: 'row', paddingVertical: 9, borderBottomWidth: 0.5, borderBottomColor: GRIS_CLAIR }}>
               <Text style={{ width: 140, color: GRIS }}>{libelle}</Text>
-              <Text style={{ flex: 1, fontFamily: 'Helvetica-Bold' }}>{valeur}</Text>
+              <Text style={{ flex: 1, fontFamily: 'Montserrat', fontWeight: 700 }}>{valeur}</Text>
             </View>
           ))}
         </View>
@@ -214,7 +232,7 @@ export function GrilleIndicateurs({ charte, indicateurs }: { charte: ChartePdf; 
               }}
             >
               <Text style={{ fontSize: 7.5, color: enAvant ? '#ffffff' : GRIS }}>{indicateur.libelle}</Text>
-              <Text style={{ fontSize: 19, fontFamily: 'Helvetica-Bold', marginTop: 5, color: couleurValeur }}>
+              <Text style={{ fontSize: 19, fontFamily: 'Montserrat', fontWeight: 700, marginTop: 5, color: couleurValeur }}>
                 {indicateur.valeur}
               </Text>
               {indicateur.precision ? (
@@ -243,7 +261,7 @@ export function Tableau({ charte, colonnes, lignes }: { charte: ChartePdf; colon
               paddingHorizontal: 6,
               color: '#ffffff',
               fontSize: 7.5,
-              fontFamily: 'Helvetica-Bold',
+              fontFamily: 'Montserrat', fontWeight: 700,
               textAlign: colonne.aDroite ? 'right' : 'left',
             }}
           >
@@ -316,7 +334,7 @@ export function BarresHorizontales({
               }}
             />
           </View>
-          <Text style={{ width: '10%', textAlign: 'right', fontSize: 8, fontFamily: 'Helvetica-Bold' }}>{part.nombre}</Text>
+          <Text style={{ width: '10%', textAlign: 'right', fontSize: 8, fontFamily: 'Montserrat', fontWeight: 700 }}>{part.nombre}</Text>
         </View>
       ))}
     </View>

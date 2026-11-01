@@ -1,4 +1,5 @@
 import ExcelJS from 'exceljs';
+import { appliquerPolice } from '@/lib/exports/police';
 
 import { chargerChartePdf } from '@/lib/pdf/charte';
 import { genererCalendrierPdf } from '@/lib/pdf/calendrier';
@@ -155,7 +156,43 @@ export async function GET(requete: Request): Promise<Response> {
     const charte = await chargerChartePdf(session.user.organisationId);
     const perimetreLibelle =
       structuresPresentes.size === 1 ? [...structuresPresentes][0] : `${structuresPresentes.size} structures`;
-    const pdf = await genererCalendrierPdf(triees, charte, annee, perimetreLibelle, session.user.name ?? '');
+    // Glossary: every indicator of the calendar, with its own lines or
+    // published inside one of the calendar's publications.
+    const actives = lignes.filter((ligne) => ligne.statut !== 'ANNULE');
+    const indicateurs = await prisma.indicateur.findMany({
+      where: {
+        organisationId: session.user.organisationId,
+        deletedAt: null,
+        OR: [
+          { id: { in: actives.flatMap((ligne) => (ligne.indicateurId ? [ligne.indicateurId] : [])) } },
+          { publicationId: { in: actives.flatMap((ligne) => (ligne.publicationId ? [ligne.publicationId] : [])) } },
+        ],
+      },
+      select: {
+        nom: true,
+        description: true,
+        unite: true,
+        periodicite: true,
+        domaine: { select: { nom: true } },
+        publication: { select: { nom: true } },
+      },
+    });
+    const glossaire = indicateurs.map((indicateur) => ({
+      nom: indicateur.nom,
+      description: indicateur.description,
+      unite: indicateur.unite,
+      periodicite: indicateur.periodicite,
+      domaine: indicateur.domaine?.nom ?? null,
+      publication: indicateur.publication?.nom ?? null,
+    }));
+    const pdf = await genererCalendrierPdf(
+      triees,
+      charte,
+      annee,
+      perimetreLibelle,
+      session.user.name ?? '',
+      glossaire,
+    );
 
     return new Response(new Uint8Array(pdf), {
       headers: {
@@ -219,6 +256,8 @@ export async function GET(requete: Request): Promise<Response> {
     feuille.getRow(5).getCell(1).value =
       'Aucune ligne de calendrier pour cette année et ce périmètre.';
   }
+
+  appliquerPolice(classeur);
 
   const tampon = await classeur.xlsx.writeBuffer();
 
