@@ -90,6 +90,15 @@ async function envoyerViaBrevo(message: MessageEmail): Promise<ResultatEnvoi> {
     };
   }
 
+  const expediteur = process.env.EMAIL_EXPEDITEUR?.trim();
+
+  if (!expediteur) {
+    return {
+      envoye: false,
+      erreur: "EMAIL_EXPEDITEUR n'est pas définie alors que EMAIL_MODE vaut « prod ».",
+    };
+  }
+
   const reponse = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
     headers: {
@@ -99,8 +108,8 @@ async function envoyerViaBrevo(message: MessageEmail): Promise<ResultatEnvoi> {
     },
     body: JSON.stringify({
       sender: {
-        email: process.env.EMAIL_EXPEDITEUR,
-        name: process.env.EMAIL_EXPEDITEUR_NOM ?? 'DIFFUSIO',
+        email: expediteur,
+        name: process.env.EMAIL_EXPEDITEUR_NOM?.trim() || 'DIFFUSIO',
       },
       to: message.destinataires.map((email) => ({ email })),
       ...(message.copie?.length ? { cc: message.copie.map((email) => ({ email })) } : {}),

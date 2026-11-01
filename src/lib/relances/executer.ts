@@ -128,10 +128,12 @@ export async function executerRelances(
           data: { statut: 'EN_RETARD' },
         });
 
-        await prisma.retard.upsert({
-          where: { ligneCalendrierId: ligne.id },
-          create: { ligneCalendrierId: ligne.id, detecteAt: aujourdhui },
-          update: {},
+        // Not an upsert: two overlapping runs (a manual one beside the
+        // scheduled one) would both try the insert and the second would throw,
+        // abandoning every line after it.
+        await prisma.retard.createMany({
+          data: { ligneCalendrierId: ligne.id, detecteAt: aujourdhui },
+          skipDuplicates: true,
         });
 
         ligne.statut = 'EN_RETARD';
@@ -177,8 +179,12 @@ export async function executerRelances(
 
         if (envoi.doublon) {
           resultat.doublonsEvites += 1;
-        } else {
+        } else if (envoi.envoye) {
           resultat.rappelsEnvoyes += 1;
+        } else {
+          // A refused message is not a sent one: counting it hid a whole day
+          // of failures behind a reassuring total.
+          resultat.erreurs.push(`Rappel « ${element.nom} » : ${envoi.erreur}`);
         }
       }
 
@@ -226,6 +232,8 @@ export async function executerRelances(
 
         if (envoi.doublon) {
           resultat.doublonsEvites += 1;
+        } else if (!envoi.envoye) {
+          resultat.erreurs.push(`Relance « ${element.nom} » : ${envoi.erreur}`);
         } else {
           resultat.relancesEnvoyees += 1;
 
