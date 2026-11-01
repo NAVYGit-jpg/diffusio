@@ -3,13 +3,20 @@ import { executerRelances } from '@/lib/relances/executer';
 /**
  * Daily reminders and chases (cahier des charges §8).
  *
- * Called by a GitHub Actions cron. Protected by a shared secret rather than a
- * session: there is no user behind this request.
+ * Called every morning by Vercel Cron (vercel.json), which sends a GET with
+ * `Authorization: Bearer <CRON_SECRET>`; POST stays for manual runs. Protected
+ * by a shared secret rather than a session: there is no user behind this request.
  *
  * `?date=AAAA-MM-JJ` replays the job for another day — the simulation command
  * asked for in §11 Phase 7. It is refused in production, where replaying a past
  * day would resend real messages.
  */
+export const maxDuration = 300;
+
+export async function GET(requete: Request): Promise<Response> {
+  return POST(requete);
+}
+
 export async function POST(requete: Request): Promise<Response> {
   const secretAttendu = process.env.CRON_SECRET;
 

@@ -2,9 +2,10 @@ name: Relances quotidiennes
 
 # Rappels avant échéance et relances de retard (cahier des charges §8).
 #
-# Le cron de Vercel Hobby est limité à une exécution par jour sans garantie
-# d'horaire ; GitHub Actions est gratuit, fiable et donne un journal
-# d'exécution consultable (§3).
+# Le déclenchement automatique est assuré chaque matin par Vercel Cron
+# (vercel.json). Ce workflow ne sert plus qu'à un lancement manuel depuis
+# l'onglet Actions : son ancienne planification échouait faute de secrets et
+# GitHub désactive les tâches planifiées d'un dépôt resté 60 jours sans commit.
 #
 # Deux secrets à créer dans le dépôt GitHub
 # (Settings → Secrets and variables → Actions → New repository secret) :
@@ -13,12 +14,6 @@ name: Relances quotidiennes
 #                      d'environnement de Vercel
 
 on:
-  schedule:
-    # 06:00 UTC, soit 06:00 à Abidjan et 07:00 à Paris en hiver.
-    # GitHub peut décaler l'exécution de quelques minutes en cas de charge :
-    # sans importance ici, le traitement raisonne en journées entières.
-    - cron: '0 6 * * *'
-
   # Permet de déclencher manuellement depuis l'onglet Actions, utile pour
   # vérifier la configuration sans attendre le lendemain.
   workflow_dispatch:
