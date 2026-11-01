@@ -66,6 +66,8 @@ export function Logo({ charte, hauteur }: { charte: ChartePdf; hauteur: number }
   }
 
   return (
+    // react-pdf's Image has no alt attribute: the rule targets HTML <img>.
+    // eslint-disable-next-line jsx-a11y/alt-text
     <Image
       src={{ data: charte.logo, format: formatImage(charte.logo) }}
       style={{ height: hauteur, objectFit: 'contain' }}

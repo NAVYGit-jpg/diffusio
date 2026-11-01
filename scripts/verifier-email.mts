@@ -62,21 +62,29 @@ const entetes = { 'api-key': cle, accept: 'application/json' };
 // --- 1. La clé est-elle valide ? -------------------------------------------
 const compte = await fetch('https://api.brevo.com/v3/account', { headers: entetes });
 
-if (!compte.ok) {
-  echec(
-    `Brevo refuse la clé (code ${compte.status}).\n` +
-      "   Vérifiez qu'elle a été copiée en entier : elle n'est affichée qu'une\n" +
-      '   seule fois, au moment de sa création.',
-  );
-}
-
-const infos = (await compte.json()) as {
+const infos = (await compte.json().catch(() => ({}))) as {
   companyName?: string;
   email?: string;
   plan?: { type: string; credits?: number }[];
+  code?: string;
+  message?: string;
 };
 
-console.log(`✅ Clé valide. Compte : ${infos.companyName ?? infos.email ?? '—'}`);
+if (infos.code === 'permission_denied') {
+  // A key restricted to some permissions cannot read the account, yet sends.
+  console.log('✅ Clé reconnue (permissions restreintes : suffisant pour envoyer).');
+} else if (!compte.ok) {
+  // Brevo states why it refuses (unknown IP address, revoked key…): its words
+  // are more useful than a guess.
+  echec(
+    `Brevo refuse la clé (code ${compte.status}) : ${infos.message ?? 'sans détail'}\n` +
+      "   Adresse IP non reconnue : Brevo → Sécurité → IP autorisées → désactivez\n" +
+      "   le blocage (les serveurs de Vercel changent d'adresse IP).\n" +
+      "   Clé invalide : vérifiez qu'elle a été copiée en entier.",
+  );
+} else {
+  console.log(`✅ Clé valide. Compte : ${infos.companyName ?? infos.email ?? '—'}`);
+}
 
 const forfait = infos.plan?.find((p) => p.type === 'free' || p.credits !== undefined);
 if (forfait) {
