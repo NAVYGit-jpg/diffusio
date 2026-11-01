@@ -1,6 +1,6 @@
 'use client';
 
-import { CircleAlert, LoaderCircle, MailPlus, Pencil, Plus, Users } from 'lucide-react';
+import { CircleAlert, LoaderCircle, MailPlus, Pencil, Plus, Trash2, Users } from 'lucide-react';
 import { useActionState, useEffect, useState, useTransition } from 'react';
 import { toast } from 'sonner';
 
@@ -37,6 +37,7 @@ import {
   basculerActivationUtilisateurAction,
   enregistrerUtilisateurAction,
   renvoyerInvitationAction,
+  supprimerUtilisateurAction,
   type EtatUtilisateur,
 } from '@/lib/actions/utilisateurs';
 import { LIBELLE_ROLE, ROLES } from '@/lib/utilisateurs/schemas';
@@ -315,6 +316,23 @@ export function TableauUtilisateurs({
                     >
                       {utilisateur.actif ? 'Désactiver' : 'Réactiver'}
                     </Button>
+                    {peutCreer && utilisateur.role !== 'SUPER_ADMIN' && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={enCoursAction}
+                        className="text-destructive hover:text-destructive"
+                        onClick={() =>
+                          executer(
+                            () => supprimerUtilisateurAction(utilisateur.id),
+                            `Supprimer définitivement le compte de ${utilisateur.prenoms} ${utilisateur.nom} ?\n\nLa personne disparaît de la liste et ne peut plus se connecter. Son historique reste conservé.`,
+                          )
+                        }
+                        aria-label={`Supprimer le compte de ${utilisateur.email}`}
+                      >
+                        <Trash2 aria-hidden />
+                      </Button>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}

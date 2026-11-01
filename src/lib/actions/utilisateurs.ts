@@ -560,3 +560,85 @@ export async function renvoyerInvitationAction(
     lienInvitation: lien,
   };
 }
+
+/**
+ * Deletes an account the acting super administrator created.
+ *
+ * Soft deletion: the person disappears from every list and can no longer sign
+ * in, but the history (audit trail, discussions, publications put online)
+ * keeps pointing at a real row. The address is freed so that the same person
+ * can be invited again later.
+ */
+export async function supprimerUtilisateurAction(
+  id: string,
+): Promise<EtatUtilisateur> {
+  const acteur = await exigerActeur();
+
+  if (!peutRealiser(acteur, 'utilisateur:creer')) {
+    return { erreur: 'Seul le super administrateur peut supprimer un compte.' };
+  }
+
+  const cible = await prisma.utilisateur.findFirst({
+    where: { id, organisationId: acteur.organisationId, deletedAt: null },
+    select: { id: true, email: true, nom: true, prenoms: true, role: true },
+  });
+
+  if (!cible) {
+    return { erreur: "Ce compte n'existe plus." };
+  }
+
+  if (cible.id === acteur.id) {
+    return { erreur: 'Vous ne pouvez pas supprimer votre propre compte.' };
+  }
+
+  if (cible.role === 'SUPER_ADMIN') {
+    return { erreur: 'Un compte de super administrateur ne peut pas être supprimé.' };
+  }
+
+  // Only the accounts one created oneself. Accounts with no recorded creator
+  // (imported, or created before the audit trail) stay deletable.
+  const creation = await prisma.journalAudit.findFirst({
+    where: { action: 'CREATION_UTILISATEUR', entiteId: cible.id },
+    select: { utilisateurId: true },
+  });
+
+  if (creation?.utilisateurId && creation.utilisateurId !== acteur.id) {
+    return { erreur: 'Ce compte a été ajouté par un autre administrateur.' };
+  }
+
+  // A point focal still in charge would leave reminders with no recipient.
+  const [publications, indicateurs] = await Promise.all([
+    prisma.publication.count({ where: { pointFocalId: cible.id, deletedAt: null } }),
+    prisma.indicateur.count({ where: { pointFocalId: cible.id, deletedAt: null } }),
+  ]);
+
+  if (publications + indicateurs > 0) {
+    return {
+      erreur: `Impossible : cette personne est encore point focal de ${publications + indicateurs} publication(s) ou indicateur(s). Attribuez-les d’abord à quelqu’un d’autre.`,
+    };
+  }
+
+  await prisma.utilisateur.update({
+    where: { id: cible.id },
+    data: {
+      deletedAt: new Date(),
+      actif: false,
+      email: `supprime-${cible.id}@diffusio.invalid`,
+    },
+  });
+
+  await prisma.journalAudit.create({
+    data: {
+      organisationId: acteur.organisationId,
+      utilisateurId: acteur.id,
+      action: 'SUPPRESSION_UTILISATEUR',
+      entite: 'Utilisateur',
+      entiteId: cible.id,
+      avant: { email: cible.email, nom: cible.nom, prenoms: cible.prenoms, role: cible.role },
+    },
+  });
+
+  revalidatePath('/utilisateurs');
+
+  return { succes: true, message: `Compte de ${cible.prenoms} ${cible.nom} supprimé.` };
+}
