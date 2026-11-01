@@ -415,7 +415,7 @@
    two ambient glows below — tinted with the organisation's colours, never a
    grey wash. */
 .verre {
-  background-color: color-mix(in oklab, var(--card) 70%, transparent) !important;
+  background-color: color-mix(in oklab, var(--card) 88%, transparent) !important;
   -webkit-backdrop-filter: blur(18px) saturate(1.5);
   backdrop-filter: blur(18px) saturate(1.5);
   border: 1px solid rgb(255 255 255 / 0.55);
@@ -441,8 +441,8 @@
   width: 46vw;
   height: 46vw;
   border-radius: 9999px;
-  filter: blur(90px);
-  opacity: 0.16;
+  filter: blur(110px);
+  opacity: 0.06;
 }
 
 .lueurs-ambiantes::before {
@@ -455,7 +455,7 @@
   bottom: -18vw;
   left: -12vw;
   background: var(--couleur-accent);
-  opacity: 0.12;
+  opacity: 0.05;
 }
 
 /* Cards lift on hover only when they are links: the cue says « clickable ». */
@@ -504,12 +504,16 @@ body {
    actions, large light numerals. Everything stays derived from the
    organisation's colours.
 =========================================================================== */
+/* A light ground: near-white, with only a breath of the organisation's
+   colours. A strong or dark brand colour used to muddy the whole page and
+   swallow the content; depth now comes from the panels' shadows, not from a
+   dark backdrop. */
 body {
-  background-color: #eceef2;
+  background-color: #f7f8fa;
   background-image:
-    radial-gradient(120% 90% at 100% 0%, color-mix(in oklab, var(--couleur-primaire) 22%, transparent) 0%, transparent 55%),
-    radial-gradient(90% 80% at 0% 100%, color-mix(in oklab, var(--couleur-accent) 12%, transparent) 0%, transparent 60%),
-    linear-gradient(160deg, #f1f2f5 0%, #e7e9ee 100%);
+    radial-gradient(110% 80% at 100% 0%, color-mix(in oklab, var(--couleur-primaire) 7%, transparent) 0%, transparent 55%),
+    radial-gradient(90% 70% at 0% 100%, color-mix(in oklab, var(--couleur-accent) 5%, transparent) 0%, transparent 60%),
+    linear-gradient(170deg, #fbfbfd 0%, #f2f4f7 100%);
   background-attachment: fixed;
 }
 
@@ -525,15 +529,17 @@ body {
 main > div > header,
 [data-filtres-tableau-de-bord],
 [data-panneau-filtres] {
-  background-color: color-mix(in oklab, var(--card) 76%, transparent) !important;
-  -webkit-backdrop-filter: blur(20px) saturate(1.6);
-  backdrop-filter: blur(20px) saturate(1.6);
-  border: 1px solid rgb(255 255 255 / 0.65) !important;
+  background-color: color-mix(in oklab, var(--card) 94%, transparent) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  backdrop-filter: blur(16px) saturate(1.2);
+  border: 1px solid rgb(15 23 42 / 0.06) !important;
   border-radius: 1.75rem !important;
+  /* Soft, cool layered shadow: the panel floats over a light ground. */
   box-shadow:
     0 1px 2px rgb(15 23 42 / 0.04),
-    0 12px 32px -12px rgb(15 23 42 / 0.14),
-    inset 0 1px 0 rgb(255 255 255 / 0.8) !important;
+    0 8px 24px -8px rgb(15 23 42 / 0.10),
+    0 24px 48px -24px rgb(15 23 42 / 0.10),
+    inset 0 1px 0 rgb(255 255 255 / 0.9) !important;
 }
 
 .dark [data-slot='card'],
