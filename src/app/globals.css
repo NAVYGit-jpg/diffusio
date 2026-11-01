@@ -610,3 +610,29 @@ input[data-slot='input'] {
 .relative:has(> svg.absolute + input[data-slot='input']) > input[data-slot='input']:not(:placeholder-shown) {
   padding-left: 1rem !important;
 }
+
+/* ------------------------------------------------- discussion & notifications
+   Entrance motion: each item rises a few pixels while fading in, staggered by
+   `--rang` so a list reads top to bottom instead of popping in at once. */
+@keyframes surgir {
+  from { opacity: 0; transform: translateY(10px) scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+
+.surgir {
+  animation: surgir 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(min(var(--rang, 0), 12) * 45ms);
+}
+
+@keyframes pulsation {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--couleur-primaire-lisible) 45%, transparent); }
+  50% { box-shadow: 0 0 0 6px transparent; }
+}
+
+.point-non-lu {
+  animation: pulsation 2.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .surgir, .point-non-lu { animation: none; }
+}
