@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { perimetreStructures } from '@/lib/auth/permissions';
 import { exigerActeur } from '@/lib/auth/session';
 import { prisma } from '@/lib/prisma';
-import { contactPointFocal } from '@/lib/livrables/vues';
+import { chargerLignesLivrables, contactPointFocal } from '@/lib/livrables/vues';
 import { joursEntre } from '@/lib/relances/planification';
 import { VueRetards } from './vue-retards';
 
@@ -62,6 +62,17 @@ export default async function PageRetards() {
     orderBy: { dateDiffusionPrevue: 'asc' },
   });
 
+  // The point focal handles the late line himself: he gets the deposit
+  // dialog, fed with the same detail the calendar uses.
+  const details =
+    acteur.role === 'POINT_FOCAL'
+      ? Object.fromEntries(
+          (await chargerLignesLivrables(acteur, {}))
+            .filter((detail) => lignes.some((ligne) => ligne.id === detail.id))
+            .map((detail) => [detail.id, detail]),
+        )
+      : {};
+
   return (
     <div className="mx-auto max-w-6xl">
       <header className="mb-6">
@@ -77,6 +88,7 @@ export default async function PageRetards() {
 
       <VueRetards
         role={acteur.role}
+        details={details}
         lignes={lignes.map((ligne) => ({
           id: ligne.id,
           nomElement: ligne.publication?.nom ?? ligne.indicateur?.nom ?? 'Élément',

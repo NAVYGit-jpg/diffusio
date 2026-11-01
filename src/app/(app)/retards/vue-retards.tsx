@@ -1,7 +1,7 @@
 'use client';
 
 import type { Role } from '@prisma/client';
-import { BellRing, CircleAlert, CircleCheck, LoaderCircle, PartyPopper } from 'lucide-react';
+import { BellRing, CircleAlert, CircleCheck, LoaderCircle, PartyPopper, Upload } from 'lucide-react';
 import { useActionState, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -38,6 +38,7 @@ import {
   ContacterPointFocal,
   type PointFocalContact,
 } from '@/components/layout/contacter-point-focal';
+import { DialogueLivrable, type DetailLigne } from '../calendrier/dialogue-livrable';
 import {
   type EtatRetard,
   envoyerAlerteAction,
@@ -79,11 +80,15 @@ function pourChampDate(iso: string | null): string {
 export function VueRetards({
   lignes,
   role,
+  details = {},
 }: {
   lignes: LigneRetard[];
   role: Role;
+  /** Deposit detail per line, given to the point focal only. */
+  details?: Record<string, DetailLigne>;
 }) {
   const [aJustifier, setAJustifier] = useState<LigneRetard | null>(null);
+  const [aDeposer, setADeposer] = useState<DetailLigne | null>(null);
   const [aAlerter, setAAlerter] = useState<LigneRetard | null>(null);
 
   const [etatJustification, actionJustification, justificationEnCours] =
@@ -193,16 +198,25 @@ export function VueRetards({
                   >
                     {ligne.justification ? 'Reporter' : 'Justifier'}
                   </Button>
-                  {/* Contacter directement plutôt qu'envoyer une alerte : la
-                      relance automatique est déjà partie, ce qui manque à ce
-                      stade est une conversation. */}
-                  <ContacterPointFocal
-                    pointFocal={ligne.pointFocal}
-                    nomElement={ligne.nomElement}
-                    libellePeriode={ligne.libellePeriode}
-                    dateDiffusionPrevue={formaterDate(ligne.dateDiffusionPrevue)}
-                    motif="retard"
-                  />
+                  {details[ligne.id] ? (
+                    // The point focal is the one being chased: rather than
+                    // contacting himself, he deposits the file and the values.
+                    <Button size="sm" onClick={() => setADeposer(details[ligne.id])}>
+                      <Upload aria-hidden />
+                      Déposer
+                    </Button>
+                  ) : role !== 'POINT_FOCAL' ? (
+                    // Contacter directement plutôt qu'envoyer une alerte : la
+                    // relance automatique est déjà partie, ce qui manque à ce
+                    // stade est une conversation.
+                    <ContacterPointFocal
+                      pointFocal={ligne.pointFocal}
+                      nomElement={ligne.nomElement}
+                      libellePeriode={ligne.libellePeriode}
+                      dateDiffusionPrevue={formaterDate(ligne.dateDiffusionPrevue)}
+                      motif="retard"
+                    />
+                  ) : null}
 
                   {estAdmin && (
                     <Button
@@ -220,6 +234,15 @@ export function VueRetards({
           </TableBody>
         </Table>
       </div>
+
+      {aDeposer && (
+        <DialogueLivrable
+          ligne={aDeposer}
+          role={role}
+          ouvert
+          onOuvertChange={(ouvert) => !ouvert && setADeposer(null)}
+        />
+      )}
 
       {/* ------------------------------------------------- justification */}
       <Dialog
