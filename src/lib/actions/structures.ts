@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { assertPermission, PermissionRefusee } from '@/lib/auth/permissions';
 import { exigerActeur } from '@/lib/auth/session';
 import { prisma } from '@/lib/prisma';
-import { creeraitUnCycle } from '@/lib/structures/arborescence';
+import { creeraitUnCycle, etendreAuxDescendants } from '@/lib/structures/arborescence';
 import { structureSchema } from '@/lib/structures/schemas';
 
 export type EtatStructure = {
@@ -243,11 +243,16 @@ export async function basculerActivationStructureAction(
 }
 
 /**
- * Deletes a structure — only once nothing is attached to it any more.
+ * Deletes a structure together with all its child structures.
  *
- * Child structures, points focaux, supervisors, publications, indicators and
- * calendars must first be moved elsewhere (or removed): the refusal lists
- * what remains, so the user knows exactly what to detach.
+ * Blocked while the structure — or any of its descendants — still carries
+ * work in progress:
+ * - a calendar line not yet published (planned, delivered, late…);
+ * - a publication or an indicator of the catalogue that is not entirely
+ *   published (no line yet, or a line still in progress).
+ * What is already published does not block: it is history. People do not
+ * block either: points focaux are detached and supervisors lose the link, so
+ * they can be attached elsewhere.
  */
 export async function supprimerStructureAction(id: string): Promise<EtatStructure> {
   const acteur = await exigerActeur();
@@ -261,45 +266,65 @@ export async function supprimerStructureAction(id: string): Promise<EtatStructur
     throw erreur;
   }
 
-  const structure = await prisma.structure.findFirst({
-    where: { id, organisationId: acteur.organisationId, deletedAt: null },
-    select: { id: true, nom: true, sigle: true },
+  const toutes = await prisma.structure.findMany({
+    where: { organisationId: acteur.organisationId, deletedAt: null },
+    select: { id: true, nom: true, sigle: true, parentId: true },
   });
+  const structure = toutes.find((candidate) => candidate.id === id);
 
   if (!structure) {
     return { erreur: "Cette structure n'existe plus." };
   }
 
-  const [enfants, pointsFocaux, superviseurs, publications, indicateurs, calendriers] = await Promise.all([
-    prisma.structure.count({ where: { parentId: id, deletedAt: null } }),
-    prisma.utilisateur.count({ where: { structureId: id, deletedAt: null } }),
-    prisma.adminStructure.count({ where: { structureId: id, admin: { deletedAt: null } } }),
-    prisma.publication.count({ where: { structureId: id, deletedAt: null } }),
-    prisma.indicateur.count({ where: { structureId: id, deletedAt: null } }),
-    prisma.calendrier.count({ where: { structureId: id } }),
+  const famille = etendreAuxDescendants(toutes, [id]);
+  const TERMINES = ['MIS_EN_LIGNE', 'ANNULE'] as const;
+  const enCours = { statut: { notIn: [...TERMINES] } };
+  // An element is history once it has lines and every one is published or
+  // cancelled; otherwise it is still in progress.
+  const elementEnCours = {
+    structureId: { in: famille },
+    deletedAt: null,
+    OR: [{ lignesCalendrier: { none: {} } }, { lignesCalendrier: { some: enCours } }],
+  };
+
+  const [lignes, publications, indicateurs] = await Promise.all([
+    prisma.ligneCalendrier.findMany({
+      where: { ...enCours, calendrier: { structureId: { in: famille } } },
+      select: { calendrier: { select: { structureId: true } } },
+    }),
+    prisma.publication.findMany({ where: elementEnCours, select: { structureId: true } }),
+    prisma.indicateur.findMany({ where: elementEnCours, select: { structureId: true } }),
   ]);
 
-  const restants = [
-    [enfants, 'structure(s) rattachée(s)'],
-    [pointsFocaux, 'utilisateur(s) affilié(s)'],
-    [superviseurs, 'superviseur(s)'],
-    [publications, 'publication(s)'],
-    [indicateurs, 'indicateur(s)'],
-    [calendriers, 'calendrier(s)'],
-  ]
-    .filter(([nombre]) => (nombre as number) > 0)
-    .map(([nombre, libelle]) => `${nombre} ${libelle}`);
+  if (lignes.length + publications.length + indicateurs.length > 0) {
+    const sigle = (structureId: string) => toutes.find((s) => s.id === structureId)?.sigle ?? '?';
+    const ou = (liste: { structureId: string }[]) =>
+      [...new Set(liste.map((element) => sigle(element.structureId)))].join(', ');
+    const details = [
+      lignes.length > 0 ? `${lignes.length} ligne(s) de calendrier en cours (${ou(lignes.map((l) => l.calendrier))})` : null,
+      publications.length > 0 ? `${publications.length} publication(s) en cours (${ou(publications)})` : null,
+      indicateurs.length > 0 ? `${indicateurs.length} indicateur(s) en cours (${ou(indicateurs)})` : null,
+    ].filter(Boolean);
 
-  if (restants.length > 0) {
     return {
-      erreur: `« ${structure.nom} » a encore : ${restants.join(', ')}. Désaffiliez-les d’abord, puis supprimez la structure.`,
+      erreur: `Suppression impossible : ${details.join(', ')}. Supprimez-les d’abord (les éléments déjà publiés ne bloquent pas).`,
     };
   }
 
-  await prisma.structure.update({
-    where: { id },
-    data: { deletedAt: new Date(), actif: false },
-  });
+  const maintenant = new Date();
+
+  await prisma.$transaction([
+    // People are kept and freed, to be attached elsewhere.
+    prisma.utilisateur.updateMany({
+      where: { structureId: { in: famille } },
+      data: { structureId: null },
+    }),
+    prisma.adminStructure.deleteMany({ where: { structureId: { in: famille } } }),
+    prisma.structure.updateMany({
+      where: { id: { in: famille } },
+      data: { deletedAt: maintenant, actif: false },
+    }),
+  ]);
 
   await prisma.journalAudit.create({
     data: {
@@ -308,7 +333,11 @@ export async function supprimerStructureAction(id: string): Promise<EtatStructur
       action: 'SUPPRESSION_STRUCTURE',
       entite: 'Structure',
       entiteId: id,
-      avant: { nom: structure.nom, sigle: structure.sigle },
+      avant: {
+        nom: structure.nom,
+        sigle: structure.sigle,
+        structuresSupprimees: famille.map((membre) => toutes.find((s) => s.id === membre)?.sigle ?? membre),
+      },
     },
   });
 

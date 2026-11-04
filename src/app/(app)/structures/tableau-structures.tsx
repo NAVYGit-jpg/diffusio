@@ -120,7 +120,7 @@ export function TableauStructures({ structures }: { structures: Structure[] }) {
   const supprimer = (structure: Structure) => {
     if (
       !window.confirm(
-        `Supprimer « ${structure.nom} » ?\n\nPossible seulement si plus rien ne lui est rattaché : structures enfants, utilisateurs, superviseurs, publications, indicateurs, calendriers.`,
+        `Supprimer « ${structure.nom} » ?\n\nSes structures enfants seront supprimées avec elle. Impossible tant qu’elles portent une publication, un indicateur ou une ligne de calendrier en cours (ce qui est déjà publié ne bloque pas). Les points focaux et superviseurs sont simplement détachés.`,
       )
     ) {
       return;
