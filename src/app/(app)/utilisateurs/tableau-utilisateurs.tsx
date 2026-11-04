@@ -76,6 +76,7 @@ export function TableauUtilisateurs({
   structures,
   quotaSuperAdmin,
   peutCreer,
+  estPrincipal = false,
 }: {
   utilisateurs: Utilisateur[];
   structures: Structure[];
@@ -89,6 +90,8 @@ export function TableauUtilisateurs({
    * clique, et laisse croire à une panne plutôt qu'à une règle.
    */
   peutCreer: boolean;
+  /** The principal super administrator may also delete super administrators. */
+  estPrincipal?: boolean;
 }) {
   const [ouvert, setOuvert] = useState(false);
   const [enEdition, setEnEdition] = useState<Utilisateur | null>(null);
@@ -316,7 +319,7 @@ export function TableauUtilisateurs({
                     >
                       {utilisateur.actif ? 'Désactiver' : 'Réactiver'}
                     </Button>
-                    {peutCreer && utilisateur.role !== 'SUPER_ADMIN' && (
+                    {peutCreer && (utilisateur.role !== 'SUPER_ADMIN' || estPrincipal) && (
                       <Button
                         variant="ghost"
                         size="sm"

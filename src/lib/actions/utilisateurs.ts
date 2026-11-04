@@ -15,6 +15,7 @@ import { exigerActeur } from '@/lib/auth/session';
 import { adresseApplication } from '@/lib/email/adresse';
 import { envoyerEmail } from '@/lib/email/envoyer';
 import { modeleInvitation } from '@/lib/email/modeles';
+import { estSuperAdminPrincipal } from '@/lib/utilisateurs/principal';
 import { prisma } from '@/lib/prisma';
 import {
   estLeDernierSuperAdmin,
@@ -591,8 +592,14 @@ export async function supprimerUtilisateurAction(
     return { erreur: 'Vous ne pouvez pas supprimer votre propre compte.' };
   }
 
-  if (cible.role === 'SUPER_ADMIN') {
-    return { erreur: 'Un compte de super administrateur ne peut pas être supprimé.' };
+  // The principal super administrator may delete every account, other super
+  // administrators included; nobody else may delete a super administrator.
+  const principal = await estSuperAdminPrincipal(acteur.id, acteur.organisationId);
+
+  if (cible.role === 'SUPER_ADMIN' && !principal) {
+    return {
+      erreur: 'Seul le super administrateur principal peut supprimer un super administrateur.',
+    };
   }
 
   // Only the accounts one created oneself. Accounts with no recorded creator
@@ -602,7 +609,7 @@ export async function supprimerUtilisateurAction(
     select: { utilisateurId: true },
   });
 
-  if (creation?.utilisateurId && creation.utilisateurId !== acteur.id) {
+  if (!principal && creation?.utilisateurId && creation.utilisateurId !== acteur.id) {
     return { erreur: 'Ce compte a été ajouté par un autre administrateur.' };
   }
 

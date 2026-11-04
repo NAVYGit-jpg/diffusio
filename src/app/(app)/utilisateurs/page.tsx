@@ -9,6 +9,7 @@ import { aplatir, construireArborescence } from '@/lib/structures/arborescence';
 import { libelleQuotaSuperAdmin } from '@/lib/utilisateurs/regles';
 import { FiltreStructure } from './filtre-structure';
 import { HierarchieEquipes } from './hierarchie-equipes';
+import { estSuperAdminPrincipal } from '@/lib/utilisateurs/principal';
 import Link from 'next/link';
 import { avecDescendants } from '@/lib/structures/descendance';
 import { TableauUtilisateurs } from './tableau-utilisateurs';
@@ -216,6 +217,7 @@ export default async function PageUtilisateurs({
         structures={aplatir(construireArborescence(structures))}
         quotaSuperAdmin={libelleQuotaSuperAdmin(superAdminsActifs)}
         peutCreer={peutRealiser(acteur, 'utilisateur:creer')}
+        estPrincipal={await estSuperAdminPrincipal(acteur.id, acteur.organisationId)}
       />
       )}
     </div>

@@ -241,3 +241,78 @@ export async function basculerActivationStructureAction(
 
   return { succes: true };
 }
+
+/**
+ * Deletes a structure — only once nothing is attached to it any more.
+ *
+ * Child structures, points focaux, supervisors, publications, indicators and
+ * calendars must first be moved elsewhere (or removed): the refusal lists
+ * what remains, so the user knows exactly what to detach.
+ */
+export async function supprimerStructureAction(id: string): Promise<EtatStructure> {
+  const acteur = await exigerActeur();
+
+  try {
+    assertPermission(acteur, 'structure:gerer');
+  } catch (erreur) {
+    if (erreur instanceof PermissionRefusee) {
+      return { erreur: erreur.message };
+    }
+    throw erreur;
+  }
+
+  const structure = await prisma.structure.findFirst({
+    where: { id, organisationId: acteur.organisationId, deletedAt: null },
+    select: { id: true, nom: true, sigle: true },
+  });
+
+  if (!structure) {
+    return { erreur: "Cette structure n'existe plus." };
+  }
+
+  const [enfants, pointsFocaux, superviseurs, publications, indicateurs, calendriers] = await Promise.all([
+    prisma.structure.count({ where: { parentId: id, deletedAt: null } }),
+    prisma.utilisateur.count({ where: { structureId: id, deletedAt: null } }),
+    prisma.adminStructure.count({ where: { structureId: id, admin: { deletedAt: null } } }),
+    prisma.publication.count({ where: { structureId: id, deletedAt: null } }),
+    prisma.indicateur.count({ where: { structureId: id, deletedAt: null } }),
+    prisma.calendrier.count({ where: { structureId: id } }),
+  ]);
+
+  const restants = [
+    [enfants, 'structure(s) rattachée(s)'],
+    [pointsFocaux, 'utilisateur(s) affilié(s)'],
+    [superviseurs, 'superviseur(s)'],
+    [publications, 'publication(s)'],
+    [indicateurs, 'indicateur(s)'],
+    [calendriers, 'calendrier(s)'],
+  ]
+    .filter(([nombre]) => (nombre as number) > 0)
+    .map(([nombre, libelle]) => `${nombre} ${libelle}`);
+
+  if (restants.length > 0) {
+    return {
+      erreur: `« ${structure.nom} » a encore : ${restants.join(', ')}. Désaffiliez-les d’abord, puis supprimez la structure.`,
+    };
+  }
+
+  await prisma.structure.update({
+    where: { id },
+    data: { deletedAt: new Date(), actif: false },
+  });
+
+  await prisma.journalAudit.create({
+    data: {
+      organisationId: acteur.organisationId,
+      utilisateurId: acteur.id,
+      action: 'SUPPRESSION_STRUCTURE',
+      entite: 'Structure',
+      entiteId: id,
+      avant: { nom: structure.nom, sigle: structure.sigle },
+    },
+  });
+
+  revalidatePath('/structures');
+
+  return { succes: true };
+}

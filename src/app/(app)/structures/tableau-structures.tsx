@@ -1,6 +1,6 @@
 'use client';
 
-import { Building2, CircleAlert, LoaderCircle, Pencil, Plus } from 'lucide-react';
+import { Building2, CircleAlert, LoaderCircle, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useActionState, useEffect, useState, useTransition } from 'react';
 import { toast } from 'sonner';
 
@@ -36,6 +36,7 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   basculerActivationStructureAction,
   enregistrerStructureAction,
+  supprimerStructureAction,
   type EtatStructure,
 } from '@/lib/actions/structures';
 import { etendreAuxDescendants, parentsPossibles } from '@/lib/structures/arborescence';
@@ -112,6 +113,26 @@ export function TableauStructures({ structures }: { structures: Structure[] }) {
         toast.error(resultat.erreur);
       } else {
         toast.success(structure.actif ? 'Structure désactivée.' : 'Structure réactivée.');
+      }
+    });
+  };
+
+  const supprimer = (structure: Structure) => {
+    if (
+      !window.confirm(
+        `Supprimer « ${structure.nom} » ?\n\nPossible seulement si plus rien ne lui est rattaché : structures enfants, utilisateurs, superviseurs, publications, indicateurs, calendriers.`,
+      )
+    ) {
+      return;
+    }
+
+    demarrerBascule(async () => {
+      const resultat = await supprimerStructureAction(structure.id);
+
+      if (resultat.erreur) {
+        toast.error(resultat.erreur, { duration: 9000 });
+      } else {
+        toast.success('Structure supprimée.');
       }
     });
   };
@@ -268,6 +289,17 @@ export function TableauStructures({ structures }: { structures: Structure[] }) {
                       onClick={() => basculerActivation(structure)}
                     >
                       {structure.actif ? 'Désactiver' : 'Réactiver'}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={bascule}
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => supprimer(structure)}
+                      aria-label={`Supprimer ${structure.nom}`}
+                      title="Supprimer"
+                    >
+                      <Trash2 aria-hidden />
                     </Button>
                   </TableCell>
                 </TableRow>
