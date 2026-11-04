@@ -6,6 +6,7 @@ import {
   type ActeurSession,
   PermissionRefusee,
   assertPermission,
+  peutRealiser,
 } from '@/lib/auth/permissions';
 import { exigerActeur } from '@/lib/auth/session';
 import {
@@ -515,4 +516,118 @@ export async function basculerActivationCatalogueAction(
     succes: true,
     message: element.actif ? 'Élément désactivé.' : 'Élément réactivé.',
   };
+}
+
+/**
+ * Removes a publication or an indicator from the catalogue.
+ *
+ * Soft deletion: calendar lines already generated keep their name and
+ * history; the element is simply no longer offered anywhere. Indicators
+ * attached to a deleted publication become standalone, as the schema says.
+ */
+export async function supprimerCatalogueAction(
+  type: 'publication' | 'indicateur',
+  id: string,
+): Promise<EtatCatalogue> {
+  const acteur = await exigerActeur();
+
+  const element =
+    type === 'publication'
+      ? await prisma.publication.findFirst({
+          where: { id, organisationId: acteur.organisationId, deletedAt: null },
+          select: { id: true, nom: true, structureId: true },
+        })
+      : await prisma.indicateur.findFirst({
+          where: { id, organisationId: acteur.organisationId, deletedAt: null },
+          select: { id: true, nom: true, structureId: true },
+        });
+
+  if (!element) {
+    return { erreur: "Cet élément n'existe plus." };
+  }
+
+  try {
+    assertPermission(acteur, 'catalogue:ecrire', element.structureId);
+  } catch (erreur) {
+    if (erreur instanceof PermissionRefusee) {
+      return { erreur: erreur.message };
+    }
+    throw erreur;
+  }
+
+  const maintenant = new Date();
+
+  if (type === 'publication') {
+    await prisma.$transaction([
+      prisma.publication.update({ where: { id }, data: { deletedAt: maintenant, actif: false } }),
+      prisma.indicateur.updateMany({ where: { publicationId: id }, data: { publicationId: null } }),
+    ]);
+  } else {
+    await prisma.indicateur.update({ where: { id }, data: { deletedAt: maintenant, actif: false } });
+  }
+
+  await prisma.journalAudit.create({
+    data: {
+      organisationId: acteur.organisationId,
+      utilisateurId: acteur.id,
+      action: 'SUPPRESSION_CATALOGUE',
+      entite: type === 'publication' ? 'Publication' : 'Indicateur',
+      entiteId: id,
+      avant: { nom: element.nom },
+    },
+  });
+
+  revalidatePath('/catalogue');
+
+  return { succes: true, message: `« ${element.nom} » supprimé du catalogue.` };
+}
+
+/**
+ * Adds a statistical domain from the catalogue forms, so a missing one no
+ * longer sends the user to another screen. An existing name is reused.
+ */
+export async function creerDomaineAction(
+  nom: string,
+): Promise<{ domaine?: { id: string; nom: string }; erreur?: string }> {
+  const acteur = await exigerActeur();
+  const libelle = nom.trim().replace(/\s+/g, ' ');
+
+  if (libelle.length < 2) {
+    return { erreur: 'Le nom du domaine doit contenir au moins 2 caractères.' };
+  }
+
+  if (!peutRealiser(acteur, 'catalogue:ecrire')) {
+    return { erreur: 'Vous ne pouvez pas modifier le catalogue.' };
+  }
+
+  const existant = await prisma.domaine.findFirst({
+    where: {
+      organisationId: acteur.organisationId,
+      deletedAt: null,
+      nom: { equals: libelle, mode: 'insensitive' },
+    },
+    select: { id: true, nom: true },
+  });
+
+  if (existant) {
+    return { domaine: existant };
+  }
+
+  const base = libelle
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, '_')
+    .replace(/^_|_$/g, '')
+    .slice(0, 24) || 'DOMAINE';
+  const code = `${base}_${Date.now().toString(36).toUpperCase()}`;
+
+  const domaine = await prisma.domaine.create({
+    data: { organisationId: acteur.organisationId, nom: libelle, code },
+    select: { id: true, nom: true },
+  });
+
+  revalidatePath('/catalogue');
+
+  return { domaine };
 }

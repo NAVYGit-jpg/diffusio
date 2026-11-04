@@ -1,6 +1,6 @@
 'use client';
 
-import { ClipboardList, Link2, Plus, Search } from 'lucide-react';
+import { ClipboardList, Link2, Plus, Search, Trash2 } from 'lucide-react';
 import { useMemo, useState, useTransition } from 'react';
 import { toast } from 'sonner';
 
@@ -23,7 +23,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { basculerActivationCatalogueAction } from '@/lib/actions/catalogue';
+import {
+  basculerActivationCatalogueAction,
+  supprimerCatalogueAction,
+} from '@/lib/actions/catalogue';
 import { LIBELLE_PERIODICITE, PERIODICITES } from '@/lib/catalogue/schemas';
 import { DialoguePublication } from './dialogue-publication';
 import { DialogueIndicateur } from './dialogue-indicateur';
@@ -169,6 +172,25 @@ export function VueCatalogue({
         toast.error(resultat.erreur);
       } else {
         toast.success(resultat.message ?? 'Terminé.');
+      }
+    });
+  };
+
+  const supprimer = (type: 'publication' | 'indicateur', id: string, nom: string) => {
+    if (
+      !window.confirm(
+        `Supprimer « ${nom} » du catalogue ?\n\nIl ne sera plus proposé nulle part. Les lignes de calendrier déjà générées restent consultables.`,
+      )
+    ) {
+      return;
+    }
+
+    demarrer(async () => {
+      const resultat = await supprimerCatalogueAction(type, id);
+      if (resultat.erreur) {
+        toast.error(resultat.erreur);
+      } else {
+        toast.success(resultat.message ?? 'Supprimé.');
       }
     });
   };
@@ -389,6 +411,17 @@ export function VueCatalogue({
                       >
                         {publication.actif ? 'Désactiver' : 'Réactiver'}
                       </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={enCours}
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => supprimer('publication', publication.id, publication.nom)}
+                        aria-label={`Supprimer ${publication.nom}`}
+                        title="Supprimer"
+                      >
+                        <Trash2 aria-hidden />
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -481,6 +514,17 @@ export function VueCatalogue({
                       }
                     >
                       {indicateur.actif ? 'Désactiver' : 'Réactiver'}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={enCours}
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => supprimer('indicateur', indicateur.id, indicateur.nom)}
+                      aria-label={`Supprimer ${indicateur.nom}`}
+                      title="Supprimer"
+                    >
+                      <Trash2 aria-hidden />
                     </Button>
                   </TableCell>
                 </TableRow>

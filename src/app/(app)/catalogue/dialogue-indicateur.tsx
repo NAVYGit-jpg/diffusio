@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import { ChoixDomaine } from './choix-domaine';
 import {
   enregistrerIndicateurAction,
   type EtatCatalogue,
@@ -223,23 +224,13 @@ export function DialogueIndicateur({
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="domaineIndicateur">Domaine statistique</Label>
-              <Select
-                name="domaineId"
-                value={domaineAffiche}
-                onValueChange={setDomaineId}
-                disabled={herite}
-              >
-                <SelectTrigger id="domaineIndicateur" className="w-full">
-                  <SelectValue placeholder="À sélectionner" />
-                </SelectTrigger>
-                <SelectContent>
-                  {domaines.map((domaine) => (
-                    <SelectItem key={domaine.id} value={domaine.id}>
-                      {domaine.nom}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <ChoixDomaine
+                identifiant="domaineIndicateur"
+                domaines={domaines}
+                valeur={domaineAffiche}
+                onChange={setDomaineId}
+                desactive={herite}
+              />
               {champs?.domaineId && (
                 <p className="text-sm text-destructive">{champs.domaineId[0]}</p>
               )}

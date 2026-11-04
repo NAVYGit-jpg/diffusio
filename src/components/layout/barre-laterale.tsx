@@ -8,7 +8,6 @@ import {
   LayoutDashboard,
   MessageSquare,
   Network,
-  PackageCheck,
   Users,
   Users2,
 } from 'lucide-react';
@@ -93,13 +92,6 @@ const ENTREES: Entree[] = [
     href: '/etat-calendrier',
     cle: 'nav.etatCalendrier',
     icone: CalendarClock,
-    roles: ['SUPER_ADMIN', 'ADMIN', 'POINT_FOCAL'],
-    groupe: 'suivi',
-  },
-  {
-    href: '/produits-charges',
-    cle: 'nav.produitsCharges',
-    icone: PackageCheck,
     roles: ['SUPER_ADMIN', 'ADMIN', 'POINT_FOCAL'],
     groupe: 'suivi',
   },

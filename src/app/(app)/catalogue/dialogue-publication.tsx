@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import { ChoixDomaine } from './choix-domaine';
 import {
   enregistrerPublicationAction,
   type EtatCatalogue,
@@ -69,6 +70,9 @@ export function DialoguePublication({
 
   const champs = etat.erreursChamps;
   const soumis = etat.valeurs;
+  const [domaineId, setDomaineId] = useState(
+    publication?.domaineId ?? '',
+  );
   const valeur = (cle: string, defaut: string | number | null | undefined) =>
     soumis?.[cle] ?? (defaut === null || defaut === undefined ? '' : String(defaut));
 
@@ -136,21 +140,12 @@ export function DialoguePublication({
 
             <div className="space-y-2">
               <Label htmlFor="domaineId">Domaine statistique</Label>
-              <Select
-                name="domaineId"
-                defaultValue={valeur('domaineId', publication?.domaineId) || undefined}
-              >
-                <SelectTrigger id="domaineId" className="w-full">
-                  <SelectValue placeholder="À sélectionner" />
-                </SelectTrigger>
-                <SelectContent>
-                  {domaines.map((domaine) => (
-                    <SelectItem key={domaine.id} value={domaine.id}>
-                      {domaine.nom}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <ChoixDomaine
+                identifiant="domaineId"
+                domaines={domaines}
+                valeur={domaineId}
+                onChange={setDomaineId}
+              />
               {champs?.domaineId && (
                 <p className="text-sm text-destructive">{champs.domaineId[0]}</p>
               )}
