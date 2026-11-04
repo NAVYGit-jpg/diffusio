@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 
 import { perimetreStructures } from '@/lib/auth/permissions';
 import { exigerActeur } from '@/lib/auth/session';
+import { traducteurActeur } from '@/lib/langue/serveur';
 import { prisma } from '@/lib/prisma';
 import { VueDiscussion } from './vue-discussion';
 
@@ -15,6 +16,7 @@ export default async function PageDiscussion({
   searchParams: Promise<{ conversation?: string }>;
 }) {
   const acteur = await exigerActeur();
+  const t = await traducteurActeur();
   const { conversation: conversationChoisie } = await searchParams;
   const perimetre = perimetreStructures(acteur);
 
@@ -72,7 +74,7 @@ export default async function PageDiscussion({
   return (
     <div className="mx-auto max-w-6xl">
       <header className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Discussion</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{t('nav.discussion')}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           {acteur.role === 'POINT_FOCAL'
             ? 'Échangez avec les administrateurs qui supervisent votre structure.'

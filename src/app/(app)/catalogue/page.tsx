@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 
 import { perimetreStructures } from '@/lib/auth/permissions';
 import { exigerActeur } from '@/lib/auth/session';
+import { traducteurActeur } from '@/lib/langue/serveur';
 import { prisma } from '@/lib/prisma';
 import { aplatir, construireArborescence } from '@/lib/structures/arborescence';
 import { BoutonsExport } from '@/components/boutons-export';
@@ -15,6 +16,7 @@ export const metadata: Metadata = {
 
 export default async function PageCatalogue() {
   const acteur = await exigerActeur();
+  const t = await traducteurActeur();
   const perimetre = perimetreStructures(acteur);
 
   // `null` means no restriction; an empty array means "nothing visible".
@@ -95,9 +97,7 @@ export default async function PageCatalogue() {
     <div className="mx-auto max-w-6xl">
       <header className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Publications &amp; indicateurs
-          </h1>
+          <h1 className="text-2xl font-semibold tracking-tight">{t('nav.catalogue')}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Le catalogue alimente la génération du calendrier. La périodicité et le
             délai saisis ici déterminent les dates de diffusion.

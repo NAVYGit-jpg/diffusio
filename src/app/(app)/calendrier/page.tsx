@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { perimetreStructures } from '@/lib/auth/permissions';
 import { exigerActeur } from '@/lib/auth/session';
+import { traducteurActeur } from '@/lib/langue/serveur';
 import { nombreDeLignes } from '@/lib/calendrier/moteur';
 import { prisma } from '@/lib/prisma';
 import { avecDescendants } from '@/lib/structures/descendance';
@@ -23,6 +24,7 @@ export default async function PageCalendrier({
   searchParams: Promise<{ structure?: string; annee?: string }>;
 }) {
   const acteur = await exigerActeur();
+  const t = await traducteurActeur();
   const parametres = await searchParams;
   const perimetre = perimetreStructures(acteur);
 
@@ -48,9 +50,7 @@ export default async function PageCalendrier({
 
     return (
       <div className="mx-auto max-w-4xl">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Calendrier de diffusion
-        </h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{t('nav.calendrier')}</h1>
 
         <div className="mt-6 rounded-lg border border-dashed p-10 text-center">
           <CalendarDays
@@ -170,9 +170,7 @@ export default async function PageCalendrier({
   return (
     <div className="mx-auto max-w-6xl">
       <header className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Calendrier de diffusion
-        </h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{t('nav.calendrier')}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Les dates sont calculées à partir de la périodicité et du délai saisis
           dans le catalogue. Rien n&apos;est enregistré avant votre confirmation.

@@ -38,6 +38,7 @@ import {
   chargerIdentiteOrganisation,
 } from '@/components/layout/logo-organisation';
 import { exigerActeur } from '@/lib/auth/session';
+import { traducteurActeur } from '@/lib/langue/serveur';
 import { chargerActiviteRecente } from '@/lib/tableau-bord/donnees';
 import { anneesProposees, lireFiltres } from '@/lib/tableau-bord/filtres-url';
 import { libellePeriode } from '@/lib/tableau-bord/periode';
@@ -82,6 +83,7 @@ export default async function PageTableauDeBord({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const acteur = await exigerActeur();
+  const t = await traducteurActeur();
   const parametres = await searchParams;
 
   const filtres = lireFiltres(parametres);
@@ -257,9 +259,7 @@ export default async function PageTableauDeBord({
 
       <header className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight print:text-xl">
-            Tableau de bord
-          </h1>
+          <h1 className="text-2xl font-semibold tracking-tight print:text-xl">{t('nav.tableauDeBord')}</h1>
           <p className="mt-1 text-sm text-muted-foreground print:hidden">
             Bonjour {acteur.nomComplet}. Les chiffres ci-dessous portent
             uniquement sur les structures qui vous sont rattachées.

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 
 import { exigerActeur } from '@/lib/auth/session';
+import { traducteurActeur } from '@/lib/langue/serveur';
 import { prisma } from '@/lib/prisma';
 import { ListeNotifications } from './liste-notifications';
 
@@ -10,6 +11,7 @@ export const metadata: Metadata = {
 
 export default async function PageNotifications() {
   const acteur = await exigerActeur();
+  const t = await traducteurActeur();
 
   const notifications = await prisma.notification.findMany({
     where: { destinataireId: acteur.id },
@@ -29,7 +31,7 @@ export default async function PageNotifications() {
   return (
     <div className="mx-auto max-w-3xl">
       <header className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Notifications</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{t('nav.notifications')}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Les 200 dernières, non lues en premier.
         </p>

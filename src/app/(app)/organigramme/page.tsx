@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { initiales } from '@/components/avatar-utilisateur';
 import { perimetreStructures } from '@/lib/auth/permissions';
 import { exigerActeur } from '@/lib/auth/session';
+import { traducteurActeur } from '@/lib/langue/serveur';
 import { LIBELLE_PERIODICITE } from '@/lib/catalogue/schemas';
 import { prisma } from '@/lib/prisma';
 import { cn } from '@/lib/utils';
@@ -155,6 +156,7 @@ function CarteStructure({ noeud, racine }: { noeud: NoeudStructure; racine: bool
  */
 export default async function PageOrganigramme() {
   const acteur = await exigerActeur();
+  const t = await traducteurActeur();
   const perimetre = perimetreStructures(acteur);
   const actifs = { deletedAt: null, actif: true };
 
@@ -224,7 +226,7 @@ export default async function PageOrganigramme() {
   return (
     <div className="mx-auto max-w-[100rem]">
       <header className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Organigramme</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{t('nav.organigramme')}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Les structures et leurs rattachements, avec pour chacune ses superviseurs, ses points
           focaux, ses publications et ses indicateurs

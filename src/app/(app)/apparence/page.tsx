@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 
 import { peutRealiser } from '@/lib/auth/permissions';
 import { exigerActeur } from '@/lib/auth/session';
+import { traducteurActeur } from '@/lib/langue/serveur';
 import { prisma } from '@/lib/prisma';
 import { FormulaireApparence } from './formulaire-apparence';
 
@@ -12,6 +13,7 @@ export const metadata: Metadata = {
 
 export default async function PageApparence() {
   const acteur = await exigerActeur();
+  const t = await traducteurActeur();
 
   if (!peutRealiser(acteur, 'apparence:gerer')) {
     redirect('/tableau-de-bord');
@@ -41,9 +43,7 @@ export default async function PageApparence() {
   return (
     <div className="mx-auto max-w-4xl">
       <header className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Thème et identité visuelle
-        </h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{t('page.apparence')}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           L&apos;identité visuelle de {organisation.nom}. Les changements
           s&apos;appliquent à tous les utilisateurs dès l&apos;enregistrement.

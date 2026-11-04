@@ -4,6 +4,7 @@ import Link from 'next/link';
 
 import { perimetreStructures } from '@/lib/auth/permissions';
 import { exigerActeur } from '@/lib/auth/session';
+import { traducteurActeur } from '@/lib/langue/serveur';
 import { normaliserJour } from '@/lib/calendrier/dates';
 import {
   estChargeeIncompletement,
@@ -23,11 +24,11 @@ export const metadata: Metadata = {
 };
 
 const ONGLETS = [
-  { cle: 'retard', libelle: 'En retard', Icone: AlarmClock, teinte: 'text-red-600' },
-  { cle: 'imminentes', libelle: 'Imminentes', Icone: CalendarClock, teinte: 'text-amber-600' },
-  { cle: 'livrees', libelle: 'Livrées, non publiées', Icone: PackageCheck, teinte: 'text-sky-600' },
-  { cle: 'publiees', libelle: 'Publiées', Icone: CircleCheck, teinte: 'text-emerald-600' },
-  { cle: 'annulees', libelle: 'Annulées', Icone: Ban, teinte: 'text-zinc-500' },
+  { cle: 'retard', libelle: 'etat.retard', Icone: AlarmClock, teinte: 'text-red-600' },
+  { cle: 'imminentes', libelle: 'etat.imminentes', Icone: CalendarClock, teinte: 'text-amber-600' },
+  { cle: 'livrees', libelle: 'etat.livrees', Icone: PackageCheck, teinte: 'text-sky-600' },
+  { cle: 'publiees', libelle: 'etat.publiees', Icone: CircleCheck, teinte: 'text-emerald-600' },
+  { cle: 'annulees', libelle: 'etat.annulees', Icone: Ban, teinte: 'text-zinc-500' },
 ] as const;
 
 type CleOnglet = (typeof ONGLETS)[number]['cle'];
@@ -44,6 +45,7 @@ export default async function PageEtatCalendrier({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const acteur = await exigerActeur();
+  const t = await traducteurActeur();
   const parametres = await searchParams;
   const demande = typeof parametres.onglet === 'string' ? parametres.onglet : 'retard';
   const onglet: CleOnglet = ONGLETS.some((o) => o.cle === demande) ? (demande as CleOnglet) : 'retard';
@@ -142,7 +144,7 @@ export default async function PageEtatCalendrier({
   return (
     <div className="mx-auto max-w-6xl">
       <header className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">État du calendrier</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{t('nav.etatCalendrier')}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Chaque diffusion selon où elle en est. Livrer, publier ou annuler fait passer la
           ligne d&apos;un onglet à l&apos;autre, et le calendrier affiche le même état.
@@ -166,7 +168,7 @@ export default async function PageEtatCalendrier({
               )}
             >
               <Icone className={cn('size-4', actif ? 'text-background' : teinte)} aria-hidden />
-              {libelle}
+              {t(libelle)}
               <span
                 className={cn(
                   'rounded-full px-2 py-0.5 text-xs tabular-nums',

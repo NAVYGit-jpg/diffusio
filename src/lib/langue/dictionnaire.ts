@@ -77,6 +77,16 @@ const FR = {
   'commun.chargement': 'Chargement…',
   'commun.aucunResultat': 'Aucun résultat',
   'langue.changee': 'Langue modifiée.',
+  'nav.groupeSuivi': 'Suivi',
+  'nav.groupeGeneral': 'Général',
+  'page.apparence': 'Thème et identité visuelle',
+  'etat.retard': 'En retard',
+  'etat.imminentes': 'Imminentes',
+  'etat.livrees': 'Livrées, non publiées',
+  'etat.publiees': 'Publiées',
+  'etat.annulees': 'Annulées',
+  'vue.liste': 'Liste',
+  'vue.equipes': 'Équipes et supérieurs',
 } as const;
 
 export type CleTraduction = keyof typeof FR;
@@ -130,6 +140,16 @@ const EN: Partial<Record<CleTraduction, string>> = {
   'commun.chargement': 'Loading…',
   'commun.aucunResultat': 'No results',
   'langue.changee': 'Language changed.',
+  'nav.groupeSuivi': 'Monitoring',
+  'nav.groupeGeneral': 'General',
+  'page.apparence': 'Theme and visual identity',
+  'etat.retard': 'Overdue',
+  'etat.imminentes': 'Upcoming',
+  'etat.livrees': 'Delivered, not published',
+  'etat.publiees': 'Published',
+  'etat.annulees': 'Cancelled',
+  'vue.liste': 'List',
+  'vue.equipes': 'Teams and supervisors',
 };
 
 const PT: Partial<Record<CleTraduction, string>> = {
@@ -181,6 +201,16 @@ const PT: Partial<Record<CleTraduction, string>> = {
   'commun.chargement': 'A carregar…',
   'commun.aucunResultat': 'Sem resultados',
   'langue.changee': 'Idioma alterado.',
+  'nav.groupeSuivi': 'Acompanhamento',
+  'nav.groupeGeneral': 'Geral',
+  'page.apparence': 'Tema e identidade visual',
+  'etat.retard': 'Em atraso',
+  'etat.imminentes': 'Iminentes',
+  'etat.livrees': 'Entregues, não publicadas',
+  'etat.publiees': 'Publicadas',
+  'etat.annulees': 'Canceladas',
+  'vue.liste': 'Lista',
+  'vue.equipes': 'Equipas e superiores',
 };
 
 const DICTIONNAIRES: Record<CodeLangue, Partial<Record<CleTraduction, string>>> =

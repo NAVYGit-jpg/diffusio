@@ -159,8 +159,8 @@ export function BarreLaterale({
   }, [chemin]);
 
   const groupes: { cle: 'suivi' | 'general'; titre: string }[] = [
-    { cle: 'suivi', titre: 'Suivi' },
-    { cle: 'general', titre: 'Général' },
+    { cle: 'suivi', titre: t('nav.groupeSuivi') },
+    { cle: 'general', titre: t('nav.groupeGeneral') },
   ];
 
   const rendreEntree = (entree: Entree) => {

@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 
 import { peutRealiser } from '@/lib/auth/permissions';
 import { exigerActeur } from '@/lib/auth/session';
+import { traducteurActeur } from '@/lib/langue/serveur';
 import { prisma } from '@/lib/prisma';
 import { aplatir, construireArborescence } from '@/lib/structures/arborescence';
 import { TableauStructures } from './tableau-structures';
@@ -13,6 +14,7 @@ export const metadata: Metadata = {
 
 export default async function PageStructures() {
   const acteur = await exigerActeur();
+  const t = await traducteurActeur();
 
   // The sidebar already hides the entry; this is the check that actually counts.
   // `forbidden()` would be a better fit but is still behind the experimental
@@ -41,7 +43,7 @@ export default async function PageStructures() {
   return (
     <div className="mx-auto max-w-5xl">
       <header className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Structures</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{t('nav.structures')}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Organigramme de votre institution. Une structure peut contenir
           d&apos;autres structures, sans limite de niveaux.

@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 
 import { peutRealiser } from '@/lib/auth/permissions';
 import { exigerActeur } from '@/lib/auth/session';
+import { traducteurActeur } from '@/lib/langue/serveur';
 import { lireParametres } from '@/lib/tableau-bord/filtres-url';
 import { prisma } from '@/lib/prisma';
 import { aplatir, construireArborescence } from '@/lib/structures/arborescence';
@@ -24,6 +25,7 @@ export default async function PageUtilisateurs({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const acteur = await exigerActeur();
+  const t = await traducteurActeur();
 
   if (!peutRealiser(acteur, 'pointFocal:gerer')) {
     redirect('/tableau-de-bord');
@@ -157,7 +159,7 @@ export default async function PageUtilisateurs({
   return (
     <div className="mx-auto max-w-6xl">
       <header className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Utilisateurs</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{t('nav.utilisateurs')}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Points focaux, administrateurs et super administrateurs. Chaque compte
           créé reçoit une invitation pour choisir son propre mot de passe.
@@ -176,8 +178,8 @@ export default async function PageUtilisateurs({
       <nav aria-label="Affichage" className="mb-5 inline-flex rounded-full border bg-card p-1 shadow-[var(--elevation-1)]">
         {(
           [
-            ['liste', 'Liste', '/utilisateurs'],
-            ['equipes', 'Équipes et supérieurs', '/utilisateurs?vue=equipes'],
+            ['liste', t('vue.liste'), '/utilisateurs'],
+            ['equipes', t('vue.equipes'), '/utilisateurs?vue=equipes'],
           ] as const
         ).map(([cle, libelle, lien]) => {
           const actif = (cle === 'equipes') === vueEquipes;

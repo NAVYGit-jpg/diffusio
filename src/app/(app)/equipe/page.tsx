@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 
 import { perimetreStructures } from '@/lib/auth/permissions';
 import { exigerActeur } from '@/lib/auth/session';
+import { traducteurActeur } from '@/lib/langue/serveur';
 import { prisma } from '@/lib/prisma';
 import { VueEquipe } from './vue-equipe';
 
@@ -22,6 +23,7 @@ export default async function PageEquipe({
   searchParams: Promise<{ portee?: string }>;
 }) {
   const acteur = await exigerActeur();
+  const t = await traducteurActeur();
   const parametres = await searchParams;
   const perimetre = perimetreStructures(acteur);
 
@@ -81,7 +83,7 @@ export default async function PageEquipe({
   return (
     <div className="mx-auto max-w-5xl">
       <header className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Équipe</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{t('nav.equipe')}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Les personnes prévenues par e-mail dès qu&apos;une publication ou un
           indicateur est mis en ligne. Elles reçoivent les messages sans avoir
