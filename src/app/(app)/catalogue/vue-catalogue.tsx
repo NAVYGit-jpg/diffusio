@@ -179,7 +179,7 @@ export function VueCatalogue({
   const supprimer = (type: 'publication' | 'indicateur', id: string, nom: string) => {
     if (
       !window.confirm(
-        `Supprimer « ${nom} » du catalogue ?\n\nIl ne sera plus proposé nulle part. Les lignes de calendrier déjà générées restent consultables.`,
+        `Supprimer « ${nom} » du catalogue ?\n\nImpossible tant qu’une ligne de calendrier en cours lui est rattachée ; les lignes déjà publiées ne bloquent pas.`,
       )
     ) {
       return;

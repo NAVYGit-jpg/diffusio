@@ -555,6 +555,21 @@ export async function supprimerCatalogueAction(
     throw erreur;
   }
 
+  // Blocked while a calendar line of this element is still in progress;
+  // published or cancelled lines are history and do not block.
+  const lignesEnCours = await prisma.ligneCalendrier.count({
+    where: {
+      ...(type === 'publication' ? { publicationId: id } : { indicateurId: id }),
+      statut: { notIn: ['MIS_EN_LIGNE', 'ANNULE'] },
+    },
+  });
+
+  if (lignesEnCours > 0) {
+    return {
+      erreur: `« ${element.nom} » a encore ${lignesEnCours} ligne(s) de calendrier en cours. Supprimez ou annulez-les d’abord dans le calendrier (les lignes déjà publiées ne bloquent pas).`,
+    };
+  }
+
   const maintenant = new Date();
 
   if (type === 'publication') {
