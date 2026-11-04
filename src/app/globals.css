@@ -675,3 +675,88 @@ main .border:has(> [data-slot='table-container']) {
     box-shadow: none !important;
   }
 }
+
+/* --------------------------------------------------------------- organigramme
+   Classic top-down chart: each level a row, every child hung from its parent
+   by elbow connectors drawn with the li pseudo-elements. */
+.organigramme ul {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  padding-top: 28px;
+}
+
+.organigramme li {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 28px 10px 0;
+  list-style: none;
+}
+
+.organigramme li::before,
+.organigramme li::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 50%;
+  width: 50%;
+  height: 28px;
+  border-top: 2px solid var(--trait-organigramme);
+}
+
+.organigramme li::after {
+  right: auto;
+  left: 50%;
+  border-left: 2px solid var(--trait-organigramme);
+}
+
+.organigramme li:only-child::before {
+  display: none;
+}
+
+.organigramme li:only-child::after {
+  border-top: 0;
+  border-radius: 0;
+}
+
+.organigramme li:first-child::before,
+.organigramme li:last-child::after {
+  border: 0 none;
+}
+
+.organigramme li:last-child::before {
+  border-right: 2px solid var(--trait-organigramme);
+  border-radius: 0 10px 0 0;
+}
+
+.organigramme li:first-child::after {
+  border-radius: 10px 0 0 0;
+}
+
+.organigramme ul ul::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  height: 28px;
+  border-left: 2px solid var(--trait-organigramme);
+}
+
+.organigramme > ul {
+  padding-top: 0;
+}
+
+.organigramme > ul > li {
+  padding-top: 0;
+}
+
+.organigramme > ul > li::before,
+.organigramme > ul > li::after {
+  display: none;
+}
+
+.organigramme {
+  --trait-organigramme: color-mix(in oklab, var(--couleur-primaire-lisible) 45%, transparent);
+}
