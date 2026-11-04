@@ -8,6 +8,8 @@ import { prisma } from '@/lib/prisma';
 import { aplatir, construireArborescence } from '@/lib/structures/arborescence';
 import { libelleQuotaSuperAdmin } from '@/lib/utilisateurs/regles';
 import { FiltreStructure } from './filtre-structure';
+import { HierarchieEquipes } from './hierarchie-equipes';
+import Link from 'next/link';
 import { avecDescendants } from '@/lib/structures/descendance';
 import { TableauUtilisateurs } from './tableau-utilisateurs';
 
@@ -113,6 +115,32 @@ export default async function PageUtilisateurs({
     }),
   ]);
 
+  // « Équipes » view: every supervisor with the points focaux of the
+  // structures they administer. An administrator sees their own branch.
+  const vueEquipes = lireParametres(await searchParams, 'vue').includes('equipes');
+  const superviseurs = vueEquipes
+    ? await prisma.utilisateur.findMany({
+        where: {
+          organisationId: acteur.organisationId,
+          deletedAt: null,
+          role: 'ADMIN',
+          ...(acteur.role === 'ADMIN' ? { id: acteur.id } : {}),
+        },
+        select: {
+          id: true,
+          nom: true,
+          prenoms: true,
+          email: true,
+          fonction: true,
+          role: true,
+          actif: true,
+          structureId: true,
+          adminStructures: { select: { structureId: true } },
+        },
+        orderBy: { nom: 'asc' },
+      })
+    : [];
+
   // Compté à part, et non sur la liste affichée : celle-ci est filtrée, et un
   // filtre sur une structure en écarte les super administrateurs. Le quota
   // annoncerait alors « 0 sur 5 » alors que rien n'a changé.
@@ -144,6 +172,40 @@ export default async function PageUtilisateurs({
         />
       )}
 
+      <nav aria-label="Affichage" className="mb-5 inline-flex rounded-full border bg-card p-1 shadow-[var(--elevation-1)]">
+        {(
+          [
+            ['liste', 'Liste', '/utilisateurs'],
+            ['equipes', 'Équipes et supérieurs', '/utilisateurs?vue=equipes'],
+          ] as const
+        ).map(([cle, libelle, lien]) => {
+          const actif = (cle === 'equipes') === vueEquipes;
+          return (
+            <Link
+              key={cle}
+              href={lien}
+              className={
+                actif
+                  ? 'rounded-full bg-foreground px-4 py-1.5 text-sm font-medium text-background no-underline'
+                  : 'rounded-full px-4 py-1.5 text-sm text-muted-foreground no-underline hover:text-foreground'
+              }
+            >
+              {libelle}
+            </Link>
+          );
+        })}
+      </nav>
+
+      {vueEquipes ? (
+        <HierarchieEquipes
+          superviseurs={superviseurs.map((superviseur) => ({
+            ...superviseur,
+            structuresAdmin: superviseur.adminStructures.map((lien) => lien.structureId),
+          }))}
+          pointsFocaux={utilisateurs.filter((utilisateur) => utilisateur.role === 'POINT_FOCAL')}
+          sigles={new Map(structures.map((structure) => [structure.id, structure.sigle]))}
+        />
+      ) : (
       <TableauUtilisateurs
         utilisateurs={utilisateurs.map((utilisateur) => ({
           ...utilisateur,
@@ -155,6 +217,7 @@ export default async function PageUtilisateurs({
         quotaSuperAdmin={libelleQuotaSuperAdmin(superAdminsActifs)}
         peutCreer={peutRealiser(acteur, 'utilisateur:creer')}
       />
+      )}
     </div>
   );
 }

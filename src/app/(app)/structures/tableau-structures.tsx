@@ -38,7 +38,8 @@ import {
   enregistrerStructureAction,
   type EtatStructure,
 } from '@/lib/actions/structures';
-import { parentsPossibles } from '@/lib/structures/arborescence';
+import { etendreAuxDescendants, parentsPossibles } from '@/lib/structures/arborescence';
+import { ArbreStructures } from './arbre-structures';
 import { DialogueImport } from './dialogue-import';
 import {
   LIBELLE_TYPE_STRUCTURE,
@@ -68,6 +69,13 @@ export function TableauStructures({ structures }: { structures: Structure[] }) {
     ETAT_INITIAL,
   );
   const [bascule, demarrerBascule] = useTransition();
+  // Two ways to read the same structures, and a branch filter: a parent
+  // shown with every structure attached to it, at every level.
+  const [vue, setVue] = useState<'tableau' | 'arbre'>('arbre');
+  const [branche, setBranche] = useState('');
+  const dansLaBranche = branche ? new Set(etendreAuxDescendants(structures, [branche])) : null;
+  const visibles = dansLaBranche ? structures.filter((structure) => dansLaBranche.has(structure.id)) : structures;
+  const profondeurBase = branche ? (structures.find((structure) => structure.id === branche)?.profondeur ?? 0) : 0;
 
   // Closing on success has to happen after the action resolves, not on submit.
   useEffect(() => {
@@ -122,12 +130,51 @@ export function TableauStructures({ structures }: { structures: Structure[] }) {
 
   return (
     <>
-      <div className="mb-4 flex flex-wrap justify-end gap-2">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="inline-flex rounded-full border bg-card p-1 shadow-[var(--elevation-1)]">
+            {(
+              [
+                ['arbre', 'Arborescence'],
+                ['tableau', 'Tableau'],
+              ] as const
+            ).map(([cle, libelle]) => (
+              <button
+                key={cle}
+                type="button"
+                onClick={() => setVue(cle)}
+                className={
+                  vue === cle
+                    ? 'rounded-full bg-foreground px-4 py-1.5 text-sm font-medium text-background'
+                    : 'rounded-full px-4 py-1.5 text-sm text-muted-foreground hover:text-foreground'
+                }
+              >
+                {libelle}
+              </button>
+            ))}
+          </div>
+          <select
+            value={branche}
+            onChange={(evenement) => setBranche(evenement.target.value)}
+            className="h-10 rounded-full border bg-card px-4 text-sm shadow-[var(--elevation-1)]"
+            aria-label="Filtrer sur une structure et ses enfants"
+          >
+            <option value="">Toutes les structures</option>
+            {structures.map((structure) => (
+              <option key={structure.id} value={structure.id}>
+                {'\u00a0\u00a0'.repeat(structure.profondeur)}
+                {structure.sigle} — {structure.nom}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex flex-wrap gap-2">
         <DialogueImport />
         <Button onClick={ouvrirCreation}>
           <Plus aria-hidden />
           Nouvelle structure
         </Button>
+        </div>
       </div>
 
       {structures.length === 0 ? (
@@ -147,6 +194,14 @@ export function TableauStructures({ structures }: { structures: Structure[] }) {
             Créer la première structure
           </Button>
         </div>
+      ) : vue === 'arbre' ? (
+        <ArbreStructures
+          structures={visibles}
+          libelleType={(type) =>
+            LIBELLE_TYPE_STRUCTURE[type as keyof typeof LIBELLE_TYPE_STRUCTURE] ?? type
+          }
+          onOuvrir={ouvrirEdition}
+        />
       ) : (
         <div className="rounded-lg border">
           <Table>
@@ -162,21 +217,23 @@ export function TableauStructures({ structures }: { structures: Structure[] }) {
             </TableHeader>
 
             <TableBody>
-              {structures.map((structure) => (
+              {visibles.map((structure) => (
                 <TableRow key={structure.id} className={structure.actif ? '' : 'opacity-55'}>
                   <TableCell>
                     <div
                       className="flex items-center gap-2"
-                      style={{ paddingLeft: `${structure.profondeur * 1.5}rem` }}
+                      style={{ paddingLeft: `${(structure.profondeur - profondeurBase) * 1.5}rem` }}
                     >
-                      {structure.profondeur > 0 && (
-                        <span aria-hidden className="text-muted-foreground">
+                      {structure.profondeur > profondeurBase && (
+                        <span aria-hidden className="text-[var(--couleur-primaire-lisible)]">
                           └
                         </span>
                       )}
-                      <span className="font-medium">{structure.nom}</span>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="rounded-md bg-[var(--couleur-primaire-douce)] px-1.5 py-0.5 text-[11px] font-bold text-[var(--couleur-primaire-lisible)]">
                         {structure.sigle}
+                      </span>
+                      <span className={structure.profondeur === 0 ? 'font-semibold' : 'font-medium'}>
+                        {structure.nom}
                       </span>
                       {!structure.actif && (
                         <Badge variant="secondary">Désactivée</Badge>
