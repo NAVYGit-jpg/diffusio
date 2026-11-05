@@ -93,7 +93,7 @@ function enveloppe(
 
   // No name under the logo: the logo already says who writes.
   const logo = adresseLogoOrganisation
-    ? `<img src="${adresseLogoOrganisation}" alt="${organisation.sigle || 'Logo'}" style="max-height:48px;display:block;margin:0 auto">`
+    ? `<img src="${adresseLogoOrganisation}" alt="${organisation.nom}" height="48" style="height:48px;width:auto;max-width:220px;display:block;margin:0 auto;border:0">`
     : `<img src="${logoDiffusio}" alt="DIFFUSIO" width="170" style="max-height:32px;width:auto;display:block;margin:0 auto">`;
 
   const pastille = etiquette
