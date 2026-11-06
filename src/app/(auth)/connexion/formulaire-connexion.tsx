@@ -85,7 +85,7 @@ export function FormulaireConnexion({
               name="motDePasse"
               type="password"
               autoComplete="current-password"
-              required
+              // Not required: the principal account's first sign-in has none.
               aria-describedby={
                 etat.erreursChamps?.motDePasse ? 'erreur-motDePasse' : undefined
               }

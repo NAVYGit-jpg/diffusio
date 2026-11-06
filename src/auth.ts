@@ -50,10 +50,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return null;
         }
 
-        const motDePasseValide = await verify(
-          utilisateur.motDePasseHash,
-          motDePasse,
-        );
+        // First sign-in of the principal account, created without a password:
+        // the address alone opens it, once — the account has never been used
+        // and the next screen forces a real address and a password.
+        const premiereConnexionSansMotDePasse =
+          utilisateur.motDePasseHash === '' &&
+          utilisateur.role === 'SUPER_ADMIN' &&
+          utilisateur.mustChangePassword &&
+          utilisateur.derniereConnexion === null;
+
+        const motDePasseValide =
+          premiereConnexionSansMotDePasse ||
+          (utilisateur.motDePasseHash !== '' &&
+            motDePasse !== '' &&
+            (await verify(utilisateur.motDePasseHash, motDePasse)));
 
         if (!motDePasseValide) {
           const tentatives = utilisateur.tentativesConnexionEchouees + 1;

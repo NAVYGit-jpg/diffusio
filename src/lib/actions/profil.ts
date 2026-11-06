@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { PermissionRefusee, assertPermission } from '@/lib/auth/permissions';
 import { exigerActeur } from '@/lib/auth/session';
 import { motDePasseSchema } from '@/lib/auth/schemas';
+import { estSuperAdminPrincipal } from '@/lib/utilisateurs/principal';
 import { prisma } from '@/lib/prisma';
 
 export type EtatProfil = {
@@ -81,14 +82,39 @@ export async function enregistrerCoordonneesAction(
     };
   }
 
+  // The principal super administrator alone may change their own address,
+  // at any time: nobody above them could do it for them.
+  const nouvelEmail = String(donnees.get('email') ?? '').trim().toLowerCase();
+  let email: string | undefined;
+
+  if (nouvelEmail && (await estSuperAdminPrincipal(acteur.id, acteur.organisationId))) {
+    if (!z.string().email().safeParse(nouvelEmail).success) {
+      return { erreursChamps: { email: ["Cette adresse e-mail n'est pas valide."] } };
+    }
+
+    const dejaPrise = await prisma.utilisateur.findFirst({
+      where: { email: nouvelEmail, id: { not: acteur.id } },
+      select: { id: true },
+    });
+
+    if (dejaPrise) {
+      return { erreursChamps: { email: ['Cette adresse e-mail est déjà utilisée.'] } };
+    }
+
+    email = nouvelEmail;
+  }
+
   await prisma.utilisateur.update({
     where: { id: acteur.id },
-    data: analyse.data,
+    data: { ...analyse.data, ...(email ? { email } : {}) },
   });
 
   revalidatePath('/profil');
 
-  return { succes: true, message: 'Coordonnées mises à jour.' };
+  return {
+    succes: true,
+    message: email ? 'Coordonnées mises à jour. Votre nouvelle adresse servira à la prochaine connexion.' : 'Coordonnées mises à jour.',
+  };
 }
 
 const changementMotDePasseSchema = z

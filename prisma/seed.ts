@@ -1,6 +1,4 @@
 import 'dotenv/config';
-import { randomInt } from 'node:crypto';
-import { hash } from '@node-rs/argon2';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
 
@@ -27,21 +25,6 @@ if (!connectionString) {
 const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString }),
 });
-
-/**
- * Generates a random password that is strong but still readable aloud over the
- * phone: no characters that are easy to confuse (0/O, 1/l/I).
- */
-function genererMotDePasse(longueur = 20): string {
-  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
-  let motDePasse = '';
-
-  for (let i = 0; i < longueur; i += 1) {
-    motDePasse += alphabet[randomInt(alphabet.length)];
-  }
-
-  return motDePasse;
-}
 
 /** Default statistical domains, editable afterwards by the super admin. */
 const DOMAINES_PAR_DEFAUT = [
@@ -126,15 +109,15 @@ async function main(): Promise<void> {
     return;
   }
 
-  const motDePasse = genererMotDePasse();
-
   await prisma.utilisateur.create({
     data: {
       organisationId: organisation.id,
       nom: 'Super',
       prenoms: 'Administrateur',
       email,
-      motDePasseHash: await hash(motDePasse),
+      // No password: the first sign-in uses the address alone, then forces
+      // a real address and a password (see `authorize`).
+      motDePasseHash: '',
       role: 'SUPER_ADMIN',
       // §2.2 : the first login must force e-mail, name and password change
       mustChangePassword: true,
@@ -149,11 +132,12 @@ async function main(): Promise<void> {
 ============================================================
 
   Adresse e-mail : ${email}
-  Mot de passe   : ${motDePasse}
+  Mot de passe   : aucun — laissez le champ vide
 
-  Ce mot de passe ne sera plus jamais affiche.
   A la premiere connexion, l'application vous demandera de
-  changer votre e-mail, votre nom et votre mot de passe.
+  choisir votre e-mail, votre nom et votre mot de passe.
+  Connectez-vous sans attendre : tant que ce n'est pas fait,
+  quiconque connait cette adresse peut ouvrir le compte.
 
 ============================================================
 `);
