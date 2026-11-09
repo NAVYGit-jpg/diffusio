@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 import Link from 'next/link';
-import { Palette } from 'lucide-react';
+import { BookOpen, Download, Palette } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -69,6 +69,36 @@ export default async function PageProfil() {
         structure={utilisateur.structure ? `${utilisateur.structure.nom} (${utilisateur.structure.sigle})` : null}
         derniereConnexion={utilisateur.derniereConnexion?.toISOString() ?? null}
       />
+
+      {/* La documentation, pour tous : en ligne ou en PDF. */}
+      <Card data-carte-documentation className="mb-6 overflow-hidden">
+        <CardContent className="flex flex-wrap items-center gap-4 py-1">
+          <span
+            className="flex size-12 shrink-0 items-center justify-center rounded-2xl text-white shadow-[var(--elevation-2)]"
+            style={{ backgroundImage: 'var(--gradient-primaire)' }}
+            aria-hidden
+          >
+            <BookOpen className="size-5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="font-medium">Documentation de la plateforme</p>
+            <p className="text-sm text-muted-foreground">
+              Le guide complet, rubrique par rubrique, avec des captures annotées étape par étape.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild variant="outline">
+              <a href={`/api/documentation/pdf?role=${acteur.role}`} download>
+                <Download aria-hidden />
+                PDF
+              </a>
+            </Button>
+            <Button asChild>
+              <Link href="/documentation">Consulter</Link>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* The theme belongs to the organisation, so only its main administrator
           sets it — from here, where they look for their own settings. */}

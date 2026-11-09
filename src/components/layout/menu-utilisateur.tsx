@@ -2,6 +2,7 @@
 
 import type { Role } from '@prisma/client';
 import {
+  BookOpen,
   LogOut,
   Monitor,
   Moon,
@@ -89,6 +90,13 @@ export function MenuUtilisateur({
           <Link href="/profil">
             <UserRound aria-hidden />
             {t('compte.profil')}
+          </Link>
+        </DropdownMenuItem>
+
+        <DropdownMenuItem asChild>
+          <Link href="/documentation">
+            <BookOpen aria-hidden />
+            Documentation
           </Link>
         </DropdownMenuItem>
 

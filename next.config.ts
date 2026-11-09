@@ -19,6 +19,8 @@ const nextConfig: NextConfig = {
   // travel with the functions that generate documents.
   outputFileTracingIncludes: {
     '/api/**': ['./src/lib/pdf/polices/**'],
+    // Captures de la documentation, lues sur disque par la page et le PDF.
+    '/api/documentation/**': ['./documentation/captures/**'],
   },
 
   experimental: {

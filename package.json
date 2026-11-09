@@ -16,7 +16,8 @@
     "simuler:relances": "tsx scripts/simuler-relances.mts",
     "verifier:email": "tsx scripts/verifier-email.mts",
     "preparer:logos": "tsx scripts/preparer-logos.mts",
-    "capturer:guide": "tsx scripts/capturer-guide.mts"
+    "capturer:guide": "tsx scripts/capturer-guide.mts",
+    "documentation:captures": "tsx documentation/capturer.mts"
   },
   "dependencies": {
     "@fontsource/montserrat": "^5.3.0",
