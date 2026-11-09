@@ -103,25 +103,14 @@ export async function premiereConnexionAction(
     return { erreursChamps: { motDePasseActuel: ['Mot de passe actuel incorrect.'] } };
   }
 
-  // The address may already belong to somebody else in the organisation.
-  if (donneesValidees.email !== utilisateur.email) {
-    const dejaPris = await prisma.utilisateur.findUnique({
-      where: { email: donneesValidees.email },
-    });
-
-    if (dejaPris) {
-      return {
-        erreursChamps: { email: ['Cette adresse e-mail est déjà utilisée.'] },
-      };
-    }
-  }
-
   await prisma.utilisateur.update({
     where: { id: utilisateur.id },
     data: {
       nom: donneesValidees.nom,
       prenoms: donneesValidees.prenoms,
-      email: donneesValidees.email,
+      // The address is never changed here: the default account keeps its
+      // default address for good. Real accounts are created from it, on the
+      // users screen.
       motDePasseHash: await hash(donneesValidees.nouveauMotDePasse),
       mustChangePassword: false,
     },
@@ -137,7 +126,7 @@ export async function premiereConnexionAction(
       apres: {
         nom: donneesValidees.nom,
         prenoms: donneesValidees.prenoms,
-        email: donneesValidees.email,
+        email: utilisateur.email,
       },
     },
   });

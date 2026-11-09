@@ -153,7 +153,7 @@ async function main(): Promise<void> {
 
   Ce mot de passe ne sera plus jamais affiche.
   A la premiere connexion, l'application vous demandera de
-  changer votre e-mail, votre nom et votre mot de passe.
+  changer votre nom et votre mot de passe (l'adresse reste fixe).
 
 ============================================================
 `);

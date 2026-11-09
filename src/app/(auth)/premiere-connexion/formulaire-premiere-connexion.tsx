@@ -105,11 +105,16 @@ export function FormulairePremiereConnexion({
               name="email"
               type="email"
               defaultValue={emailActuel}
+              readOnly
+              className="bg-muted text-muted-foreground"
               autoComplete="username"
               required
               aria-invalid={Boolean(champs?.email)}
               aria-describedby={champs?.email ? 'erreur-email' : undefined}
             />
+            <p className="text-xs text-muted-foreground">
+              L’adresse par défaut ne peut pas être modifiée. Créez les comptes réels depuis l’écran Utilisateurs.
+            </p>
             <MessageErreur id="erreur-email" erreurs={champs?.email} />
           </div>
 
