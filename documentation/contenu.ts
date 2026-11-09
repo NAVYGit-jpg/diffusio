@@ -33,6 +33,10 @@ export type Capture = {
   preparer?: Cible[];
   /** Élément à amener en haut de l'écran avant la photo. */
   defilerVers?: Cible;
+  /** Taille de fenêtre particulière (tableau large, par exemple). */
+  fenetre?: { width: number; height: number };
+  /** Réduction de l'affichage, pour faire tenir un tableau large. */
+  zoom?: number;
   /** Photographier sans session (écran de connexion). */
   sansSession?: boolean;
 };
@@ -151,8 +155,13 @@ export const DOCUMENTATION: Partie[] = [
               { texte: 'Saisissez votre **adresse e-mail** de connexion.', cible: { role: 'textbox', nom: 'Adresse e-mail' } },
               { texte: 'Saisissez votre **mot de passe**.', cible: { css: 'input[type="password"]' } },
               { texte: 'Cliquez sur **Se connecter**.', cible: { role: 'button', nom: 'Se connecter' } },
-              { texte: 'Mot de passe perdu ? Utilisez le lien **Mot de passe oublié** : un lien de réinitialisation vous est envoyé par e-mail.', cible: { role: 'link', nom: 'oublié' } },
             ],
+          },
+          {
+            type: 'note',
+            ton: 'attention',
+            texte:
+              '**Mot de passe perdu ?** Il n’y a pas de réinitialisation en libre-service. Demandez à votre administrateur de vous **renvoyer une invitation** depuis l’écran Utilisateurs : le nouveau lien vous permet de définir un nouveau mot de passe.',
           },
           {
             type: 'liste',
@@ -166,7 +175,7 @@ export const DOCUMENTATION: Partie[] = [
           {
             type: 'note',
             ton: 'astuce',
-            texte: 'Le message de réinitialisation n’arrive pas ? Regardez dans le dossier des indésirables avant de le redemander.',
+            texte: 'L’e-mail d’invitation n’arrive pas ? Regardez dans le dossier des indésirables, ou demandez à l’administrateur de vous transmettre directement le lien affiché à l’écran.',
           },
         ],
       },
@@ -195,8 +204,8 @@ export const DOCUMENTATION: Partie[] = [
               ['Tableau de bord', 'Tous', 'Où en est-on : indicateurs, graphiques, rapport PDF / Excel.'],
               ['Structures', 'Super administrateur', 'L’organigramme des directions et services.'],
               ['Utilisateurs', 'Super admin., administrateur', 'Les comptes, les rôles et les invitations.'],
-              ['Catalogue', 'Tous', 'Les publications et indicateurs déclarés.'],
-              ['Calendrier', 'Tous', 'Les dates de diffusion, le dépôt des livrables, les exports.'],
+              ['Publications & indicateurs', 'Tous', 'Le catalogue des produits déclarés.'],
+              ['Calendrier de diffusion', 'Tous', 'Les dates de diffusion, la validation, le dépôt des livrables, les exports.'],
               ['État du calendrier', 'Tous', 'Retards, imminentes, livrées, publiées, annulées.'],
               ['Organigramme', 'Tous', 'La vue d’ensemble des structures et de leurs responsables.'],
               ['Équipe', 'Tous', 'Les personnes prévenues des mises en ligne.'],
@@ -297,23 +306,24 @@ export const DOCUMENTATION: Partie[] = [
       },
       {
         id: 'catalogue',
-        titre: 'Catalogue des publications et indicateurs',
+        titre: 'Publications & indicateurs (catalogue)',
         icone: 'Library',
         roles: TOUS,
         resume: 'Déclarer, modifier, retirer un produit ; gérer les domaines ; exporter le catalogue.',
         blocs: [
           {
             type: 'texte',
-            texte: 'Le catalogue est le point de départ : **rien n’apparaît au calendrier qui n’ait d’abord été déclaré ici.**',
+            texte: 'Le catalogue (rubrique **Publications & indicateurs**) est le point de départ : **rien n’apparaît au calendrier qui n’ait d’abord été déclaré ici.**',
           },
           {
             type: 'etapes',
             capture: { fichier: 'catalogue.jpg', chemin: '/catalogue', legende: 'Le catalogue' },
             etapes: [
-              { texte: 'Créez une publication avec **Nouvelle publication**…', cible: { role: 'button', nom: 'Nouvelle publication' } },
-              { texte: '… ou un indicateur avec **Nouvel indicateur**.', cible: { role: 'button', nom: 'Nouvel indicateur' } },
-              { texte: 'Le champ **Rechercher** filtre par nom, domaine ou périodicité.', cible: { css: 'input[placeholder^="Nom, domaine"]' } },
-              { texte: 'Les boutons d’export téléchargent le catalogue en **Excel** ou en **PDF**.', cible: { role: 'button', nom: 'Excel' } },
+              { texte: 'Les **chiffres du catalogue** : produits, publications, indicateurs et délai moyen de diffusion, puis la répartition par périodicité et par domaine.', cible: { css: '[aria-label="Statistiques du catalogue"]' } },
+              { texte: '**Rechercher** par nom, domaine ou périodicité, et affiner avec les listes **Domaine** et **Périodicité**.', cible: { css: 'input[placeholder^="Nom, domaine"]' } },
+              { texte: 'Les onglets **Publications** et **Indicateurs** séparent les deux types de produits, avec leur nombre.', cible: { role: 'tab', nom: 'Indicateurs' } },
+              { texte: '**Nouvelle publication** (ou **Nouvel indicateur** dans l’onglet Indicateurs) ouvre le formulaire de déclaration.', cible: { role: 'button', nom: 'Nouvelle publication' } },
+              { texte: '**Excel** et **PDF** téléchargent le catalogue.', cible: { css: 'a[href*="export/catalogue"]' } },
             ],
           },
           {
@@ -354,18 +364,48 @@ export const DOCUMENTATION: Partie[] = [
         titre: 'Calendrier de diffusion',
         icone: 'CalendarDays',
         roles: TOUS,
-        resume: 'Générer l’année, choisir les lignes, modifier une date, exporter en PDF et Excel.',
+        resume: 'Générer l’année, faire valider le calendrier, gérer les lignes, exporter en PDF et Excel.',
         blocs: [
           {
             type: 'etapes',
-            titre: 'Générer le calendrier d’une année',
-            capture: { fichier: 'calendrier-generation.jpg', chemin: '/calendrier', legende: 'Le bloc de génération' },
+            capture: { fichier: 'calendrier.jpg', chemin: '/calendrier', legende: 'L’en-tête du calendrier' },
             etapes: [
-              { texte: 'Choisissez la **structure** et l’**année**.', cible: { texte: 'Année', rang: 0 } },
-              { texte: 'Repérez les produits à inclure avec **Rechercher**, puis sélectionnez-les.', cible: { css: '#rechercheElements' } },
-              { texte: 'Cliquez sur **Générer**. Un aperçu présente les lignes proposées : rien n’est encore enregistré.', cible: { role: 'button', nom: 'Générer' } },
-              { texte: 'Dans l’aperçu, **décochez** les lignes à écarter ou utilisez la case **Tout sélectionner**, puis confirmez.' },
+              { texte: 'Choisissez la **structure** et l’**année** à afficher.', cible: { texte: 'Structure', rang: 0 } },
+              { texte: 'Téléchargez le calendrier de la structure en **Excel** ou **PDF**, ou le **calendrier global** de toutes les structures.', cible: { css: 'a[href*="export/calendrier"]' } },
+              { texte: 'Le **bandeau d’état** indique où en est le calendrier (Brouillon, Soumis, Validé) et son nombre de lignes.', cible: { texte: 'Brouillon' } },
+              { texte: 'Le bouton d’action du bandeau fait avancer le calendrier : **Soumettre pour validation**, **Valider**, **Renvoyer pour correction**…', cible: { role: 'button', nom: 'Soumettre pour validation' } },
             ],
+          },
+          {
+            type: 'tableau',
+            colonnes: ['État du calendrier', 'Qui agit', 'Actions possibles'],
+            lignes: [
+              ['**Brouillon**', 'Point focal', 'Générer, modifier les lignes, puis **Soumettre pour validation**. Les administrateurs sont prévenus et le calendrier se verrouille.'],
+              ['**Soumis**', 'Administrateur', '**Valider** (commentaire facultatif) ou **Renvoyer pour correction** (motif obligatoire) : le point focal retrouve alors la main.'],
+              ['**Validé**', 'Administrateur', 'Le calendrier devient la référence officielle. **Rouvrir le calendrier** le repasse en brouillon.'],
+              ['**Validé**', 'Point focal', '**Demander une autorisation de modification**, avec un motif : l’administrateur décide de rouvrir ou non.'],
+            ],
+          },
+          {
+            type: 'etapes',
+            titre: 'Générer le calendrier d’une année',
+            capture: {
+              fichier: 'calendrier-generation.jpg',
+              chemin: '/calendrier',
+              legende: 'Le bloc de génération',
+              defilerVers: { texte: 'Générer le calendrier de diffusion', rang: 0 },
+            },
+            etapes: [
+              { texte: 'Repérez les produits avec **Rechercher** (nom, domaine, périodicité).', cible: { css: '#rechercheElements' } },
+              { texte: 'Cochez les produits à inscrire, ou **Tout sélectionner**. Le tableau indique leur périodicité, leur délai et le nombre de lignes qui seront créées.', cible: { texte: 'Tout sélectionner', rang: 0 } },
+              { texte: 'Cliquez sur **Générer**. Un aperçu présente les lignes proposées : rien n’est encore enregistré.', cible: { role: 'button', nom: '^Générer$' } },
+              { texte: 'Dans l’aperçu, **décochez** les lignes à écarter (ou utilisez **Tout sélectionner / tout désélectionner**), puis confirmez.' },
+            ],
+          },
+          {
+            type: 'note',
+            ton: 'info',
+            texte: 'Les publications ponctuelles et les indicateurs rattachés à une publication n’apparaissent pas dans la liste de génération : ils n’ont pas de ligne propre.',
           },
           {
             type: 'note',
@@ -379,12 +419,15 @@ export const DOCUMENTATION: Partie[] = [
               fichier: 'calendrier-lignes.jpg',
               chemin: '/calendrier',
               legende: 'Les lignes du calendrier',
-              defilerVers: { css: 'table' },
+              fenetre: { width: 1920, height: 1000 },
+              zoom: 0.8,
+              defilerVers: { texte: 'Diffusion prévue', rang: 0 },
             },
             etapes: [
-              { texte: 'Chaque ligne indique le produit, la période couverte, la date de diffusion prévue et le **statut** en couleur.', cible: { css: 'table thead' } },
-              { texte: 'Le bouton de **dépôt** ouvre la fenêtre où l’on dépose les fichiers et les valeurs (voir « Déposer un livrable »).', cible: { css: 'table tbody tr button', rang: 0 } },
-              { texte: 'L’icône **corbeille** sert à l’annulation : le point focal envoie une **demande d’annulation** motivée ; l’encadrement annule directement ou valide la demande.', cible: { css: 'table tbody tr [title*="nnul"], table tbody tr [aria-label*="nnul"]' } },
+              { texte: 'Chaque ligne indique le produit, la période, la couverture et la **date de diffusion prévue**. Le **crayon** à côté de la date permet de la modifier, avec une justification.', cible: { texte: 'Diffusion prévue', rang: 0 } },
+              { texte: 'Le **statut** s’affiche en couleur : planifié, à venir, livré, publié, en retard.', cible: { texte: 'En retard', rang: 0 } },
+              { texte: '**Ouvrir** affiche la fenêtre de dépôt des fichiers et des valeurs (voir « Déposer un livrable »).', cible: { role: 'button', nom: '^Ouvrir$' } },
+              { texte: 'La **corbeille** sert à l’annulation : le point focal envoie une **demande d’annulation** motivée ; l’encadrement annule directement ou valide la demande.', cible: { css: '[title="Annuler cette publication"], [title="Demander l’annulation"]' } },
             ],
           },
           {
@@ -412,13 +455,13 @@ export const DOCUMENTATION: Partie[] = [
               fichier: 'depot.jpg',
               chemin: '/calendrier',
               legende: 'La fenêtre de dépôt',
-              preparer: [{ css: 'table tbody tr button', rang: 0 }],
+              preparer: [{ role: 'button', nom: '^Ouvrir$' }],
             },
             etapes: [
-              { texte: 'Glissez le **fichier PDF** dans sa zone, ou cliquez pour le choisir. Un aperçu du fichier s’affiche avant l’envoi.', cible: { css: '[role="dialog"] [data-zone-depot], [role="dialog"] label[for]', rang: 0 } },
-              { texte: 'Faites de même pour le **fichier Excel** des données.', cible: { css: '[role="dialog"] [data-zone-depot], [role="dialog"] label[for]', rang: 1 } },
-              { texte: 'Saisissez les **valeurs** des indicateurs rattachés, présentés sous forme de cartes.', cible: { css: '[role="dialog"] input[type="number"], [role="dialog"] input[inputmode="decimal"]' } },
-              { texte: 'Cliquez sur **Enregistrer** : fichiers et valeurs partent ensemble.', cible: { css: '[role="dialog"] button[type="submit"]' } },
+              { texte: 'Glissez le **fichier PDF de la publication** dans sa zone, ou cliquez sur **parcourez**. Il est **obligatoire** (20 Mo au plus). Un aperçu du fichier s’affiche avant l’envoi.', cible: { texte: 'Glissez le fichier ici', rang: 0 } },
+              { texte: 'Faites de même pour le **fichier Excel des données**, facultatif (.xlsx, .xls ou .csv).', cible: { texte: 'Glissez le fichier ici', rang: 1 } },
+              { texte: 'Pour un indicateur, saisissez sa **valeur** (et son unité) dans la carte prévue à cet effet.' },
+              { texte: 'Cliquez sur **Enregistrer** : fichiers et valeurs partent ensemble. **Fermer** abandonne sans rien envoyer.', cible: { role: 'button', nom: '^Enregistrer$' } },
             ],
           },
           {
@@ -499,11 +542,18 @@ export const DOCUMENTATION: Partie[] = [
         blocs: [
           {
             type: 'etapes',
-            capture: { fichier: 'retards.jpg', chemin: '/etat-calendrier?onglet=retard', legende: 'Les publications en retard' },
+            capture: {
+              fichier: 'retards.jpg',
+              chemin: '/etat-calendrier?onglet=retard',
+              legende: 'Les publications en retard',
+              fenetre: { width: 1920, height: 1000 },
+              zoom: 0.72,
+            },
             etapes: [
-              { texte: '**Point focal** : **Justifier le retard** — état d’avancement, justification et nouvelle date prévisionnelle.', cible: { role: 'button', nom: 'Justifier' } },
-              { texte: '**Point focal** : **Déposer** ouvre directement la fenêtre de dépôt du livrable.', cible: { role: 'button', nom: 'Déposer' } },
-              { texte: '**Encadrement** : **Envoyer une alerte** écrit au point focal un message personnalisé (e-mail et notification).', cible: { role: 'button', nom: 'Envoyer une alerte' } },
+              { texte: 'Chaque ligne donne le produit, la période, la **date non respectée**, le nombre de jours de retard et l’état de publication.' },
+              { texte: '**Justifier** (ou **Reporter** si une justification existe déjà) : état d’avancement, justification et nouvelle date prévisionnelle.', cible: { role: 'button', nom: '^(Justifier|Reporter)$' } },
+              { texte: '**Point focal** : **Déposer** ouvre directement la fenêtre de dépôt du livrable.' },
+              { texte: '**Encadrement** : contactez le point focal (e-mail ou téléphone), ou envoyez-lui une **alerte** écrite avec la **cloche** (e-mail et notification).', cible: { css: '[aria-label^="Envoyer une alerte"]' } },
             ],
           },
           {
@@ -548,7 +598,7 @@ export const DOCUMENTATION: Partie[] = [
             etapes: [
               { texte: 'Lancez un échange avec **Nouvelle discussion** : structure concernée, sujet, premier message.', cible: { role: 'button', nom: 'Nouvelle discussion' } },
               { texte: 'La liste de gauche regroupe vos fils ; les non lus sont signalés.' },
-              { texte: 'Écrivez dans la zone de message ; **Entrée** envoie, **Maj + Entrée** passe à la ligne.', cible: { css: 'textarea' } },
+              { texte: 'Ouvrez un fil puis écrivez dans la zone de message ; **Entrée** envoie, **Maj + Entrée** passe à la ligne.' },
             ],
           },
         ],
@@ -637,8 +687,11 @@ export const DOCUMENTATION: Partie[] = [
           },
           {
             type: 'liste',
-            titre: 'Supprimer un compte',
+            titre: 'Gérer un compte existant',
             elements: [
+              '**Modifier** le compte : coordonnées, rôle, structure, structures supervisées.',
+              '**Renvoyer l’invitation** : un nouveau lien est généré, par exemple quand le premier a expiré ou que la personne a perdu son mot de passe.',
+              '**Désactiver** un compte bloque la connexion sans rien effacer ; **Réactiver** le rétablit.',
               'Le super administrateur peut supprimer les comptes qu’il a lui-même créés.',
               'Seul le **super administrateur principal** peut supprimer un autre super administrateur.',
             ],
@@ -658,7 +711,7 @@ export const DOCUMENTATION: Partie[] = [
             etapes: [
               { texte: 'Choisissez l’**équipe affichée** (direction ou structure).', cible: { texte: 'Équipe affichée' } },
               { texte: '**Ajouter un membre** : nom, fonction, adresse e-mail.', cible: { role: 'button', nom: 'Ajouter un membre' } },
-              { texte: '**Télécharger le modèle**, remplissez-le, puis **Charger depuis un fichier Excel** pour un ajout en masse.', cible: { role: 'button', nom: 'Télécharger le modèle' } },
+              { texte: '**Charger depuis un fichier Excel** pour un ajout en masse : téléchargez le modèle, remplissez-le, puis déposez-le.', cible: { texte: 'Charger depuis un fichier Excel', rang: 0 } },
             ],
           },
           {
@@ -685,10 +738,25 @@ export const DOCUMENTATION: Partie[] = [
             type: 'etapes',
             capture: { fichier: 'profil.jpg', chemin: '/profil', legende: 'Mon profil' },
             etapes: [
-              { texte: 'Cliquez sur la **photo** pour la changer.', cible: { css: '[title="Changer la photo"]' } },
-              { texte: '**Documentation** : ouvre ce guide en ligne ou le télécharge en PDF.', cible: { css: '[data-carte-documentation]' } },
-              { texte: '**Coordonnées** : nom, prénoms, téléphone, fonction (et, pour un point focal, l’adresse de son supérieur). Enregistrez.', cible: { texte: 'Coordonnées', rang: 0 } },
-              { texte: '**Mot de passe** : saisissez l’actuel, puis le nouveau deux fois.', cible: { texte: 'Mot de passe actuel' } },
+              { texte: 'Cliquez sur l’icône **appareil photo** pour changer votre photo, ou sur **Retirer la photo**.', cible: { css: '[title="Changer la photo"]' } },
+              { texte: 'L’en-tête rappelle votre **adresse de connexion**, votre **structure** et votre **dernière connexion**.', cible: { texte: 'Dernière connexion', rang: 0 } },
+              { texte: '**Documentation de la plateforme** : **Consulter** ouvre ce guide, **PDF** le télécharge.', cible: { css: '[data-carte-documentation]' } },
+              { texte: 'Super administrateur : **Personnaliser** ouvre le réglage du thème et des couleurs du site.', cible: { texte: 'Thème et couleurs du site' } },
+            ],
+          },
+          {
+            type: 'etapes',
+            titre: 'Coordonnées et mot de passe',
+            capture: {
+              fichier: 'profil-coordonnees.jpg',
+              chemin: '/profil',
+              legende: 'Coordonnées et mot de passe',
+              defilerVers: { texte: 'Coordonnées', rang: 0 },
+            },
+            etapes: [
+              { texte: '**Coordonnées** : nom, prénoms, téléphone, fonction (et, pour un point focal, l’adresse de son supérieur). Cliquez sur **Enregistrer**.', cible: { texte: 'Coordonnées', rang: 0 } },
+              { texte: 'Super administrateur : l’**adresse de réception des e-mails** reçoit tous les messages destinés à son compte.', cible: { css: '#emailReception' } },
+              { texte: '**Mot de passe** : saisissez l’actuel, puis le nouveau, et confirmez.', cible: { texte: 'Mot de passe actuel', rang: 0 } },
             ],
           },
           {
@@ -726,7 +794,7 @@ export const DOCUMENTATION: Partie[] = [
             elements: [
               'Chaque changement est **enregistré immédiatement** et s’applique dès l’envoi quotidien suivant (6 h).',
               'Un type suspendu n’envoie ni e-mail ni notification ; les écrans de suivi restent à jour.',
-              'Les invitations, réinitialisations de mot de passe et alertes rédigées à la main partent toujours.',
+              'Les invitations et les alertes rédigées à la main partent toujours.',
               '**Adresse de réception des e-mails** (bloc Coordonnées) : l’adresse réelle où le super administrateur reçoit les messages. L’adresse de connexion par défaut, fictive, ne reçoit jamais rien.',
             ],
           },
@@ -741,12 +809,27 @@ export const DOCUMENTATION: Partie[] = [
         blocs: [
           {
             type: 'etapes',
-            capture: { fichier: 'apparence.jpg', chemin: '/apparence', legende: 'Le réglage de l’apparence' },
+            capture: { fichier: 'apparence.jpg', chemin: '/apparence', legende: 'Les couleurs du site' },
             etapes: [
-              { texte: '**Téléverser un logo** : il apparaît dans la navigation, sur la page de connexion, dans les e-mails et les rapports.', cible: { texte: 'Téléverser un logo' } },
-              { texte: '**Couleurs dominantes** : principale, secondaire, accent. La palette peut aussi être déduite automatiquement du logo.', cible: { texte: 'Couleurs dominantes' } },
-              { texte: 'Le **slogan**, affiché dans la barre du haut.', cible: { texte: 'Texte du slogan' } },
-              { texte: 'L’**aperçu** se met à jour pendant vos choix ; enregistrez pour appliquer à tous.', cible: { css: '[aria-label="Aperçu"]' } },
+              { texte: 'Choisissez une **palette prête à l’emploi** (Bleu institutionnel, Émeraude, Ocre ivoirien…) : le site s’actualise en direct.', cible: { texte: 'Bleu institutionnel', rang: 0 } },
+              { texte: 'Ou composez la vôtre : **couleur principale** (boutons, aplats), **secondaire** (titres, éléments distinctifs) et **d’accent** (graphiques, liserés).', cible: { texte: 'Couleur secondaire', rang: 0 } },
+              { texte: 'Le **mode d’aperçu** (clair, sombre, système) permet de vérifier le rendu.', cible: { texte: 'Mode d’aperçu', rang: 0 } },
+              { texte: 'L’**aperçu** montre des éléments réels de l’interface avec vos couleurs.', cible: { css: '[aria-label="Aperçu"]' } },
+            ],
+          },
+          {
+            type: 'etapes',
+            titre: 'Logo et slogan',
+            capture: {
+              fichier: 'apparence-logo.jpg',
+              chemin: '/apparence',
+              legende: 'Le logo et le slogan',
+              defilerVers: { texte: 'Téléverser un logo', rang: 0 },
+            },
+            etapes: [
+              { texte: '**Téléverser un logo** : il apparaît dans la navigation, sur la page de connexion, dans les e-mails et les rapports.', cible: { texte: 'Téléverser un logo', rang: 0 } },
+              { texte: 'Le **slogan**, affiché dans la barre du haut et au pied des rapports.', cible: { texte: 'Texte du slogan', rang: 0 } },
+              { texte: 'Enregistrez pour appliquer vos choix à tous les utilisateurs.' },
             ],
           },
           {
@@ -777,8 +860,7 @@ export const DOCUMENTATION: Partie[] = [
               ['**Relance de retard**', 'Tous les 2 jours par défaut, tant que rien n’est livré ni justifié', 'Point focal titulaire ; structure en copie'],
               ['**Avis de mise en ligne**', 'À la confirmation de la publication', 'Point focal, équipe de diffusion, copies ajoutées'],
               ['**Alerte manuelle**', 'Quand l’encadrement l’envoie', 'Points focaux de la structure'],
-              ['**Invitation**', 'À la création ou régénération d’un compte', 'La personne invitée'],
-              ['**Réinitialisation du mot de passe**', 'À la demande', 'Le titulaire du compte'],
+              ['**Invitation**', 'À la création d’un compte, ou quand l’administrateur la renvoie', 'La personne invitée'],
             ],
           },
           {

@@ -215,7 +215,7 @@ export function ReglagesMailsAutomatiques({ initial }: { initial: ReglagesMails 
         </ul>
 
         <p className="text-xs text-muted-foreground">
-          Les invitations, réinitialisations de mot de passe et alertes que vous rédigez vous-même
+          Les invitations et les alertes que vous rédigez vous-même
           partent toujours. Les écrans de suivi (État du calendrier) restent à jour, même suspendus.
         </p>
       </CardContent>

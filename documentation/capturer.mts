@@ -1,4 +1,4 @@
-import { mkdir, writeFile, access } from 'node:fs/promises';
+import { mkdir, writeFile, access, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { chromium, type Browser, type Locator, type Page } from 'playwright';
 
@@ -115,9 +115,10 @@ async function main() {
   const resultat: Reperes = {};
   const manquants: string[] = [];
 
-  for (const { capture, etapes } of CAPTURES) {
+  const seulement = process.argv.find((a) => a.startsWith("--seulement="))?.slice(12).split(",");
+  for (const { capture, etapes } of CAPTURES.filter(({ capture: c }) => !seulement || seulement.includes(c.fichier))) {
     const contexte = await navigateur.newContext({
-      viewport: FENETRE,
+      viewport: capture.fenetre ?? FENETRE,
       deviceScaleFactor: 1.5,
       locale: 'fr-FR',
       ...(capture.sansSession ? {} : { storageState: SESSION }),
@@ -128,6 +129,10 @@ async function main() {
       await page.goto(`${ADRESSE}${capture.chemin}`, { waitUntil: 'networkidle', timeout: 60_000 });
       if (!capture.sansSession && new URL(page.url()).pathname.startsWith('/connexion')) {
         throw new Error('session expirée — relancez avec --reconnexion');
+      }
+      if (capture.zoom) {
+        await page.evaluate((z) => { document.documentElement.style.zoom = String(z); }, capture.zoom);
+        await page.waitForTimeout(400);
       }
       await page.waitForTimeout(900);
 
@@ -147,27 +152,28 @@ async function main() {
 
       await masquerAdresses(page);
 
+      const F = capture.fenetre ?? FENETRE;
       const reperes: Record<string, Boite> = {};
       for (const [indice, etape] of etapes.entries()) {
         if (!etape.cible) continue;
         const element = await trouver(page, etape.cible);
         const boite = element ? await element.boundingBox() : null;
-        if (!boite || boite.y + boite.height < 0 || boite.y > FENETRE.height) {
+        if (!boite || boite.y + boite.height < 0 || boite.y > F.height || boite.x > F.width - 8 || boite.x + boite.width < 0) {
           manquants.push(`${capture.fichier} · repère ${indice + 1}`);
           continue;
         }
         const x = Math.max(0, boite.x);
         const y = Math.max(0, boite.y);
         reperes[String(indice + 1)] = {
-          x: (x / FENETRE.width) * 100,
-          y: (y / FENETRE.height) * 100,
-          l: (Math.min(boite.width, FENETRE.width - x) / FENETRE.width) * 100,
-          h: (Math.min(boite.height, FENETRE.height - y) / FENETRE.height) * 100,
+          x: (x / F.width) * 100,
+          y: (y / F.height) * 100,
+          l: (Math.min(boite.width, F.width - x) / F.width) * 100,
+          h: (Math.min(boite.height, F.height - y) / F.height) * 100,
         };
       }
 
       await page.screenshot({ path: path.join(DOSSIER, capture.fichier), type: 'jpeg', quality: 82 });
-      resultat[capture.fichier] = { largeur: FENETRE.width, hauteur: FENETRE.height, reperes };
+      resultat[capture.fichier] = { largeur: F.width, hauteur: F.height, reperes };
       console.log(`✓ ${capture.fichier} (${Object.keys(reperes).length} repères)`);
     } catch (erreur) {
       console.log(`✗ ${capture.fichier} : ${erreur instanceof Error ? erreur.message.split('\n')[0] : erreur}`);
@@ -176,7 +182,11 @@ async function main() {
     }
   }
 
-  await writeFile(path.join(DOSSIER, 'reperes.json'), `${JSON.stringify(resultat, null, 2)}\n`);
+  // Lancement partiel (--seulement=…) : on conserve les repères des autres captures.
+  const precedents = seulement
+    ? JSON.parse(await readFile(path.join(DOSSIER, 'reperes.json'), 'utf8').catch(() => '{}'))
+    : {};
+  await writeFile(path.join(DOSSIER, 'reperes.json'), `${JSON.stringify({ ...precedents, ...resultat }, null, 2)}\n`);
   await navigateur.close();
 
   if (manquants.length) {
