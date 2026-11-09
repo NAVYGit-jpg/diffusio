@@ -36,6 +36,7 @@ export default async function PageProfil() {
       telephone: true,
       fonction: true,
       emailSuperieur: true,
+      emailReception: true,
       role: true,
       derniereConnexion: true,
       structure: { select: { nom: true, sigle: true } },

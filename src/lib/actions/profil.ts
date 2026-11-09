@@ -81,9 +81,23 @@ export async function enregistrerCoordonneesAction(
     };
   }
 
+  // Super administrator only: the address that receives their mail, their
+  // sign-in address being the fictitious default one.
+  let emailReception: string | null | undefined;
+
+  if (acteur.role === 'SUPER_ADMIN') {
+    const saisie = String(donnees.get('emailReception') ?? '').trim().toLowerCase();
+
+    if (saisie && !z.string().email().safeParse(saisie).success) {
+      return { erreursChamps: { emailReception: ["Cette adresse e-mail n'est pas valide."] } };
+    }
+
+    emailReception = saisie || null;
+  }
+
   await prisma.utilisateur.update({
     where: { id: acteur.id },
-    data: analyse.data,
+    data: { ...analyse.data, ...(emailReception !== undefined ? { emailReception } : {}) },
   });
 
   revalidatePath('/profil');

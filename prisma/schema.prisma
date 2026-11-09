@@ -255,6 +255,9 @@ model Utilisateur {
   // Obligatoire pour POINT_FOCAL. Si le point focal est son propre superieur,
   // on y met sa propre adresse (§4.3).
   emailSuperieur String?
+  // Adresse ou le compte recoit les e-mails, quand l'adresse de connexion est
+  // fictive (compte super admin par defaut). Les envois l'utilisent a sa place.
+  emailReception String?
 
   // DEC-107 : une structure a un point focal titulaire et n suppleants.
   // Les relances automatiques ne partent qu'au titulaire.

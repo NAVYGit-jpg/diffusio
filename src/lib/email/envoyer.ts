@@ -167,6 +167,36 @@ ${message.corpsTexte
  * Never throws: a failed notification must not roll back the business
  * operation that triggered it.
  */
+/**
+ * Sign-in addresses replaced by the address each account receives mail at.
+ *
+ * The default super administrator signs in with a fictitious address: the
+ * address filled in on their profile receives the messages instead. A
+ * fictitious address left without replacement is dropped rather than sent
+ * into the void.
+ */
+async function versAdressesDeReception(message: MessageEmail): Promise<MessageEmail> {
+  const toutes = [...message.destinataires, ...(message.copie ?? [])];
+  const comptes = await prisma.utilisateur.findMany({
+    where: { email: { in: toutes }, emailReception: { not: null } },
+    select: { email: true, emailReception: true },
+  });
+  const remplacement = new Map(comptes.map((compte) => [compte.email, compte.emailReception!]));
+  const convertir = (adresses: string[]) => [
+    ...new Set(
+      adresses
+        .map((adresse) => remplacement.get(adresse) ?? adresse)
+        .filter((adresse) => !/\.(local|test|invalid)$/i.test(adresse)),
+    ),
+  ];
+
+  return {
+    ...message,
+    destinataires: convertir(message.destinataires),
+    copie: message.copie ? convertir(message.copie) : undefined,
+  };
+}
+
 export async function envoyerEmail(
   message: MessageEmail,
   maintenant: Date = new Date(),
@@ -206,12 +236,15 @@ export async function envoyerEmail(
   }
 
   let resultat: ResultatEnvoi;
+  const reel = await versAdressesDeReception(message);
 
   try {
     resultat =
-      MODE === 'prod'
-        ? await envoyerViaBrevo(message)
-        : afficherEnConsole(message);
+      reel.destinataires.length === 0
+        ? { envoye: false, erreur: 'Aucune adresse de réception réelle pour ce message.' }
+        : MODE === 'prod'
+          ? await envoyerViaBrevo(reel)
+          : afficherEnConsole(reel);
   } catch (erreur) {
     resultat = {
       envoye: false,

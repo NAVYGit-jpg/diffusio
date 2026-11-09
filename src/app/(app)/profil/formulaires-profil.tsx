@@ -29,6 +29,7 @@ type Utilisateur = {
   telephone: string | null;
   fonction: string | null;
   emailSuperieur: string | null;
+  emailReception?: string | null;
   role: Role;
   structure: string | null;
   derniereConnexion: string | null;
@@ -139,6 +140,24 @@ export function FormulairesProfil({ utilisateur }: { utilisateur: Utilisateur })
                 />
               </div>
             </div>
+
+            {utilisateur.role === 'SUPER_ADMIN' && (
+              <div className="space-y-2">
+                <Label htmlFor="emailReception">Adresse de réception des e-mails</Label>
+                <Input
+                  id="emailReception"
+                  name="emailReception"
+                  type="email"
+                  defaultValue={utilisateur.emailReception ?? ''}
+                  placeholder="votre.adresse@stat.plan.gouv.ci"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Tous les e-mails de l’application vous parviennent à cette adresse. Votre
+                  adresse de connexion ({utilisateur.email}) ne change pas et n’en reçoit aucun.
+                </p>
+                <MessageErreur erreurs={etatCoordonnees.erreursChamps?.emailReception} />
+              </div>
+            )}
 
             {estPointFocal && (
               <div className="space-y-2">
