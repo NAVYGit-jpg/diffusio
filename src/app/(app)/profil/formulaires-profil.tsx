@@ -32,8 +32,6 @@ type Utilisateur = {
   role: Role;
   structure: string | null;
   derniereConnexion: string | null;
-  /** The principal super administrator may change their own address. */
-  estPrincipal?: boolean;
 };
 
 const ETAT_INITIAL: EtatProfil = {};
@@ -121,17 +119,6 @@ export function FormulairesProfil({ utilisateur }: { utilisateur: Utilisateur })
                 <MessageErreur erreurs={etatCoordonnees.erreursChamps?.nom} />
               </div>
             </div>
-
-            {utilisateur.estPrincipal && (
-              <div className="space-y-2">
-                <Label htmlFor="email">Adresse e-mail de connexion</Label>
-                <Input id="email" name="email" type="email" defaultValue={utilisateur.email} required />
-                <p className="text-xs text-muted-foreground">
-                  Réservé au super administrateur principal. La nouvelle adresse sert dès la prochaine connexion.
-                </p>
-                <MessageErreur erreurs={etatCoordonnees.erreursChamps?.email} />
-              </div>
-            )}
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">

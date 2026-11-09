@@ -11,9 +11,9 @@ export const identifiantsSchema = z.object({
     .trim()
     .min(1, "L'adresse e-mail est obligatoire.")
     .email("Cette adresse e-mail n'est pas valide."),
-  // May be empty: the principal account signs in once without a password,
-  // then sets one (see `authorize`). Every other account is refused.
-  motDePasse: z.string().default(''),
+  motDePasse: z
+    .string({ message: 'Le mot de passe est obligatoire.' })
+    .min(1, 'Le mot de passe est obligatoire.'),
 });
 
 export type Identifiants = z.infer<typeof identifiantsSchema>;
@@ -43,8 +43,7 @@ export const premiereConnexionSchema = z
       .trim()
       .toLowerCase()
       .email("Cette adresse e-mail n'est pas valide."),
-    // Empty for the principal account's very first sign-in, which has none.
-    motDePasseActuel: z.string().default(''),
+    motDePasseActuel: z.string().min(1, 'Le mot de passe actuel est obligatoire.'),
     nouveauMotDePasse: motDePasseSchema,
     confirmation: z.string(),
   })

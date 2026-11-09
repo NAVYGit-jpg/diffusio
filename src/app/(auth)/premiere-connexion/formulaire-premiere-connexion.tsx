@@ -33,11 +33,8 @@ function MessageErreur({ id, erreurs }: { id: string; erreurs?: string[] }) {
 
 export function FormulairePremiereConnexion({
   emailActuel,
-  sansMotDePasse = false,
 }: {
   emailActuel: string;
-  /** Principal account created without a password: no current one to type. */
-  sansMotDePasse?: boolean;
 }) {
   const [etat, action, enCours] = useActionState(
     premiereConnexionAction,
@@ -116,7 +113,6 @@ export function FormulairePremiereConnexion({
             <MessageErreur id="erreur-email" erreurs={champs?.email} />
           </div>
 
-          {!sansMotDePasse && (
           <div className="space-y-2">
             <Label htmlFor="motDePasseActuel">Mot de passe actuel</Label>
             <Input
@@ -135,7 +131,6 @@ export function FormulairePremiereConnexion({
               erreurs={champs?.motDePasseActuel}
             />
           </div>
-          )}
 
           <div className="space-y-2">
             <Label htmlFor="nouveauMotDePasse">Nouveau mot de passe</Label>

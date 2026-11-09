@@ -94,11 +94,10 @@ export async function premiereConnexionAction(
     redirect('/connexion');
   }
 
-  // An account created without a password has no current one to check.
-  const actuelValide =
-    utilisateur.motDePasseHash === '' ||
-    (donneesValidees.motDePasseActuel !== '' &&
-      (await verify(utilisateur.motDePasseHash, donneesValidees.motDePasseActuel)));
+  const actuelValide = await verify(
+    utilisateur.motDePasseHash,
+    donneesValidees.motDePasseActuel,
+  );
 
   if (!actuelValide) {
     return { erreursChamps: { motDePasseActuel: ['Mot de passe actuel incorrect.'] } };

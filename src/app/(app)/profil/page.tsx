@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { exigerActeur } from '@/lib/auth/session';
 import { prisma } from '@/lib/prisma';
-import { estSuperAdminPrincipal } from '@/lib/utilisateurs/principal';
 import { adressePhoto } from '@/components/avatar-utilisateur';
 import { EnTeteProfil } from './en-tete-profil';
 import { FormulairesProfil } from './formulaires-profil';
@@ -94,7 +93,6 @@ export default async function PageProfil() {
             : null,
           derniereConnexion:
             utilisateur.derniereConnexion?.toISOString() ?? null,
-          estPrincipal: await estSuperAdminPrincipal(acteur.id, acteur.organisationId),
         }}
       />
     </div>
