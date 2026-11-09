@@ -176,6 +176,10 @@ model Organisation {
   // Parametres de relance rendus configurables (§9.3)
   joursRappel                 Int[] @default([15, 10, 5, 3, 1])
   frequenceRelanceRetardJours Int   @default(2)
+  // Envois automatiques activables par le super administrateur (profil)
+  mailsRappelsActifs          Boolean @default(true)
+  mailsRetardsActifs          Boolean @default(true)
+  mailsMiseEnLigneActifs      Boolean @default(true)
 
   actif     Boolean   @default(true)
   createdAt DateTime  @default(now())

@@ -10,6 +10,7 @@ import { prisma } from '@/lib/prisma';
 import { adressePhoto } from '@/components/avatar-utilisateur';
 import { EnTeteProfil } from './en-tete-profil';
 import { FormulairesProfil } from './formulaires-profil';
+import { ReglagesMailsAutomatiques } from './reglages-mails';
 
 const LIBELLE_ROLE = {
   SUPER_ADMIN: 'Super administrateur',
@@ -42,6 +43,20 @@ export default async function PageProfil() {
       structure: { select: { nom: true, sigle: true } },
     },
   });
+
+  const reglagesMails =
+    acteur.role === 'SUPER_ADMIN'
+      ? await prisma.organisation.findUniqueOrThrow({
+          where: { id: acteur.organisationId },
+          select: {
+            mailsRappelsActifs: true,
+            mailsRetardsActifs: true,
+            mailsMiseEnLigneActifs: true,
+            joursRappel: true,
+            frequenceRelanceRetardJours: true,
+          },
+        })
+      : null;
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -85,6 +100,8 @@ export default async function PageProfil() {
           </CardContent>
         </Card>
       )}
+
+      {reglagesMails && <ReglagesMailsAutomatiques initial={reglagesMails} />}
 
       <FormulairesProfil
         utilisateur={{

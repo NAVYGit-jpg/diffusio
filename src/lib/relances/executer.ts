@@ -60,6 +60,8 @@ export async function executerRelances(
       logoMimeType: true,
       joursRappel: true,
       frequenceRelanceRetardJours: true,
+      mailsRappelsActifs: true,
+      mailsRetardsActifs: true,
     },
   });
 
@@ -150,7 +152,8 @@ export async function executerRelances(
         joursRappel: organisation.joursRappel,
       });
 
-      if (rappel && destinataires.length > 0) {
+      // Suspended from the super administrator's profile: no reminder at all.
+      if (rappel && destinataires.length > 0 && organisation.mailsRappelsActifs) {
         const modele = modeleRappel({
           organisation,
           typeProduit,
@@ -205,7 +208,7 @@ export async function executerRelances(
         frequenceJours: organisation.frequenceRelanceRetardJours,
       });
 
-      if (decision.relancer && destinataires.length > 0) {
+      if (decision.relancer && destinataires.length > 0 && organisation.mailsRetardsActifs) {
         const modele = modeleRelance({
           organisation,
           typeProduit,
