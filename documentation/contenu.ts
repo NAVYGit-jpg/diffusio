@@ -370,7 +370,7 @@ export const DOCUMENTATION: Partie[] = [
             type: 'etapes',
             capture: { fichier: 'calendrier.jpg', chemin: '/calendrier', legende: 'L’en-tête du calendrier' },
             etapes: [
-              { texte: 'Choisissez la **structure** et l’**année** à afficher.', cible: { texte: 'Structure', rang: 0 } },
+              { texte: 'Choisissez la **structure** et l’**année** à afficher.', cible: { role: 'combobox', rang: 0 } },
               { texte: 'Téléchargez le calendrier de la structure en **Excel** ou **PDF**, ou le **calendrier global** de toutes les structures.', cible: { css: 'a[href*="export/calendrier"]' } },
               { texte: 'Le **bandeau d’état** indique où en est le calendrier (Brouillon, Soumis, Validé) et son nombre de lignes.', cible: { texte: 'Brouillon' } },
               { texte: 'Le bouton d’action du bandeau fait avancer le calendrier : **Soumettre pour validation**, **Valider**, **Renvoyer pour correction**…', cible: { role: 'button', nom: 'Soumettre pour validation' } },
@@ -420,7 +420,6 @@ export const DOCUMENTATION: Partie[] = [
               chemin: '/calendrier',
               legende: 'Les lignes du calendrier',
               fenetre: { width: 1920, height: 1000 },
-              zoom: 0.8,
               defilerVers: { texte: 'Diffusion prévue', rang: 0 },
             },
             etapes: [
@@ -547,7 +546,7 @@ export const DOCUMENTATION: Partie[] = [
               chemin: '/etat-calendrier?onglet=retard',
               legende: 'Les publications en retard',
               fenetre: { width: 1920, height: 1000 },
-              zoom: 0.72,
+              defilerVers: { role: 'button', nom: '^(Justifier|Reporter)$' },
             },
             etapes: [
               { texte: 'Chaque ligne donne le produit, la période, la **date non respectée**, le nombre de jours de retard et l’état de publication.' },
