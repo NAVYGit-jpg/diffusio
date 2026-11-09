@@ -130,10 +130,6 @@ async function main() {
       if (!capture.sansSession && new URL(page.url()).pathname.startsWith('/connexion')) {
         throw new Error('session expirée — relancez avec --reconnexion');
       }
-      if (capture.zoom) {
-        await page.evaluate((z) => { document.documentElement.style.zoom = String(z); }, capture.zoom);
-        await page.waitForTimeout(400);
-      }
       await page.waitForTimeout(900);
 
       for (const clic of capture.preparer ?? []) {
@@ -145,8 +141,12 @@ async function main() {
 
       if (capture.defilerVers) {
         const element = await trouver(page, capture.defilerVers);
-        await element?.evaluate((e) => e.scrollIntoView({ block: 'start' }));
-        await page.mouse.wheel(0, -80);
+        if (capture.horizontal) {
+          await element?.evaluate((e) => e.scrollIntoView({ block: 'nearest', inline: 'end' }));
+        } else {
+          await element?.evaluate((e) => e.scrollIntoView({ block: 'start' }));
+          await page.mouse.wheel(0, -80);
+        }
         await page.waitForTimeout(500);
       }
 

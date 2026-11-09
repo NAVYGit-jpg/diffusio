@@ -35,8 +35,8 @@ export type Capture = {
   defilerVers?: Cible;
   /** Taille de fenêtre particulière (tableau large, par exemple). */
   fenetre?: { width: number; height: number };
-  /** Réduction de l'affichage, pour faire tenir un tableau large. */
-  zoom?: number;
+  /** Défilement horizontal seulement (tableau large), sans bouger la page. */
+  horizontal?: boolean;
   /** Photographier sans session (écran de connexion). */
   sansSession?: boolean;
 };
@@ -545,11 +545,11 @@ export const DOCUMENTATION: Partie[] = [
               fichier: 'retards.jpg',
               chemin: '/etat-calendrier?onglet=retard',
               legende: 'Les publications en retard',
-              fenetre: { width: 1920, height: 1000 },
               defilerVers: { role: 'button', nom: '^(Justifier|Reporter)$' },
+              horizontal: true,
             },
             etapes: [
-              { texte: 'Chaque ligne donne le produit, la période, la **date non respectée**, le nombre de jours de retard et l’état de publication.' },
+              { texte: 'Chaque ligne donne le produit, la période, la **date non respectée**, le nombre de jours de **retard**, le **suivi** (relances déjà envoyées) et l’état de publication. Le tableau défile horizontalement.', cible: { texte: 'Date non respectée', rang: 0 } },
               { texte: '**Justifier** (ou **Reporter** si une justification existe déjà) : état d’avancement, justification et nouvelle date prévisionnelle.', cible: { role: 'button', nom: '^(Justifier|Reporter)$' } },
               { texte: '**Point focal** : **Déposer** ouvre directement la fenêtre de dépôt du livrable.' },
               { texte: '**Encadrement** : contactez le point focal (e-mail ou téléphone), ou envoyez-lui une **alerte** écrite avec la **cloche** (e-mail et notification).', cible: { css: '[aria-label^="Envoyer une alerte"]' } },
