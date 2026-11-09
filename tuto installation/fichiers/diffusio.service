@@ -1,0 +1,25 @@
+# DIFFUSIO — service systemd
+# Installation : sudo cp diffusio.service /etc/systemd/system/
+#                sudo systemctl daemon-reload && sudo systemctl enable --now diffusio
+
+[Unit]
+Description=DIFFUSIO - calendrier de diffusion statistique
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=diffusio
+Group=diffusio
+WorkingDirectory=/opt/diffusio/app
+Environment=NODE_ENV=production
+# L'application n'ecoute qu'en local : Nginx est la seule porte d'entree.
+ExecStart=/usr/bin/npm run start -- -H 127.0.0.1 -p 3000
+Restart=always
+RestartSec=5
+# Durcissement
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

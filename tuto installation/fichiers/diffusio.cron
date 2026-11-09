@@ -1,0 +1,10 @@
+# DIFFUSIO — taches planifiees (a copier dans /etc/cron.d/diffusio)
+# Heure du serveur : reglez-la avec « timedatectl set-timezone Africa/Abidjan ».
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# Chaque matin a 6 h : retards, rappels avant echeance, relances.
+0 6 * * * diffusio /opt/diffusio/scripts/lancer-relances.sh
+
+# Chaque nuit a 2 h 30 : sauvegarde de la base (14 jours conserves).
+30 2 * * * diffusio /opt/diffusio/scripts/sauvegarder-base.sh
