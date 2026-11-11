@@ -1,6 +1,7 @@
 'use client';
 
-import { ClipboardList, Link2, Plus, Search, Trash2 } from 'lucide-react';
+import { BookOpen, ChartNoAxesColumn, ClipboardList, Clock, Layers, LineChart, Link2, Plus, Search, Trash2 } from 'lucide-react';
+import Link from 'next/link';
 import { useMemo, useState, useTransition } from 'react';
 import { toast } from 'sonner';
 
@@ -91,11 +92,14 @@ export function VueCatalogue({
   indicateurs,
   domaines,
   structures,
+  familles,
 }: {
   publications: Publication[];
   indicateurs: Indicateur[];
   domaines: Domaine[];
   structures: Structure[];
+  /** Pour chaque structure, elle-même et ses structures rattachées. */
+  familles: Record<string, string[]>;
 }) {
   const [onglet, setOnglet] = useState<'publications' | 'indicateurs'>(
     'publications',
@@ -103,14 +107,24 @@ export function VueCatalogue({
   const [recherche, setRecherche] = useState('');
   const [domaineFiltre, setDomaineFiltre] = useState('toutes');
   const [periodiciteFiltre, setPeriodiciteFiltre] = useState('toutes');
+  const [structureFiltre, setStructureFiltre] = useState('toutes');
   const [enCours, demarrer] = useTransition();
 
   const correspond = (element: {
+    structureId: string;
     nom: string;
     domaineId: string;
     periodicite: string;
     domaine: { nom: string } | null;
   }): boolean => {
+    // Une structure parente inclut ses structures rattachées.
+    if (
+      structureFiltre !== 'toutes' &&
+      !(familles[structureFiltre] ?? [structureFiltre]).includes(element.structureId)
+    ) {
+      return false;
+    }
+
     if (domaineFiltre !== 'toutes' && element.domaineId !== domaineFiltre) {
       return false;
     }
@@ -142,13 +156,13 @@ export function VueCatalogue({
   const publicationsVisibles = useMemo(
     () => publications.filter(correspond),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [publications, recherche, domaineFiltre, periodiciteFiltre],
+    [publications, recherche, domaineFiltre, periodiciteFiltre, structureFiltre],
   );
 
   const indicateursVisibles = useMemo(
     () => indicateurs.filter(correspond),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [indicateurs, recherche, domaineFiltre, periodiciteFiltre],
+    [indicateurs, recherche, domaineFiltre, periodiciteFiltre, structureFiltre],
   );
 
   const basculer = (
@@ -218,8 +232,42 @@ export function VueCatalogue({
       : libelle;
   };
 
+  // Résumé compact, calculé sur ce qui est affiché : il suit les filtres.
+  const visibles = [...publicationsVisibles, ...indicateursVisibles];
+  const delaiMoyen = visibles.length
+    ? Math.round(visibles.reduce((somme, element) => somme + element.delaiJours, 0) / visibles.length)
+    : null;
+  const domainesCouverts = new Set(visibles.map((element) => element.domaineId)).size;
+  const resume = [
+    { icone: Layers, valeur: visibles.length, libelle: 'produits' },
+    { icone: BookOpen, valeur: publicationsVisibles.length, libelle: 'publications' },
+    { icone: LineChart, valeur: indicateursVisibles.length, libelle: 'indicateurs' },
+    { icone: Clock, valeur: delaiMoyen === null ? '—' : `${delaiMoyen} j`, libelle: 'délai moyen' },
+  ];
+
   return (
     <>
+      <section
+        aria-label="Statistiques du catalogue"
+        className="mb-5 flex flex-wrap items-center gap-2 rounded-2xl border bg-card px-3 py-2.5 shadow-[var(--elevation-1,0_1px_2px_rgb(0_0_0/0.05))]"
+      >
+        {resume.map(({ icone: Icone, valeur, libelle }) => (
+          <span key={libelle} className="inline-flex items-center gap-2 rounded-xl bg-muted/60 px-3 py-1.5 text-sm">
+            <Icone className="size-4 text-primary" aria-hidden />
+            <span className="font-semibold tabular-nums">{valeur}</span>
+            <span className="text-muted-foreground">{libelle}</span>
+          </span>
+        ))}
+        <span className="hidden text-xs text-muted-foreground sm:inline">· {domainesCouverts} domaine(s)</span>
+        <Link
+          href="/tableau-de-bord"
+          className="ml-auto inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium text-primary hover:bg-primary/10"
+        >
+          <ChartNoAxesColumn className="size-4" aria-hidden />
+          Statistiques détaillées
+        </Link>
+      </section>
+
       <div className="mb-4 flex flex-wrap items-end gap-3">
         <div className="min-w-56 flex-1 space-y-2">
           <Label htmlFor="recherche">Rechercher</Label>
@@ -237,6 +285,27 @@ export function VueCatalogue({
             />
           </div>
         </div>
+
+        {structures.length > 1 && (
+          <div className="w-56 space-y-2">
+            <Label htmlFor="filtreStructure">Structure</Label>
+            <Select value={structureFiltre} onValueChange={setStructureFiltre}>
+              <SelectTrigger id="filtreStructure" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="toutes">Toutes les structures</SelectItem>
+                {structures.map((structure) => (
+                  <SelectItem key={structure.id} value={structure.id}>
+                    <span style={{ paddingLeft: `${structure.profondeur * 0.75}rem` }}>
+                      {structure.sigle || structure.nom}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         <div className="w-48 space-y-2">
           <Label htmlFor="filtreDomaine">Domaine</Label>

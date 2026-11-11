@@ -28,7 +28,7 @@ function Barres({ parts }: { parts: { libelle: string; nombre: number }[] }) {
 /** Headline figures and breakdowns of the catalogue (cahier des charges §5). */
 export function StatistiquesCatalogueVue({ stats }: { stats: StatistiquesCatalogue }) {
   return (
-    <section aria-label="Statistiques du catalogue" className="mb-6 space-y-4">
+    <section aria-label="Statistiques du catalogue" className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <CarteIndicateur misEnAvant libelle="Produits au catalogue" valeur={stats.total} precision={`${stats.actifs} actif(s)`} icone={Layers} />
         <CarteIndicateur libelle="Publications" valeur={stats.publications} precision={`${stats.structuresCouvertes} structure(s)`} icone={BookOpen} />

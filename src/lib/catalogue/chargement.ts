@@ -9,15 +9,36 @@ import type { ElementCatalogue } from './statistiques';
  * The catalogue within the reader's perimeter, flattened for statistics and
  * exports. The perimeter is applied in the query, never after loading.
  */
+/** Optional narrowing, used by the dashboard (structures already include their descendants). */
+export type FiltresCatalogue = {
+  structureIds?: string[];
+  domaineIds?: string[];
+  periodicites?: string[];
+  typesElement?: string[];
+};
+
 export async function chargerElementsCatalogue(
   acteur: ActeurSession & { organisationId: string },
+  filtres: FiltresCatalogue = {},
 ): Promise<ElementCatalogue[]> {
   const perimetre = perimetreStructures(acteur);
-  const filtre = perimetre === null ? {} : { structureId: { in: perimetre } };
-  const base = { organisationId: acteur.organisationId, deletedAt: null, ...filtre };
+  const demandees = filtres.structureIds?.length ? filtres.structureIds : null;
+  const structures =
+    perimetre === null ? demandees : demandees ? demandees.filter((id) => perimetre.includes(id)) : perimetre;
+  const base = {
+    organisationId: acteur.organisationId,
+    deletedAt: null,
+    ...(structures === null ? {} : { structureId: { in: structures } }),
+    ...(filtres.domaineIds?.length ? { domaineId: { in: filtres.domaineIds } } : {}),
+    ...(filtres.periodicites?.length
+      ? { periodicite: { in: filtres.periodicites as ('MENSUELLE' | 'TRIMESTRIELLE')[] } }
+      : {}),
+  };
+  const avecPublications = !filtres.typesElement?.length || filtres.typesElement.includes('PUBLICATION');
+  const avecIndicateurs = !filtres.typesElement?.length || filtres.typesElement.includes('INDICATEUR');
 
   const [publications, indicateurs] = await Promise.all([
-    prisma.publication.findMany({
+    !avecPublications ? [] : prisma.publication.findMany({
       where: base,
       select: {
         nom: true,
@@ -30,7 +51,7 @@ export async function chargerElementsCatalogue(
       },
       orderBy: { nom: 'asc' },
     }),
-    prisma.indicateur.findMany({
+    !avecIndicateurs ? [] : prisma.indicateur.findMany({
       where: base,
       select: {
         nom: true,

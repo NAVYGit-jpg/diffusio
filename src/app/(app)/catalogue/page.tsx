@@ -4,10 +4,8 @@ import { perimetreStructures } from '@/lib/auth/permissions';
 import { exigerActeur } from '@/lib/auth/session';
 import { traducteurActeur } from '@/lib/langue/serveur';
 import { prisma } from '@/lib/prisma';
-import { aplatir, construireArborescence } from '@/lib/structures/arborescence';
+import { aplatir, construireArborescence, etendreAuxDescendants } from '@/lib/structures/arborescence';
 import { BoutonsExport } from '@/components/boutons-export';
-import { statistiquesCatalogue } from '@/lib/catalogue/statistiques';
-import { StatistiquesCatalogueVue } from './statistiques-catalogue';
 import { VueCatalogue } from './vue-catalogue';
 
 export const metadata: Metadata = {
@@ -106,33 +104,13 @@ export default async function PageCatalogue() {
         <BoutonsExport adresse="/api/export/catalogue" />
       </header>
 
-      <StatistiquesCatalogueVue
-        stats={statistiquesCatalogue([
-          ...publications.map((p) => ({
-            type: 'PUBLICATION' as const,
-            nom: p.nom,
-            structure: p.structure.sigle,
-            domaine: p.domaine?.nom ?? null,
-            periodicite: p.periodicite,
-            delaiJours: p.delaiJours,
-            actif: p.actif,
-          })),
-          ...indicateurs.map((i) => ({
-            type: 'INDICATEUR' as const,
-            nom: i.nom,
-            structure: i.structure.sigle,
-            domaine: i.domaine?.nom ?? null,
-            periodicite: i.periodicite,
-            delaiJours: i.delaiJours,
-            actif: i.actif,
-          })),
-        ])}
-      />
-
       <VueCatalogue
         publications={publications}
         indicateurs={indicateurs}
         domaines={domaines}
+        familles={Object.fromEntries(
+          structures.map((s) => [s.id, etendreAuxDescendants(structures, [s.id])]),
+        )}
         structures={aplatir(construireArborescence(structures)).map((s) => ({
           id: s.id,
           nom: s.nom,

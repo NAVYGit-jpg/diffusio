@@ -46,6 +46,10 @@ import { assemblerRapport } from '@/lib/tableau-bord/rapport';
 import { BoutonsRapport } from './boutons-rapport';
 import { BarreAvancement, CarteIndicateur } from './cartes';
 import { CommentaireAffiche } from './commentaire-affiche';
+import { StatistiquesCatalogueVue } from '../catalogue/statistiques-catalogue';
+import { chargerElementsCatalogue } from '@/lib/catalogue/chargement';
+import { statistiquesCatalogue } from '@/lib/catalogue/statistiques';
+import { avecDescendants } from '@/lib/structures/descendance';
 import { FiltresTableauDeBord } from './filtres';
 import { BarresRepartition, BarresStatut, CourbeRespect } from './graphiques';
 
@@ -95,6 +99,18 @@ export default async function PageTableauDeBord({
   const rapport = await assemblerRapport(acteur, filtres, aujourdhui);
   const activite = await chargerActiviteRecente(acteur.organisationId);
   const identite = await chargerIdentiteOrganisation();
+  // Statistiques du catalogue, selon les mêmes filtres (une structure parente
+  // inclut ses structures rattachées).
+  const statsCatalogue = statistiquesCatalogue(
+    await chargerElementsCatalogue(acteur, {
+      structureIds: filtres.structureIds.length
+        ? await avecDescendants(acteur.organisationId, filtres.structureIds)
+        : [],
+      domaineIds: filtres.domaineIds,
+      periodicites: filtres.periodicites,
+      typesElement: filtres.typesElement,
+    }),
+  );
 
   const {
     contexte,
@@ -689,6 +705,22 @@ export default async function PageTableauDeBord({
                 )}
               </CardContent>
             </Card>
+          </div>
+
+          {/* ---------------------------------------------------- catalogue */}
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-end justify-between gap-2">
+              <div>
+                <h2 className="text-lg font-semibold tracking-tight">Catalogue des produits</h2>
+                <p className="text-sm text-muted-foreground">
+                  Publications et indicateurs déclarés, selon les filtres ci-dessus.
+                </p>
+              </div>
+              <a href="/catalogue" className="text-sm font-medium text-primary hover:underline">
+                Ouvrir le catalogue →
+              </a>
+            </div>
+            <StatistiquesCatalogueVue stats={statsCatalogue} />
           </div>
         </div>
       )}

@@ -282,6 +282,7 @@ export const DOCUMENTATION: Partie[] = [
             elements: [
               '**Répartition par statut** et **par domaine**, l’évolution mois par mois et le classement des structures.',
               '**Prochaines échéances** : ce qui doit sortir bientôt.',
+              '**Catalogue des produits** : nombre de produits, de publications et d’indicateurs, délai moyen, répartition par périodicité et par domaine, selon les mêmes filtres.',
               '**Activité récente** : les derniers dépôts et mises en ligne.',
               '**Lecture des résultats** : un commentaire rédigé automatiquement qui décrit les chiffres, sans jamais inventer un taux.',
             ],
@@ -319,8 +320,8 @@ export const DOCUMENTATION: Partie[] = [
             type: 'etapes',
             capture: { fichier: 'catalogue.jpg', chemin: '/catalogue', legende: 'Le catalogue' },
             etapes: [
-              { texte: 'Les **chiffres du catalogue** : produits, publications, indicateurs et délai moyen de diffusion, puis la répartition par périodicité et par domaine.', cible: { css: '[aria-label="Statistiques du catalogue"]' } },
-              { texte: '**Rechercher** par nom, domaine ou périodicité, et affiner avec les listes **Domaine** et **Périodicité**.', cible: { css: 'input[placeholder^="Nom, domaine"]' } },
+              { texte: 'Le **résumé** indique le nombre de produits, de publications, d’indicateurs et le délai moyen, selon les filtres appliqués. **Statistiques détaillées** ouvre les graphiques du tableau de bord.', cible: { css: '[aria-label="Statistiques du catalogue"]' } },
+              { texte: '**Rechercher** par nom, domaine ou périodicité, et affiner avec les listes **Structure** (une structure parente inclut ses structures rattachées), **Domaine** et **Périodicité**.', cible: { css: 'input[placeholder^="Nom, domaine"]' } },
               { texte: 'Les onglets **Publications** et **Indicateurs** séparent les deux types de produits, avec leur nombre.', cible: { role: 'tab', nom: 'Indicateurs' } },
               { texte: '**Nouvelle publication** (ou **Nouvel indicateur** dans l’onglet Indicateurs) ouvre le formulaire de déclaration.', cible: { role: 'button', nom: 'Nouvelle publication' } },
               { texte: '**Excel** et **PDF** téléchargent le catalogue.', cible: { css: 'a[href*="export/catalogue"]' } },
