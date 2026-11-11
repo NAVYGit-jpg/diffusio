@@ -130,7 +130,11 @@ function enveloppe(
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #e4e4e7">
               <tr>
                 <td style="padding-top:18px;vertical-align:middle">
-                  <img src="${logoDiffusio}" alt="DIFFUSIO" width="96" style="max-height:18px;width:auto;display:block;opacity:0.55">
+                  ${
+                    adresseLogoOrganisation
+                      ? `<img src="${adresseLogoOrganisation}" alt="${organisation.sigle || organisation.nom}" height="28" style="height:28px;width:auto;max-width:140px;display:block;border:0">`
+                      : `<img src="${logoDiffusio}" alt="DIFFUSIO" width="96" style="max-height:18px;width:auto;display:block;opacity:0.55">`
+                  }
                 </td>
                 <td style="padding-top:18px;text-align:right;font-size:12px;color:#71717a;line-height:1.5">
                   Message automatique envoyé pour ${organisation.nom}.<br>

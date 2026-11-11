@@ -25,13 +25,31 @@
  */
 export function adresseApplication(): string {
   const declaree = process.env.AUTH_URL?.trim();
-
-  if (declaree) {
-    return declaree.endsWith('/') ? declaree.slice(0, -1) : declaree;
-  }
-
   const publiqueParLaPlateforme =
     process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim();
+
+  if (declaree) {
+    const propre = declaree.endsWith('/') ? declaree.slice(0, -1) : declaree;
+
+    // En production, une adresse locale ou en clair ne peut servir à personne :
+    // les messageries ne chargent pas une image de « localhost », et beaucoup
+    // bloquent les images en http. Le logo s'affichait alors comme une case
+    // vide. On se replie sur l'adresse publique, en https.
+    if (process.env.VERCEL_ENV === 'production') {
+      const locale = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\]|[^/]+\.local)(:\d+)?$/i.test(propre);
+
+      if (locale && publiqueParLaPlateforme) {
+        console.warn(`[adresse] AUTH_URL pointe vers ${propre} : https://${publiqueParLaPlateforme} est utilisée.`);
+        return `https://${publiqueParLaPlateforme}`;
+      }
+
+      if (!locale && propre.startsWith('http://')) {
+        return `https://${propre.slice('http://'.length)}`;
+      }
+    }
+
+    return propre;
+  }
 
   if (publiqueParLaPlateforme) {
     if (process.env.VERCEL_ENV === 'production') {
