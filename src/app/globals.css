@@ -679,14 +679,14 @@ main .border:has(> [data-slot='table-container']) {
 /* --------------------------------------------------------------- organigramme
    Classic top-down chart: each level a row, every child hung from its parent
    by elbow connectors drawn with the li pseudo-elements. */
-.organigramme ul {
+.organigramme ul.branches {
   position: relative;
   display: flex;
   justify-content: center;
   padding-top: 28px;
 }
 
-.organigramme li {
+.organigramme li.noeud {
   position: relative;
   display: flex;
   flex-direction: column;
@@ -695,8 +695,8 @@ main .border:has(> [data-slot='table-container']) {
   list-style: none;
 }
 
-.organigramme li::before,
-.organigramme li::after {
+.organigramme li.noeud::before,
+.organigramme li.noeud::after {
   content: '';
   position: absolute;
   top: 0;
@@ -706,36 +706,36 @@ main .border:has(> [data-slot='table-container']) {
   border-top: 2px solid var(--trait-organigramme);
 }
 
-.organigramme li::after {
+.organigramme li.noeud::after {
   right: auto;
   left: 50%;
   border-left: 2px solid var(--trait-organigramme);
 }
 
-.organigramme li:only-child::before {
+.organigramme li.noeud:only-child::before {
   display: none;
 }
 
-.organigramme li:only-child::after {
+.organigramme li.noeud:only-child::after {
   border-top: 0;
   border-radius: 0;
 }
 
-.organigramme li:first-child::before,
-.organigramme li:last-child::after {
+.organigramme li.noeud:first-child::before,
+.organigramme li.noeud:last-child::after {
   border: 0 none;
 }
 
-.organigramme li:last-child::before {
+.organigramme li.noeud:last-child::before {
   border-right: 2px solid var(--trait-organigramme);
   border-radius: 0 10px 0 0;
 }
 
-.organigramme li:first-child::after {
+.organigramme li.noeud:first-child::after {
   border-radius: 10px 0 0 0;
 }
 
-.organigramme ul ul::before {
+.organigramme ul.branches ul.branches::before {
   content: '';
   position: absolute;
   top: 0;
@@ -744,16 +744,16 @@ main .border:has(> [data-slot='table-container']) {
   border-left: 2px solid var(--trait-organigramme);
 }
 
-.organigramme > ul {
+.organigramme > ul.branches {
   padding-top: 0;
 }
 
-.organigramme > ul > li {
+.organigramme > ul.branches > li.noeud {
   padding-top: 0;
 }
 
-.organigramme > ul > li::before,
-.organigramme > ul > li::after {
+.organigramme > ul.branches > li.noeud::before,
+.organigramme > ul.branches > li.noeud::after {
   display: none;
 }
 
